@@ -77,9 +77,12 @@ def load_data():
       "localhost:6060/api/load/",
   ]
   output = []
+  # HACK: Temporarily comment out command2 and command4 until RSI import from storage bucket is fixed
   for command, cwd in [(command1, "import/simple"),
-                       (command2, "tools/nl/embeddings"), (command3, "."),
-                       (command4, ".")]:
+                       #(command2, "tools/nl/embeddings"), 
+                       (command3, "."),
+                       #(command4, ".")
+                       ]:
     try:
       result = subprocess.run(command,
                               capture_output=True,
