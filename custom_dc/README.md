@@ -1,10 +1,19 @@
 # Custom Data Commons
 
-A custom Data Commons can hold new data and include UI modifications that are
+A custom Data Commons (DC) can hold new data and include UI modifications that are
 custom to a third party's need.
 
 This document illustrates development and deployment details for a custom Data
 Commons instance.
+
+## Custom and Base DCs
+
+<img src="https://github.com/datacommonsorg/website/assets/1221814/63efdb88-580c-4bc2-967b-5dce61844eea"
+     alt="Custom Data Commons"
+     style="width: 40vw;"/>
+The diagram above is a high-level view of the relationship between custom and base DC instances.
+As indicated, custom and base DCs largely share the same software stack.
+Additionally, a custom DC combines its own local datasets with base DC datasets to provide a unified view.
 
 ## Prerequisites
 
@@ -193,6 +202,19 @@ before the operation.
 
 ### Prepare Custom Data
 
+The examples below show how you can prepare your data to be imported into a custom DC instance.
+
+The first column header is a property that identifies the observed entity.
+Supported properties in the examples below are `dcid`, `name`, `geoId`.
+When `dcid` is used, the entity should have been resolved (i.e. mapped to a DC identifier from a previous step).
+
+The second column is a property that identifies the date.
+
+The last two columns identify IDs of metrics or statistical variables, with the column containing the corresponding numeric values.
+
+> Note that the treatment of variables in this section is much simplified for the purposes of this discussion.
+> For a more detailed discussion on the DC data model, please refer to the document on [Representing statistics in Data Commons](https://github.com/datacommonsorg/data/blob/master/docs/representing_statistics.md).
+
 Prepare CSV files with statistical data in the following formats:
 
 ```csv
@@ -212,10 +234,6 @@ dcid,observationDate,stat_var_1,stat_var_2
 geoId/06,2021,555,666
 geoId/08,2021,10,10
 ```
-
-The first column header is a property that identifies the observed entity,
-supported properties are `dcid`, `name`, `geoId`. When `dcid` is used, the
-entity should have been resolved (from a previous step).
 
 Refer to [sample folder](./sample) for supported example data files.
 
@@ -254,6 +272,37 @@ html and css customization. These customization are in the following folders:
 
 Update these files for UI customization then run through the local and cloud
 development cycles as illustrated above.
+
+### Update Header, Footer and Page Content
+
+Page header and footer can be customized in
+[base.html](../server/templates/custom_dc/custom/base.html)
+by updating the html element within `<header></header>` and `<footer></footer>`.
+
+Homepage can be customized in
+[homepage.html](../server/templates/custom_dc/custom/homepage.html).
+
+### Update CSS and Javascript
+
+The custom Data Commons provides an
+[overrides.css](../static/custom_dc/custom/overrides.css)
+to override CSS styles. It has a default color override. More style changes can
+be added in that file.
+
+If there are already existing CSS and Javascript files, put them under the
+[/static/custom_dc/custom](../static/custom_dc/custom)
+folder. Then include these files in the `<head>` section of the corresponding
+html files as
+
+```html
+<link href="/custom_dc/custom/<additional>.css" rel="stylesheet" />
+```
+
+or
+
+```html
+<script src="/custom_dc/custom/<additional>.js"></script>
+```
 
 ## Environment Variables
 
