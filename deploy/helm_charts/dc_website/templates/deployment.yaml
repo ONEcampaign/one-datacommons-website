@@ -81,20 +81,20 @@ spec:
         {{- end }}
       containers:
         - name: website
-          image:  "gcr.io/{{ .Values.website.image.project }}/datacommons-website:{{ .Values.website.image.tag }}"
+          image:  "us-docker.pkg.dev/{{ .Values.website.image.project }}/datacommons/website-compose:{{ .Values.website.image.tag }}"
           imagePullPolicy: {{ .Values.website.image.pullPolicy }}
           args: []
           ports:
             - containerPort: 8080
           startupProbe:
             httpGet:
-              path: /healthz
+              path: /
               port: 8080
             failureThreshold: 30
             periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /healthz
+              path: /
               port: 8080
             failureThreshold: 1
             periodSeconds: 10
@@ -133,8 +133,50 @@ spec:
               value: {{ .Values.website.githash | quote }}
             - name: ENABLE_MODEL
               value: {{ .Values.nl.enabled | quote }}
-            - name: INGRESS_CONFIG_PATH
-              value: /datacommons/ingress/rules
+                #- name: INGRESS_CONFIG_PATH
+                #  value: /datacommons/ingress/rules
+            - name: USE_CLOUDSQL
+              value: 'true'
+            - name: ENV_PREFIX
+              value: Compose
+            - name: USE_LOCAL_MIXER
+              value: 'true'
+            - name: GOOGLE_CLOUD_PROJECT
+              value: one-website-1490370639043
+            - name: DB_USER
+              value: datacommons
+            - name: GCS_DATA_PATH
+              value: gs://one-datacommons-imports-prod/dec7
+            - name: SQL_DATA_PATH
+              valueFrom:
+                secretKeyRef:
+                  key: bucket-url
+                  name: app-secrets
+            - name: CLOUDSQL_INSTANCE
+              valueFrom:
+                secretKeyRef:
+                  key: sql-connection-name
+                  name: app-secrets
+            - name: DC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: dc-api-key
+                  name: app-secrets
+            - name: MAPS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: maps-api-key
+                  name: app-secrets
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  key: sql-db-password
+                  name: app-secrets
+            - name: ADMIN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: admin-secret
+                  name: app-secrets
             # A dummy config used to bounce the server without any docker image
             # or data config change.
             - name: BOUNCE
