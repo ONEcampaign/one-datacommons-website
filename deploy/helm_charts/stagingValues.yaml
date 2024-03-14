@@ -1,0 +1,17 @@
+website:
+  image:
+    project: one-website-1490370639043
+    tag: 604df48
+  flaskEnv: "one"
+  replicas: 1
+  gcsDataPath: "gs://one-datacommons-imports/dec7"
+
+serviceAccount:
+  name: data-commons-staging-k8s-sa
+
+ingress:
+  name: data-commons-ingress-staging
+  ipName: data-commons-k8s-ingress-staging
+  certName: live-http-lb-certificate-20180823143833463300000001
+  enabled: true
+
