@@ -7,6 +7,10 @@ kind: Deployment
 metadata:
   name: website-app
   namespace: {{ .Values.namespace.name }}
+  labels:
+    app: website-app
+    project: data-commons
+    business-unit: policy-team
 spec:
   replicas: {{ .Values.website.replicas }}
   strategy:
@@ -34,6 +38,8 @@ spec:
     metadata:
       labels:
         app: website-app
+        project: data-commons
+        business-unit: policy-team
       annotations:
         timestamp: {{ now | quote }}
     spec:
@@ -247,6 +253,8 @@ spec:
     metadata:
       labels:
         app: website-nodejs-app
+        project: data-commons
+        business-unit: policy-team
       annotations:
         timestamp: {{ now | quote }}
     spec:

@@ -70,6 +70,9 @@ kind: Ingress
 metadata:
   name: {{ .Values.ingress.name }}
   namespace: {{ .Values.namespace.name }}
+  labels:
+    project: data-commons
+    business-unit: policy-team
   annotations:
     {{- if .Values.ingress.internal }}
     ingress.gcp.kubernetes.io/pre-shared-cert: "website-ilb"
