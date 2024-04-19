@@ -29,7 +29,6 @@ from server.lib import topic_cache
 import server.lib.cache as lib_cache
 import server.lib.config as lib_config
 from server.lib.disaster_dashboard import get_disaster_dashboard_data
-import server.lib.gcp as lib_gcp
 import server.lib.i18n as i18n
 from server.lib.nl.common.bad_words import EMPTY_BANNED_WORDS
 from server.lib.nl.common.bad_words import load_bad_words
@@ -38,6 +37,7 @@ import server.lib.util as libutil
 import server.services.bigtable as bt
 from server.services.discovery import configure_endpoints_from_ingress
 from server.services.discovery import get_health_check_urls
+import shared.lib.gcp as lib_gcp
 
 BLOCKLIST_SVG_FILE = "/datacommons/svg/blocklist_svg.json"
 
@@ -237,12 +237,13 @@ def create_app(nl_root=DEFAULT_NL_ROOT):
   if lib_gcp.in_google_network():
     client = google.cloud.logging.Client()
     client.setup_logging()
-  logging.basicConfig(
-      level=logging.INFO,
-      format=
-      "\u3010%(asctime)s\u3011\u3010%(levelname)s\u3011\u3010 %(filename)s:%(lineno)s \u3011 %(message)s ",
-      datefmt="%H:%M:%S",
-  )
+  else:
+    logging.basicConfig(
+        level=logging.INFO,
+        format=
+        "[%(asctime)s][%(levelname)-8s][%(filename)s:%(lineno)s] %(message)s ",
+        datefmt="%H:%M:%S",
+    )
   logging.getLogger('werkzeug').setLevel(logging.WARNING)
 
   # Setup flask config
@@ -270,12 +271,12 @@ def create_app(nl_root=DEFAULT_NL_ROOT):
   if ingress_config_path:
     configure_endpoints_from_ingress(ingress_config_path)
 
-  register_routes_common(app)
-  if not cfg.CUSTOM:
-    # Only register biomedical DC routes if in main DC
+  if os.environ.get('FLASK_ENV') == 'biomedical':
     register_routes_biomedical_dc(app)
 
+  register_routes_common(app)
   register_routes_base_dc(app)
+
   if cfg.SHOW_DISASTER:
     register_routes_disasters(app)
 
@@ -339,7 +340,8 @@ def create_app(nl_root=DEFAULT_NL_ROOT):
       secret_name = secret_client.secret_version_path(cfg.SECRET_PROJECT,
                                                       'mixer-api-key', 'latest')
       secret_response = secret_client.access_secret_version(name=secret_name)
-      app.config['DC_API_KEY'] = secret_response.payload.data.decode('UTF-8')
+      app.config['DC_API_KEY'] = secret_response.payload.data.decode(
+          'UTF-8').replace('\n', '')
 
   # Initialize translations
   babel = Babel(app, default_domain='all')
@@ -377,6 +379,8 @@ def create_app(nl_root=DEFAULT_NL_ROOT):
     app.config['SDG_PERCENT_VARS'] = libutil.get_sdg_percent_vars()
     app.config['SPECIAL_DC_NON_COUNTRY_ONLY_VARS'] = \
       libutil.get_special_dc_non_countery_only_vars()
+    # TODO: need to handle singular vs plural in the titles
+    app.config['NL_PROP_TITLES'] = libutil.get_nl_prop_titles()
 
   # Get and save the list of variables that we should not allow per capita for.
   app.config['NOPC_VARS'] = libutil.get_nl_no_percapita_vars()

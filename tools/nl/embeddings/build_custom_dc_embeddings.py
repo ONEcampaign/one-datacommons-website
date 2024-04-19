@@ -48,24 +48,35 @@ flags.DEFINE_string("sv_sentences_csv_path", None,
 flags.DEFINE_string(
     "output_dir", None,
     "Output directory where the generated embeddings will be saved.")
+flags.DEFINE_string(
+    "embeddings_yaml_path", "/datacommons/nl/embeddings.yaml",
+    "Path where the default FT embeddings.yaml will be saved for Custom DC in download mode."
+)
 
 MODELS_BUCKET = 'datcom-nl-models'
-EMBEDDINGS_CSV_FILENAME = "custom_embeddings.csv"
+EMBEDDINGS_CSV_FILENAME_PREFIX = "custom_embeddings"
 EMBEDDINGS_YAML_FILE_NAME = "custom_embeddings.yaml"
 
 
-def download():
+def download(embeddings_yaml_path: str):
   """Downloads the default FT model and embeddings.
   """
   ctx = _ctx_no_model()
 
+  default_ft_embeddings_info = utils.get_default_ft_embeddings_info()
+
   # Download model.
-  model_version = utils.get_default_ft_model_version()
+  model_version = default_ft_embeddings_info["model"]
   utils.get_or_download_model_from_gcs(ctx, model_version)
 
   # Download embeddings.
-  embeddings_file_name = utils.get_default_ft_embeddings_file_name()
+  embeddings_file_name = default_ft_embeddings_info["embeddings"]
   utils.get_or_download_file_from_gcs(ctx, embeddings_file_name)
+
+  # The prod embeddings.yaml includes multiple embeddings (default, biomed, UN)
+  # For custom DC, we only want the default.
+  utils.save_embeddings_yaml_with_only_default_ft_embeddings(
+      embeddings_yaml_path, default_ft_embeddings_info)
 
 
 def build(model_version: str, sv_sentences_csv_path: str, output_dir: str):
@@ -83,7 +94,8 @@ def build(model_version: str, sv_sentences_csv_path: str, output_dir: str):
 
   output_dir_handler = create_file_handler(output_dir)
   embeddings_csv_handler = create_file_handler(
-      output_dir_handler.join(EMBEDDINGS_CSV_FILENAME))
+      output_dir_handler.join(
+          f"{EMBEDDINGS_CSV_FILENAME_PREFIX}.{model_version}.csv"))
   embeddings_yaml_handler = create_file_handler(
       output_dir_handler.join(EMBEDDINGS_YAML_FILE_NAME))
 
@@ -92,7 +104,8 @@ def build(model_version: str, sv_sentences_csv_path: str, output_dir: str):
   embeddings_csv_handler.write_string(embeddings_csv)
 
   print(f"Saving embeddings yaml: {embeddings_yaml_handler.path}")
-  generate_embeddings_yaml(embeddings_csv_handler, embeddings_yaml_handler)
+  generate_embeddings_yaml(model_version, embeddings_csv_handler,
+                           embeddings_yaml_handler)
 
   print("Done building custom DC embeddings.")
 
@@ -108,9 +121,16 @@ def _build_embeddings_dataframe(
   return utils.build_embeddings(ctx, text2sv_dict)
 
 
-def generate_embeddings_yaml(embeddings_csv_handler: FileHandler,
+def generate_embeddings_yaml(model_version: str,
+                             embeddings_csv_handler: FileHandler,
                              embeddings_yaml_handler: FileHandler):
-  data = {"custom_ft": embeddings_csv_handler.abspath()}
+  data = {
+      "custom_ft": {
+          "embeddings": embeddings_csv_handler.abspath(),
+          "model": model_version,
+          "store": "MEMORY"
+      }
+  }
   embeddings_yaml_handler.write_string(yaml.dump(data))
 
 
@@ -129,7 +149,7 @@ def _ctx_no_model() -> utils.Context:
 
 def main(_):
   if FLAGS.mode == Mode.DOWNLOAD:
-    download()
+    download(FLAGS.embeddings_yaml_path)
     return
 
   assert FLAGS.sv_sentences_csv_path

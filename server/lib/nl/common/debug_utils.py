@@ -34,20 +34,21 @@ def result_with_debug_info(data_dict: Dict, status: str,
       'CosineScore':
           query_detection.svs_detected.single_sv.scores,
       'SV_to_Sentences':
-          query_detection.svs_detected.single_sv.sv2sentences,
+          query_detection.svs_detected.single_sv.sv2sentences_dict(),
       'MultiSV':
           dvars.multivar_candidates_to_dict(
               query_detection.svs_detected.multi_sv),
       'Query':
           query_detection.svs_detected.query
   }
-  svs_to_sentences = query_detection.svs_detected.single_sv.sv2sentences
+  svs_to_sentences = query_detection.svs_detected.single_sv.sv2sentences_dict()
   props_dict = {
       'PROP': query_detection.svs_detected.prop.svs,
       'CosineScore': query_detection.svs_detected.prop.scores,
-      'PROP_to_Sentences': query_detection.svs_detected.prop.sv2sentences
+      'PROP_to_Sentences':
+          query_detection.svs_detected.prop.sv2sentences_dict()
   }
-  props_to_sentences = query_detection.svs_detected.prop.sv2sentences
+  props_to_sentences = query_detection.svs_detected.prop.sv2sentences_dict()
 
   if svs_dict is None or not svs_dict:
     svs_dict = _empty_svs_score_dict()
@@ -139,6 +140,8 @@ def result_with_debug_info(data_dict: Dict, status: str,
           query_detection.places_detected.query_places_mentioned,
       'places_resolved':
           places_found_formatted,
+      'entities_detected':
+          query_detection.places_detected.query_entities_mentioned,
       'entities_resolved':
           entities_found_formatted,
       'query_with_places_removed':

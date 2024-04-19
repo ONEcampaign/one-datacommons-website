@@ -1,0 +1,86 @@
+{
+  "client": "test_detect-and-fulfill",
+  "config": {
+    "categories": [
+      {
+        "blocks": [
+          {
+            "columns": [
+              {
+                "tiles": [
+                  {
+                    "answerTableTileSpec": {
+                      "columns": [
+                        {
+                          "header": "<-referenceSNPClusterID{typeOf:GeneticVariantGeneAssociation}->geneSymbol",
+                          "propertyExpr": "<-referenceSNPClusterID{typeOf:GeneticVariantGeneAssociation}->geneSymbol"
+                        }
+                      ]
+                    },
+                    "entities": [
+                      "bio/D005796",
+                      "bio/dm3_with",
+                      "bio/dm6_with",
+                      "bio/rs13317",
+                      "bio/rs7903146"
+                    ],
+                    "title": "The associated genes for Genes, with and 3 more other are",
+                    "type": "ANSWER_TABLE"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "context": {},
+  "debug": {},
+  "entities": [
+    {
+      "dcid": "bio/D005796",
+      "name": "Genes",
+      "type": ""
+    },
+    {
+      "dcid": "bio/dm3_with",
+      "name": "with",
+      "type": ""
+    },
+    {
+      "dcid": "bio/dm6_with",
+      "name": "with",
+      "type": ""
+    },
+    {
+      "dcid": "bio/rs13317",
+      "name": "rs13317",
+      "type": ""
+    },
+    {
+      "dcid": "bio/rs7903146",
+      "name": "rs7903146",
+      "type": ""
+    }
+  ],
+  "pastSourceContext": "",
+  "place": {},
+  "placeFallback": {},
+  "placeSource": "UNKNOWN",
+  "places": [],
+  "relatedThings": {
+    "childPlaces": {},
+    "childTopics": [],
+    "exploreMore": {},
+    "mainTopics": [],
+    "parentPlaces": [],
+    "parentTopics": [],
+    "peerPlaces": [],
+    "peerTopics": []
+  },
+  "svSource": "CURRENT_QUERY",
+  "userMessages": [
+    "Low confidence in understanding your query. Displaying the closest results."
+  ]
+}
