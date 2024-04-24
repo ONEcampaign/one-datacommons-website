@@ -19,10 +19,11 @@ from server.app_env import local
 class Config(_base.Config):
   GA_ACCOUNT = 'GTM-W6DJJVL'
   CUSTOM = True
-  NAME = "Data Commons"
+  NAME = "ONE Data Commons"
   OVERRIDE_CSS_PATH = '/custom_dc/one/overrides.css'
   LOGO_PATH = "/custom_dc/one/one-logo.svg"
   SHOW_DISASTER = False
+  USE_MEMCACHE = True
 
 
 class LocalConfig(Config, local.Config):
@@ -38,5 +39,5 @@ class LocalConfig(Config, local.Config):
 
 class ComposeConfig(Config, local.Config):
   # Do not use memcache so content is fresh after new data is loaded
-  USE_MEMCACHE = False
+  USE_MEMCACHE = True
   pass
