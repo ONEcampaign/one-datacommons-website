@@ -1,7 +1,6 @@
 website:
   image:
     project: one-website-1490370639043
-    tag: 604df48
   flaskEnv: "one"
   replicas: 1
   gcsDataPath: "gs://one-datacommons-imports/dec7"
