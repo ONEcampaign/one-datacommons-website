@@ -26,13 +26,12 @@ steps:
   args: ['push', '${_IMAGE_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_APP_NAME}:${SHORT_SHA}']
   # Update the image tag in the Helm Chart
 - name: 'linuxserver/yq'
+  entrypoint: yq
   args:
-    - 'yq'
-    - 'write'
     - '-i'
+    - '-y'
+    - '.website.image.tag="${SHORT_SHA}"'
     - 'deploy/helm_charts/dc_website/values.yaml'
-    - 'website.image.tag'
-    - '${SHORT_SHA}'
   # Configure kubectl
 - name: gcr.io/cloud-builders/kubectl
   args:
