@@ -1,171 +1,112 @@
-# Default values for dc-website.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
-
-###############################################################################
-# Config for Website
-###############################################################################
 website:
-  githash:
-
+  githash: null
   image:
-    project: "datcom-ci"
+    project: datcom-ci
     pullPolicy: Always
-    tag:
-
-  flaskEnv: "custom"
-
-  gcsDataPath: "gs://one-datacommons-imports-prod/dec7"
-
-  # IAP(Identity Aware Proxy) config.
-  # IAP can be enabled independently of ingress.
+    tag: latest
+  flaskEnv: custom
+  gcsDataPath: gs://one-datacommons-imports-prod/dec7
   iap:
     enabled: false
-
   replicas: 1
-
   redis:
     enabled: false
-    configFile:
-
+    configFile: null
   placeSummary:
     enabled: false
     data:
-      country:
-      geoid_0_2:
-      geoid_3_5:
-      geoid_6_9:
-      wikidataId:
-      others:
-
-  nodePool:
-
-nameOverride: ""
-fullnameOverride: ""
-
-# Namespace for the deployment.
-# Set enabled to false to deploy into an existing namespace.
+      country: null
+      geoid_0_2: null
+      geoid_3_5: null
+      geoid_6_9: null
+      wikidataId: null
+      others: null
+  nodePool: null
+nameOverride: ''
+fullnameOverride: ''
 namespace:
   create: false
   name: data-commons
-
-# Config for k8s-sa(service account). The k8s-sa will be bound to a
-# GCP-sa using annotations, specified below.
 serviceAccount:
   name: website-ksa
-
 ingress:
   name: website-ingress
   ipName: dc-website-ip
   certName: dc-website-cert
   enabled: false
-
-###############################################################################
-# Config for Mixer helm chart
-###############################################################################
 mixer:
-  githash:
-
+  githash: null
   image:
-    project: "datcom-ci"
+    project: datcom-ci
     pullPolicy: Always
-    tag:
-
-    hostProject:
-    serviceName:
-
-    schemaConfigs:
-
+    tag: null
+    hostProject: null
+    serviceName: null
+    schemaConfigs: null
 esp:
   image:
     repository: gcr.io/endpoints-release/endpoints-runtime
-    tag: "2"
+    tag: '2'
     pullPolicy: Always
-
 kgStoreConfig:
-  bigqueryVersion:
-  baseBigtableInfo:
-  customBigtableInfo: ""
-
+  bigqueryVersion: null
+  baseBigtableInfo: null
+  customBigtableInfo: ''
 serviceGroups:
   svg:
     urlPaths:
-      - "/place/stat-var-group/*"
-      - "/stat-var/*"
-      - "/v1/variable/*"
-      - "/v1/bulk/info/variable-group"
-      - "/v1/bulk/info/variable"
+      - /place/stat-var-group/*
+      - /stat-var/*
+      - /v1/variable/*
+      - /v1/bulk/info/variable-group
+      - /v1/bulk/info/variable
     replicas: 1
     resources:
-      memoryRequest: "8G"
-      memoryLimit: "8G"
+      memoryRequest: 8G
+      memoryLimit: 8G
     cacheSVG: true
-    nodePool:
+    nodePool: null
   observation:
     urlPaths:
-      - "/v2/observation"
+      - /v2/observation
     replicas: 1
     resources:
-      memoryRequest: "2G"
-      memoryLimit: "2G"
-    nodePool:
+      memoryRequest: 2G
+      memoryLimit: 2G
+    nodePool: null
   node:
     urlPaths:
-      - "/v2/node"
+      - /v2/node
     replicas: 1
     resources:
-      memoryRequest: "3G"
-      memoryLimit: "3G"
-    nodePool:
+      memoryRequest: 3G
+      memoryLimit: 3G
+    nodePool: null
   default:
     urlPaths:
-      - "/*"
+      - /*
     replicas: 1
     resources:
-      memoryRequest: "2G"
-      memoryLimit: "2G"
-    nodePool:
-
-###############################################################################
-# Config for NL
-###############################################################################
+      memoryRequest: 2G
+      memoryLimit: 2G
+    nodePool: null
 nl:
   enabled: false
-  embeddings:
-  models:
-  memory: "2G"
+  embeddings: null
+  models: null
+  memory: 2G
   workers: 1
-
-###############################################################################
-# Config for Stat Var Groups which is shared between Website and Mixer
-###############################################################################
 svg:
   blocklistFile: []
-
-###############################################################################
-# Config for NodeJS Server
-###############################################################################
 nodejs:
-  # If nodejs is enabled, must also enable nl.
-  # When enabling the NodeJS server for the first time for a project, need to
-  # update the cluster config by following instructions here: https://github.com/datacommonsorg/website/blob/master/gke/README.md
   enabled: false
-  env: "gke"
-  replicas:
-  apiRoot:
-  nodePool:
-
-###############################################################################
-# Config for Periodic Testing CronJob
-###############################################################################
+  env: gke
+  replicas: null
+  apiRoot: null
+  nodePool: null
 cronTesting:
   enabled: false
-  # These are the in-cluster service endpoints that are set during script
-  # deployment runtime.
-  webApiRoot:
-  nodejsRoot:
-  # The domain to use for screenshot tests. Screenshot tests will only run if
-  # this is set.
-  screenshotDomain:
-  # whether or not sanity tests are enabled
+  webApiRoot: null
+  nodejsRoot: null
+  screenshotDomain: null
   enableSanity: true
