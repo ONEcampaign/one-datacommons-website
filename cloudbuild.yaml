@@ -20,10 +20,10 @@ steps:
     path: /root/.ssh
   # Build the image
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '--tag', '${_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_APP_NAME}:${SHORT_SHA}', '-f', 'build/web_compose/Dockerfile', '.']
+  args: ['build', '--tag', '${_IMAGE_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_APP_NAME}:${SHORT_SHA}', '-f', 'build/web_compose/Dockerfile', '.']
   # Push the image to Artifact Registry
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['push', '${_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_APP_NAME}:${SHORT_SHA}']
+  args: ['push', '${_IMAGE_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_APP_NAME}:${SHORT_SHA}']
   # Update the image tag in the Helm Chart
 - name: 'linuxserver/yq'
   args:
@@ -38,7 +38,7 @@ steps:
   args:
     - cluster-info
   env:
-    - CLOUDSDK_COMPUTE_REGION=$_LOCATION
+    - CLOUDSDK_COMPUTE_REGION=$_COMPUTE_LOCATION
     - CLOUDSDK_CONTAINER_CLUSTER=$_CLUSTER_NAME
     - KUBECONFIG=/workspace/.kube/config
   # Deploy the image to staging
@@ -74,9 +74,10 @@ steps:
   - name: 'ssh'
     path: /root/.ssh
 images:
-- '${_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_APP_NAME}:${SHORT_SHA}'
+- '${_IMAGE_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_APP_NAME}:${SHORT_SHA}'
 substitutions:
-  _LOCATION: us-east4
+  _IMAGE_LOCATION: us
+  _COMPUTE_LOCATION: us-east4
   _REPO_NAME: datacommons
   _PROJECT_ID: one-data-commons
   _APP_NAME: website-compose
