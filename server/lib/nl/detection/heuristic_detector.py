@@ -13,7 +13,6 @@
 # limitations under the License.
 """Heuristics based detector"""
 
-import logging
 from typing import Dict
 
 from server.lib.explore import params
@@ -21,26 +20,27 @@ from server.lib.explore.params import QueryMode
 import server.lib.nl.common.counters as ctr
 from server.lib.nl.detection import heuristic_classifiers
 from server.lib.nl.detection import place
+from server.lib.nl.detection import rerank
 from server.lib.nl.detection import utils as dutils
 from server.lib.nl.detection import variable
 from server.lib.nl.detection.types import ActualDetectorType
 from server.lib.nl.detection.types import ClassificationType
 from server.lib.nl.detection.types import Detection
 from server.lib.nl.detection.types import NLClassifier
-from server.lib.nl.detection.types import PlaceDetectorType
 from server.lib.nl.detection.types import SimpleClassificationAttributes
 
 
-def detect(place_detector_type: PlaceDetectorType, orig_query: str,
-           cleaned_query: str, index_type: str,
-           query_detection_debug_logs: Dict, mode: str,
-           counters: ctr.Counters) -> Detection:
-  if place_detector_type == PlaceDetectorType.DC:
-    place_detection = place.detect_from_query_dc(orig_query,
-                                                 query_detection_debug_logs)
-  else:
-    place_detection = place.detect_from_query_ner(cleaned_query, orig_query,
-                                                  query_detection_debug_logs)
+def detect(orig_query: str,
+           cleaned_query: str,
+           index_type: str,
+           query_detection_debug_logs: Dict,
+           mode: str,
+           counters: ctr.Counters,
+           rerank_fn: rerank.RerankCallable = None,
+           allow_triples: bool = False) -> Detection:
+  place_detection = place.detect_from_query_dc(orig_query,
+                                               query_detection_debug_logs,
+                                               allow_triples)
 
   query = place_detection.query_without_place_substr
 
@@ -81,25 +81,27 @@ def detect(place_detector_type: PlaceDetectorType, orig_query: str,
 
   # Step 4: Identify the SV matched based on the query.
   sv_threshold = params.sv_threshold(mode)
-  svs_scores_dict = dutils.empty_svs_score_dict()
   sv_detection_query = dutils.remove_date_from_query(query, classifications)
   skip_topics = mode == params.QueryMode.TOOLFORMER
+  sv_detection_result = dutils.empty_var_detection_result()
   try:
-    svs_scores_dict = variable.detect_svs(
-        sv_detection_query, index_type,
+    sv_detection_result = variable.detect_vars(
+        sv_detection_query, index_type, counters,
         query_detection_debug_logs["query_transformations"], sv_threshold,
-        skip_topics)
+        rerank_fn, skip_topics)
   except ValueError as e:
-    logging.info(e)
-    logging.info("Using an empty svs_scores_dict")
+    counters.err('detect_vars_value_error', {
+        'q': sv_detection_query,
+        'err': str(e)
+    })
   # Set the SVDetection.
-  sv_detection = dutils.create_sv_detection(sv_detection_query, svs_scores_dict,
-                                            sv_threshold)
+  sv_detection = dutils.create_sv_detection(sv_detection_query,
+                                            sv_detection_result, sv_threshold,
+                                            allow_triples)
 
   return Detection(original_query=orig_query,
                    cleaned_query=cleaned_query,
                    places_detected=place_detection,
                    svs_detected=sv_detection,
                    classifications=classifications,
-                   detector=ActualDetectorType.Heuristic,
-                   place_detector=place_detector_type)
+                   detector=ActualDetectorType.Heuristic)

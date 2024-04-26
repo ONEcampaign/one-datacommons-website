@@ -17,6 +17,7 @@ screenshots/screenshot_url.json
 .vscode
 !.vscode/launch.json
 .env.list
+.envvars
 
 # Mac
 .DS_Store
@@ -81,9 +82,18 @@ output/
 
 # wireit files
 .wireit
+.envvars
 
 # finetuned model
 ft_final_v20230717230459.all-MiniLM-L6-v2/
 
+# model eval output
+
+**/eval/**/result
 
 custom_dc/sample/datacommons/**
+
+.cache/
+
+# idea files
+.idea/

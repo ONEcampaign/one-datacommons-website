@@ -44,6 +44,8 @@ import { highestCoverageDatesEqualLatestDates } from "../../utils/app/explore_ut
 import { stringifyFn } from "../../utils/axios";
 import { isNlInterface } from "../../utils/nl_interface_utils";
 import {
+  addPerCapitaToTitle,
+  addPerCapitaToVersusTitle,
   convertToSortType,
   getColumnTileClassName,
   getColumnWidth,
@@ -51,9 +53,12 @@ import {
   getMinTileIdxToHide,
 } from "../../utils/subject_page_utils";
 import { getComparisonPlaces } from "../../utils/tile_utils";
+import { AnswerMessageTile } from "../tiles/answer_message_tile";
+import { AnswerTableTile } from "../tiles/answer_table_tile";
 import { BarTile } from "../tiles/bar_tile";
 import { BivariateTile } from "../tiles/bivariate_tile";
 import { DonutTile } from "../tiles/donut_tile";
+import { EntityOverviewTile } from "../tiles/entity_overview_tile";
 import { GaugeTile } from "../tiles/gauge_tile";
 import { HighlightTile } from "../tiles/highlight_tile";
 import { LineTile } from "../tiles/line_tile";
@@ -321,10 +326,8 @@ export function Block(props: BlockPropType): JSX.Element {
                         overridePlaceTypes,
                         columnTileClassName,
                         useDenom ? props.denom : "",
-                        enableSnapToLatestData
-                          ? snapToHighestCoverage
-                            ? DATE_HIGHEST_COVERAGE
-                            : DATE_LATEST
+                        snapToHighestCoverage
+                          ? DATE_HIGHEST_COVERAGE
                           : undefined
                       )
                     : renderTiles(
@@ -335,10 +338,8 @@ export function Block(props: BlockPropType): JSX.Element {
                         overridePlaceTypes,
                         columnTileClassName,
                         useDenom ? props.denom : "",
-                        enableSnapToLatestData
-                          ? snapToHighestCoverage
-                            ? DATE_HIGHEST_COVERAGE
-                            : DATE_LATEST
+                        snapToHighestCoverage
+                          ? DATE_HIGHEST_COVERAGE
                           : undefined
                       )
                 }
@@ -403,12 +404,19 @@ function renderTiles(
       : props.place;
     const comparisonPlaces = getComparisonPlaces(tile, place);
     const className = classNameList.join(" ");
+    let title = blockDenom ? addPerCapitaToTitle(tile.title) : tile.title;
     switch (tile.type) {
-      case "HIGHLIGHT":
+      case "HIGHLIGHT": {
+        let description = tile.description.includes("${date}")
+          ? tile.description
+          : tile.description + " (${date})";
+        description = blockDenom
+          ? addPerCapitaToTitle(description)
+          : description;
         return (
           <HighlightTile
             key={id}
-            description={tile.description}
+            description={description}
             place={place}
             statVarSpec={props.statVarProvider.getSpec(tile.statVarKey[0], {
               blockDate,
@@ -416,12 +424,14 @@ function renderTiles(
             })}
           />
         );
+      }
+
       case "MAP":
         return (
           <MapTile
             key={id}
             id={id}
-            title={tile.title}
+            title={title}
             subtitle={tile.subtitle}
             place={place}
             enclosedPlaceType={enclosedPlaceType}
@@ -450,7 +460,7 @@ function renderTiles(
           <LineTile
             key={id}
             id={id}
-            title={tile.title}
+            title={title}
             subtitle={tile.subtitle}
             place={place}
             comparisonPlaces={comparisonPlaces}
@@ -480,7 +490,7 @@ function renderTiles(
           <RankingTile
             key={id}
             id={id}
-            title={tile.title}
+            title={title}
             parentPlace={place.dcid}
             enclosedPlaceType={enclosedPlaceType}
             variables={props.statVarProvider.getSpecList(tile.statVarKey, {
@@ -521,7 +531,7 @@ function renderTiles(
             stacked={tile.barTileSpec?.stacked}
             subtitle={tile.subtitle}
             svgChartHeight={props.svgChartHeight}
-            title={tile.title}
+            title={title}
             useLollipop={tile.barTileSpec?.useLollipop}
             variables={props.statVarProvider.getSpecList(tile.statVarKey, {
               blockDate,
@@ -536,19 +546,23 @@ function renderTiles(
             )}
           />
         );
-      case "SCATTER":
+      case "SCATTER": {
+        const statVarSpec = props.statVarProvider.getSpecList(tile.statVarKey, {
+          blockDate,
+          blockDenom,
+        });
+        title = blockDenom
+          ? addPerCapitaToVersusTitle(tile.title, statVarSpec)
+          : tile.title;
         return (
           <ScatterTile
             key={id}
             id={id}
-            title={tile.title}
+            title={title}
             subtitle={tile.subtitle}
             place={place}
             enclosedPlaceType={enclosedPlaceType}
-            statVarSpec={props.statVarProvider.getSpecList(tile.statVarKey, {
-              blockDate,
-              blockDenom,
-            })}
+            statVarSpec={statVarSpec}
             svgChartHeight={
               isNlInterface() ? props.svgChartHeight * 2 : props.svgChartHeight
             }
@@ -559,23 +573,30 @@ function renderTiles(
             placeNameProp={tile.placeNameProp}
           />
         );
-      case "BIVARIATE":
+      }
+
+      case "BIVARIATE": {
+        const statVarSpec = props.statVarProvider.getSpecList(tile.statVarKey, {
+          blockDate,
+          blockDenom,
+        });
+        title = blockDenom
+          ? addPerCapitaToVersusTitle(tile.title, statVarSpec)
+          : tile.title;
         return (
           <BivariateTile
             key={id}
             id={id}
-            title={tile.title}
+            title={title}
             place={place}
             enclosedPlaceType={enclosedPlaceType}
-            statVarSpec={props.statVarProvider.getSpecList(tile.statVarKey, {
-              blockDate,
-              blockDenom,
-            })}
+            statVarSpec={statVarSpec}
             svgChartHeight={props.svgChartHeight}
             className={className}
             showExploreMore={props.showExploreMore}
           />
         );
+      }
       case "GAUGE":
         return (
           <GaugeTile
@@ -594,7 +615,7 @@ function renderTiles(
               blockDenom,
             })}
             svgChartHeight={props.svgChartHeight}
-            title={tile.title}
+            title={title}
             subtitle={tile.subtitle}
           ></GaugeTile>
         );
@@ -612,7 +633,7 @@ function renderTiles(
               blockDenom,
             })}
             svgChartHeight={props.svgChartHeight}
-            title={tile.title}
+            title={title}
             subtitle={tile.subtitle}
           ></DonutTile>
         );
@@ -624,6 +645,32 @@ function renderTiles(
         );
       case "PLACE_OVERVIEW":
         return <PlaceOverviewTile key={id} place={place} />;
+      case "ANSWER_MESSAGE":
+        return (
+          <AnswerMessageTile
+            key={id}
+            title={tile.title}
+            entity={!_.isEmpty(tile.entities) ? tile.entities[0] : ""}
+            propertyExpr={tile.answerMessageTileSpec.propertyExpr}
+            displayValue={tile.answerMessageTileSpec.displayValue}
+          />
+        );
+      case "ANSWER_TABLE":
+        return (
+          <AnswerTableTile
+            columns={tile.answerTableTileSpec.columns}
+            entities={tile.entities}
+            key={id}
+            title={tile.title}
+          />
+        );
+      case "ENTITY_OVERVIEW":
+        return (
+          <EntityOverviewTile
+            key={id}
+            entity={!_.isEmpty(tile.entities) ? tile.entities[0] : ""}
+          />
+        );
       default:
         console.log("Tile type not supported:" + tile.type);
     }
@@ -659,13 +706,20 @@ function renderWebComponents(
       : props.place;
     const comparisonPlaces = getComparisonPlaces(tile, place);
     const className = classNameList.join(" ");
+    const title = blockDenom ? addPerCapitaToTitle(tile.title) : tile.title;
     switch (tile.type) {
-      case "HIGHLIGHT":
+      case "HIGHLIGHT": {
+        let description = tile.description.includes("${date}")
+          ? tile.description
+          : tile.description + " (${date})";
+        description = blockDenom
+          ? addPerCapitaToTitle(description)
+          : description;
         return (
           <datacommons-highlight
             key={id}
             id={id}
-            description={tile.description}
+            description={description}
             place={place.dcid}
             variable={
               props.statVarProvider.getSpec(tile.statVarKey[0], {
@@ -675,12 +729,13 @@ function renderWebComponents(
             }
           />
         );
+      }
       case "MAP":
         return (
           <datacommons-map
             key={id}
             id={id}
-            header={tile.title}
+            header={title}
             subheader={tile.subtitle}
             parentPlace={place.dcid}
             childPlaceType={enclosedPlaceType}
@@ -714,7 +769,7 @@ function renderWebComponents(
           <datacommons-line
             key={id}
             id={id}
-            header={tile.title}
+            header={title}
             subheader={tile.subtitle}
             parentPlace={place.dcid}
             {...(comparisonPlaces
@@ -743,7 +798,7 @@ function renderWebComponents(
           <datacommons-ranking
             key={id}
             id={id}
-            header={tile.title}
+            header={title}
             parentPlace={place.dcid}
             childPlaceType={enclosedPlaceType}
             variables={props.statVarProvider
@@ -799,7 +854,7 @@ function renderWebComponents(
             sort={convertToSortType(tile.barTileSpec?.sort)}
             {...(tile.barTileSpec?.stacked ? { stacked: true } : {})}
             subheader={tile.subtitle}
-            header={tile.title}
+            header={title}
             {...(tile.barTileSpec?.useLollipop ? { useLollipop: true } : {})}
             variables={props.statVarProvider
               .getSpecList(tile.statVarKey, { blockDate, blockDenom })
@@ -816,21 +871,24 @@ function renderWebComponents(
               : {})}
           />
         );
-      case "SCATTER":
+      case "SCATTER": {
+        const statVarSpec = props.statVarProvider.getSpecList(tile.statVarKey, {
+          blockDate,
+          blockDenom,
+        });
+        const title = blockDenom
+          ? addPerCapitaToVersusTitle(tile.title, statVarSpec)
+          : tile.title;
         return (
           <datacommons-scatter
             key={id}
             id={id}
-            header={tile.title}
+            header={title}
             subheader={tile.subtitle}
             parentPlace={place.dcid}
             childPlaceType={enclosedPlaceType}
-            variables={props.statVarProvider
-              .getSpecList(tile.statVarKey, { blockDate, blockDenom })
-              .map((sv) => sv.statVar)
-              .join(" ")}
-            usePerCapita={props.statVarProvider
-              .getSpecList(tile.statVarKey, { blockDate, blockDenom })
+            variables={statVarSpec.map((sv) => sv.statVar).join(" ")}
+            usePerCapita={statVarSpec
               .map((sv) => (sv.denom ? sv.statVar : ""))
               .join(" ")}
             className={className}
@@ -856,23 +914,31 @@ function renderWebComponents(
             placeNameProp={tile.placeNameProp}
           />
         );
-      case "BIVARIATE":
+      }
+
+      case "BIVARIATE": {
+        const statVarSpec = props.statVarProvider.getSpecList(tile.statVarKey, {
+          blockDate,
+          blockDenom,
+        });
+        const title = blockDenom
+          ? addPerCapitaToVersusTitle(tile.title, statVarSpec)
+          : tile.title;
         return (
           <BivariateTile
             key={id}
             id={id}
-            title={tile.title}
+            title={title}
             place={place}
             enclosedPlaceType={enclosedPlaceType}
-            statVarSpec={props.statVarProvider.getSpecList(tile.statVarKey, {
-              blockDate,
-              blockDenom,
-            })}
+            statVarSpec={statVarSpec}
             svgChartHeight={props.svgChartHeight}
             className={className}
             showExploreMore={props.showExploreMore}
           />
         );
+      }
+
       case "GAUGE":
         return (
           <datacommons-gauge
@@ -891,7 +957,7 @@ function renderWebComponents(
                 blockDenom,
               }).statVar
             }
-            header={tile.title}
+            header={title}
             subheader={tile.subtitle}
           />
         );
@@ -909,7 +975,7 @@ function renderWebComponents(
               .getSpecList(tile.statVarKey, { blockDate, blockDenom })
               .map((sv) => sv.statVar)
               .join(" ")}
-            header={tile.title}
+            header={title}
             subheader={tile.subtitle}
           />
         );

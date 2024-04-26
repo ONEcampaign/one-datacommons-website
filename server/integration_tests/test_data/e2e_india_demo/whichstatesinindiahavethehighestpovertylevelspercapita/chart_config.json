@@ -512,6 +512,7 @@
   },
   "context": {},
   "debug": {},
+  "entities": [],
   "pastSourceContext": "",
   "place": {
     "dcid": "country/IND",
@@ -801,12 +802,6 @@
       }
     ],
     "exploreMore": {
-      "Count_Person_BelowPovertyLevelInThePast12Months": {
-        "placeOfResidenceClassification": [
-          "Count_Person_Rural_BelowPovertyLevelInThePast12Months",
-          "Count_Person_Urban_BelowPovertyLevelInThePast12Months"
-        ]
-      },
       "Count_Person_BelowPovertyLevelInThePast12Months_AsFractionOf_Count_Person": {
         "placeOfResidenceClassification": [
           "Count_Person_Rural_BelowPovertyLevelInThePast12Months_AsAFractionOf_Count_Person",
@@ -984,6 +979,13 @@
       {
         "dcid": "dc/topic/Income",
         "name": "Income",
+        "types": [
+          "Topic"
+        ]
+      },
+      {
+        "dcid": "dc/topic/Agriculture",
+        "name": "Agriculture",
         "types": [
           "Topic"
         ]

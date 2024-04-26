@@ -20,6 +20,7 @@
 
 import _ from "lodash";
 import React, { useRef } from "react";
+import { Spinner } from "reactstrap";
 
 import { ASYNC_ELEMENT_HOLDER_CLASS } from "../../constants/css_constants";
 import { INITIAL_LOADING_CLASS } from "../../constants/tile_constants";
@@ -28,22 +29,23 @@ import {
   formatString,
   getChartTitle,
   getMergedSvg,
-  getSourcesJsx,
   ReplacementStrings,
+  TileSources,
 } from "../../utils/tile_utils";
 import { NlChartFeedback } from "../nl_feedback";
 import { ChartFooter } from "./chart_footer";
 interface ChartTileContainerProp {
   id: string;
+  isLoading?: boolean;
   title: string;
-  sources: Set<string>;
+  sources: Set<string> | string[];
   children: React.ReactNode;
   replacementStrings: ReplacementStrings;
   // Whether or not to allow chart embedding action.
   allowEmbed: boolean;
   // callback function for getting the chart data as a csv. Only used for
   // embedding.
-  getDataCsv?: () => string;
+  getDataCsv?: () => Promise<string>;
   // Extra classes to add to the container.
   className?: string;
   // Whether or not this is the initial loading state.
@@ -72,7 +74,7 @@ export function ChartTileContainer(props: ChartTileContainerProp): JSX.Element {
     <div
       className={`chart-container ${ASYNC_ELEMENT_HOLDER_CLASS} ${
         props.className ? props.className : ""
-      }`}
+      } ${props.isLoading ? "loading" : ""}`}
       {...{ part: "container" }}
       ref={containerRef}
     >
@@ -85,14 +87,24 @@ export function ChartTileContainer(props: ChartTileContainerProp): JSX.Element {
           {
             /* We want to render this header element even if title is empty
             to keep the space on the page */
-            props.title && <h4 {...{ part: "header" }}>{title}</h4>
+            props.title && (
+              <h4 {...{ part: "header" }}>
+                {props.isLoading ? (
+                  <>
+                    <Spinner color="secondary" size="sm" className="pr-1" />
+                    {title ? "" : " Loading..."}
+                  </>
+                ) : null}{" "}
+                {title}
+              </h4>
+            )
           }
           <slot name="subheader" {...{ part: "subheader" }}>
             {props.subtitle && !props.isInitialLoading ? (
               <div className="subheader">{props.subtitle}</div>
             ) : null}
           </slot>
-          {showSources && getSourcesJsx(props.sources)}
+          {showSources && <TileSources sources={props.sources} />}
         </div>
         {props.children}
       </div>
@@ -117,7 +129,7 @@ export function ChartTileContainer(props: ChartTileContainerProp): JSX.Element {
     const { svgXml, height, width } = getMergedSvg(containerRef.current);
     embedModalElement.current.show(
       svgXml,
-      props.getDataCsv ? props.getDataCsv() : "",
+      props.getDataCsv,
       width,
       height,
       "",

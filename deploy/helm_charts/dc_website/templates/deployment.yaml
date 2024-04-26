@@ -139,8 +139,6 @@ spec:
               value: {{ .Values.website.githash | quote }}
             - name: ENABLE_MODEL
               value: {{ .Values.nl.enabled | quote }}
-                #- name: INGRESS_CONFIG_PATH
-                #  value: /datacommons/ingress/rules
             - name: USE_CLOUDSQL
               value: 'true'
             - name: ENV_PREFIX
@@ -183,6 +181,8 @@ spec:
                 secretKeyRef:
                   key: admin-secret
                   name: app-secrets
+            - name: ENABLE_EVAL_TOOL
+              value: {{ .Values.website.evalTool.enabled | quote }}
             # A dummy config used to bounce the server without any docker image
             # or data config change.
             - name: BOUNCE

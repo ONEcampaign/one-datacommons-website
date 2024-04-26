@@ -18,6 +18,7 @@
 from typing import Dict, List
 
 from server.lib.explore.params import QueryMode
+from server.lib.fetch import property_values
 from server.lib.nl.common import constants
 from server.lib.nl.common import counters as ctr
 from server.lib.nl.common.utterance import QueryType
@@ -36,14 +37,14 @@ from shared.lib import detected_variables as dvars
 #
 # Filter out SVs that are below a score.
 #
-def filter_svs(detection: SVDetection, counters: ctr.Counters) -> List[str]:
+def filter_svs(candidates: dvars.VarCandidates, threshold: float,
+               counters: ctr.Counters) -> List[str]:
   i = 0
   ans = []
   blocked_vars = set()
-  single_sv = detection.single_sv
-  while i < len(single_sv.svs):
-    if single_sv.scores[i] >= detection.sv_threshold:
-      var = single_sv.svs[i]
+  while i < len(candidates.svs):
+    if candidates.scores[i] >= threshold:
+      var = candidates.svs[i]
 
       # Check if an earlier var blocks this var.
       if var in blocked_vars:
@@ -129,22 +130,67 @@ def get_top_sv_score(detection: Detection, cspec: ChartSpec) -> float:
   return 0
 
 
-def empty_svs_score_dict():
-  return {"SV": [], "CosineScore": [], "SV_to_Sentences": {}, "MultiSV": {}}
+def empty_var_detection_result():
+  return dvars.VarDetectionResult(
+      single_var=empty_var_candidates(),
+      multi_var=dvars.MultiVarCandidates(candidates=[]))
+
+
+def empty_var_candidates():
+  return dvars.VarCandidates(svs=[], scores=[], sv2sentences={})
+
+
+# Takes the detected svs and returns
+# 1. sv candidates: svs that are Statistical Variable or Topic
+# 2. prop candidates: any other detected svs.
+def _get_sv_and_prop_candidates(
+    var_detection_result: dvars.VarDetectionResult,
+    allow_triples: bool = False
+) -> tuple[dvars.VarCandidates, dvars.VarCandidates]:
+  sv_candidates = empty_var_candidates()
+  prop_candidates = empty_var_candidates()
+  if not allow_triples:
+    # If triples are not allowed, assume all detected svs are sv type
+    sv_candidates = var_detection_result.single_var
+    return sv_candidates, prop_candidates
+
+  svar_result = var_detection_result.single_var
+
+  sv_types = property_values(svar_result.svs, 'typeOf')
+  for i, sv in enumerate(svar_result.svs):
+    sv_type_list = sv_types.get(sv, [])
+    # an sv is considered an sv if any of its types are Statistical Variable or
+    # Topic. We want to check if an sv is type Statistical Variable or Topic
+    # because we are adding properties that aren't actually properties but
+    # indicate a link using ->.
+    is_sv = False
+    # We have some curated topics that are not a node in the kg, so assume topic
+    # if the sv starts with dc/topic
+    if sv.startswith('dc/topic/'):
+      is_sv = True
+    for sv_type in sv_type_list:
+      if sv_type in ['StatisticalVariable', 'Topic']:
+        is_sv = True
+        break
+    candidate_to_add = sv_candidates if is_sv else prop_candidates
+    candidate_to_add.svs.append(sv)
+    candidate_to_add.scores.append(svar_result.scores[i])
+    candidate_to_add.sv2sentences[sv] = svar_result.sv2sentences.get(sv, [])
+  return sv_candidates, prop_candidates
 
 
 def create_sv_detection(
     query: str,
-    svs_scores_dict: Dict,
-    sv_threshold: float = shared_constants.SV_SCORE_DEFAULT_THRESHOLD
-) -> SVDetection:
+    var_detection_result: dvars.VarDetectionResult,
+    sv_threshold: float = shared_constants.SV_SCORE_DEFAULT_THRESHOLD,
+    allow_triples: bool = False) -> SVDetection:
+  sv_candidates, prop_candidates = _get_sv_and_prop_candidates(
+      var_detection_result, allow_triples)
+
   return SVDetection(query=query,
-                     single_sv=dvars.VarCandidates(
-                         svs=svs_scores_dict['SV'],
-                         scores=svs_scores_dict['CosineScore'],
-                         sv2sentences=svs_scores_dict['SV_to_Sentences']),
-                     multi_sv=dvars.dict_to_multivar_candidates(
-                         svs_scores_dict['MultiSV']),
+                     single_sv=sv_candidates,
+                     multi_sv=var_detection_result.multi_var,
+                     prop=prop_candidates,
                      sv_threshold=sv_threshold)
 
 
@@ -153,7 +199,9 @@ def empty_place_detection() -> PlaceDetection:
                         query_without_place_substr='',
                         query_places_mentioned=[],
                         places_found=[],
-                        main_place=None)
+                        main_place=None,
+                        entities_found=[],
+                        query_entities_mentioned=[])
 
 
 def create_utterance(query_detection: Detection,
@@ -163,7 +211,13 @@ def create_utterance(query_detection: Detection,
                      test: str = '',
                      client: str = '',
                      mode: QueryMode = None) -> Utterance:
-  filtered_svs = filter_svs(query_detection.svs_detected, counters)
+  filtered_svs = filter_svs(query_detection.svs_detected.single_sv,
+                            query_detection.svs_detected.sv_threshold, counters)
+  # Treat detected variables that are not Statistical Variable or Topic as
+  # properties.
+  filtered_properties = filter_svs(query_detection.svs_detected.prop,
+                                   query_detection.svs_detected.sv_threshold,
+                                   counters)
 
   # Construct Utterance datastructure.
   uttr = Utterance(prev_utterance=currentUtterance,
@@ -173,6 +227,7 @@ def create_utterance(query_detection: Detection,
                    places=[],
                    classifications=query_detection.classifications,
                    svs=filtered_svs,
+                   properties=filtered_properties,
                    chartCandidates=[],
                    rankedCharts=[],
                    answerPlaces=[],
@@ -182,13 +237,16 @@ def create_utterance(query_detection: Detection,
                    llm_resp=query_detection.llm_resp,
                    test=test,
                    client=client,
-                   mode=mode)
+                   mode=mode,
+                   entities=[])
   uttr.counters.info('filtered_svs', filtered_svs)
 
   # Add detected places.
-  if (query_detection.places_detected) and (
-      query_detection.places_detected.places_found):
-    uttr.places.extend(query_detection.places_detected.places_found)
+  if (query_detection.places_detected):
+    if (query_detection.places_detected.places_found):
+      uttr.places.extend(query_detection.places_detected.places_found)
+    if (query_detection.places_detected.entities_found):
+      uttr.entities.extend(query_detection.places_detected.entities_found)
 
   return uttr
 

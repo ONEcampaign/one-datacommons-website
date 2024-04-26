@@ -29,12 +29,15 @@ from server.lib.nl.common.utterance import Utterance
 from server.lib.nl.detection.types import ClassificationType
 from server.lib.nl.detection.types import ContainedInPlaceType
 from server.lib.nl.detection.types import Date
+from server.lib.nl.detection.types import Entity
 from server.lib.nl.detection.types import NLClassifier
 from server.lib.nl.detection.types import Place
 from server.lib.nl.fulfillment.types import ChartSpec
 from server.lib.nl.fulfillment.types import ChartVars
 from server.lib.nl.fulfillment.types import ExistInfo
 from server.lib.nl.fulfillment.types import PopulateState
+from server.lib.nl.fulfillment.types import Sv2Place2Date
+from server.lib.nl.fulfillment.types import Sv2Place2Facet
 
 #
 # General utilities for retrieving stuff from past context.
@@ -62,6 +65,32 @@ def has_place(uttr: Utterance) -> bool:
     return True
 
   if uttr.insight_ctx and uttr.insight_ctx.get('entities'):
+    return True
+
+  return False
+
+
+def has_prop(uttr: Utterance) -> bool:
+  if not uttr:
+    return False
+
+  if uttr.properties:
+    return True
+
+  if uttr.insight_ctx and uttr.insight_ctx.get('properties'):
+    return True
+
+  return False
+
+
+def has_entity(uttr: Utterance) -> bool:
+  if not uttr:
+    return False
+
+  if uttr.places:
+    return True
+
+  if uttr.insight_ctx and uttr.insight_ctx.get('nonPlaceEntities'):
     return True
 
   return False
@@ -108,8 +137,10 @@ def add_chart_to_utterance(
     places: List[Place],
     primary_vs_secondary: ChartOriginType = ChartOriginType.PRIMARY_CHART,
     ranking_count: int = 0,
-    sv_place_facet_ids: Dict[str, Dict[str, str]] = None,
-    info_message: str = '') -> bool:
+    sv_place_facet: Sv2Place2Facet = None,
+    info_message: str = '',
+    entities: List[Entity] = [],
+    sv_place_latest_date: Sv2Place2Date = None) -> bool:
   is_special_dc = False
   if state.uttr.insight_ctx and params.is_special_dc(state.uttr.insight_ctx):
     is_special_dc = True
@@ -120,6 +151,8 @@ def add_chart_to_utterance(
   # Make a copy of chart-vars since it change.
   ch = ChartSpec(chart_type=chart_type,
                  svs=copy.deepcopy(chart_vars.svs),
+                 props=copy.deepcopy(chart_vars.props),
+                 entities=copy.deepcopy(entities),
                  event=chart_vars.event,
                  places=copy.deepcopy(places),
                  chart_vars=copy.deepcopy(chart_vars),
@@ -130,8 +163,9 @@ def add_chart_to_utterance(
                  is_special_dc=is_special_dc,
                  single_date=state.single_date,
                  date_range=state.date_range,
-                 sv_place_facet_id=sv_place_facet_ids,
-                 info_message=info_message)
+                 sv_place_facet=sv_place_facet,
+                 info_message=info_message,
+                 sv_place_latest_date=sv_place_latest_date)
   state.uttr.chartCandidates.append(ch)
   state.uttr.counters.info('num_chart_candidates', 1)
   return True
@@ -171,17 +205,17 @@ def get_default_contained_in_place(places: List[Place],
   return constants.DEFAULT_PARENT_PLACES.get(ptype, None)
 
 
-# Get facet id to use when there are sv_place_facet_ids specified. Gets the
+# Get facet id to use when there are sv_place_facet specified. Gets the
 # facet id that has data for the most places.
-def get_facet_id(sv: str, sv_place_facet_ids: Dict[str, Dict[str, str]],
+def get_facet_id(sv: str, sv_place_facet: Dict[str, Dict[str, str]],
                  places: List[str]) -> str:
-  if not sv_place_facet_ids:
+  if not sv_place_facet:
     return ''
-  sv_facets = sv_place_facet_ids.get(sv, {})
+  sv_facets = sv_place_facet.get(sv, {})
   facet_id_occurences = {}
   facet_id_to_use = ""
   for place in places:
-    place_facet_id = sv_facets.get(place, '')
+    place_facet_id = sv_facets.get(place, {}).get('facetId', '')
     if not place_facet_id:
       continue
     place_facet_id_occurences = facet_id_occurences.get(place_facet_id, 0) + 1

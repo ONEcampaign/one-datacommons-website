@@ -102,7 +102,6 @@
                 "tiles": [
                   {
                     "lineTileSpec": {
-                      "endDate": "2024",
                       "startDate": "2023"
                     },
                     "statVarKey": [
@@ -299,6 +298,7 @@
   },
   "context": {},
   "debug": {},
+  "entities": [],
   "pastSourceContext": "California",
   "place": {
     "dcid": "geoId/06",

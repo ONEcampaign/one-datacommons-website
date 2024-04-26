@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import copy
-import logging
 import os
 from typing import List
 
@@ -49,7 +48,6 @@ def populate(state: PopulateState,
              chart_origin: ChartOriginType,
              rank: int,
              ranking_count: int = 0) -> bool:
-  logging.info('populate_cb for ranking_across_places')
   if not state.ranking_types:
     state.uttr.counters.err('ranking-across-places_failed_cb_norankingtypes', 1)
     return False
@@ -89,12 +87,17 @@ def populate(state: PopulateState,
 
     if not utils.has_map(state.place_type, places[0]):
       chart_vars.skip_map_for_ranking = True
+
+    sv_place_latest_date = ext.get_sv_place_latest_date(chart_vars.svs, places,
+                                                        state.place_type,
+                                                        state.exist_checks)
     return add_chart_to_utterance(ChartType.RANKING_WITH_MAP,
                                   state,
                                   chart_vars,
                                   places,
                                   chart_origin,
-                                  ranking_count=ranking_count)
+                                  ranking_count=ranking_count,
+                                  sv_place_latest_date=sv_place_latest_date)
 
 
 def _compute_answer_places(state: PopulateState, place: List[Place], sv: str):

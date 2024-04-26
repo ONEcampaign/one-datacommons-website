@@ -14,7 +14,6 @@
 
 import asyncio
 import json
-import logging
 import time
 from typing import Dict, List
 
@@ -44,7 +43,6 @@ from server.lib.nl.detection.place import get_place_from_dcids
 from server.lib.nl.detection.types import Detection
 from server.lib.nl.detection.types import LlmApiType
 from server.lib.nl.detection.types import Place
-from server.lib.nl.detection.types import PlaceDetectorType
 from server.lib.nl.detection.types import RequestedDetectorType
 from server.lib.nl.detection.utils import create_utterance
 import server.lib.nl.fulfillment.fulfiller as fulfillment
@@ -89,7 +87,6 @@ def _get_default_place(request: Dict, is_special_dc: bool, debug_logs: Dict):
 def parse_query_and_detect(request: Dict, backend: str, client: str,
                            debug_logs: Dict):
   if not current_app.config.get('NL_BAD_WORDS'):
-    logging.error('Missing NL_BAD_WORDS config!')
     flask.abort(404)
   nl_bad_words = current_app.config['NL_BAD_WORDS']
 
@@ -127,20 +124,10 @@ def parse_query_and_detect(request: Dict, backend: str, client: str,
     detector_type = RequestedDetectorType.Heuristic.value
     use_default_place = False
 
-  place_detector_type = request.args.get('place_detector',
-                                         default='dc',
-                                         type=str).lower()
-  if place_detector_type not in [PlaceDetectorType.NER, PlaceDetectorType.DC]:
-    logging.error(f'Unknown place_detector {place_detector_type}')
-    place_detector_type = PlaceDetectorType.NER
-  else:
-    place_detector_type = PlaceDetectorType(place_detector_type)
-
   llm_api_type = request.args.get('llm_api',
                                   default=LlmApiType.GeminiPro.value,
                                   type=str).lower()
   if llm_api_type not in [LlmApiType.Palm, LlmApiType.GeminiPro]:
-    logging.error(f'Unknown place_detector {place_detector_type}')
     llm_api_type = LlmApiType.GeminiPro
   else:
     llm_api_type = LlmApiType(llm_api_type)
@@ -189,13 +176,34 @@ def parse_query_and_detect(request: Dict, backend: str, client: str,
     else:
       session_id = constants.TEST_SESSION_ID
 
+  allow_triples = False
+  if dc == params.DCNames.BIO_DC.value:
+    allow_triples = True
+    use_default_place = False
+
+  # See if we have a variable reranker model specified.
+  reranker = request.args.get('reranker')
+  rerank_fn = None
+  if reranker:
+    if not current_app.config.get('VERTEX_AI_MODELS'):
+      counters.err('unconfigured_vertex_ai_models', 1)
+    elif not current_app.config['VERTEX_AI_MODELS'].get(reranker):
+      counters.err('nonexistent_reranker_model', reranker)
+    elif not current_app.config['VERTEX_AI_MODELS'][reranker].get(
+        'prediction_client'):
+      counters.err('reranker_without_prediction_client', reranker)
+    else:
+      minfo = current_app.config['VERTEX_AI_MODELS'][reranker][
+          'prediction_client']
+      rerank_fn = minfo.predict
+
   # Query detection routine:
   # Returns detection for Place, SVs and Query Classifications.
   start = time.time()
-  query_detection = detector.detect(detector_type, place_detector_type,
-                                    original_query, query, prev_utterance,
-                                    embeddings_index_type, llm_api_type,
-                                    debug_logs, mode, counters)
+  query_detection = detector.detect(detector_type, original_query, query,
+                                    prev_utterance, embeddings_index_type,
+                                    llm_api_type, debug_logs, mode, counters,
+                                    rerank_fn, allow_triples)
   if not query_detection:
     err_json = helpers.abort('Sorry, could not complete your request.',
                              original_query,
@@ -223,15 +231,20 @@ def parse_query_and_detect(request: Dict, backend: str, client: str,
       is_special_dc = params.is_special_dc_str(dc)
       default_place = _get_default_place(request, is_special_dc, debug_logs)
     context.merge_with_context(utterance, default_place)
+    error_msg = ''
     if not utterance.places:
-      err_json = helpers.abort(
-          'Sorry, could not complete your request. No place found in the query.',
-          original_query,
-          context_history,
-          debug_logs,
-          counters,
-          test=test,
-          client=client)
+      if not allow_triples:
+        error_msg = 'Sorry, could not complete your request. No place found in the query.'
+      elif not utterance.entities:
+        error_msg = 'Sorry, could not complete your request. No entity found in the query.'
+    if error_msg:
+      err_json = helpers.abort(error_msg,
+                               original_query,
+                               context_history,
+                               debug_logs,
+                               counters,
+                               test=test,
+                               client=client)
       return None, err_json
 
   return utterance, None
@@ -247,8 +260,6 @@ def fulfill_with_chart_config(utterance: nl_utterance.Utterance,
   if current_app.config['LOCAL']:
     # Reload configs for faster local iteration.
     disaster_config = get_nl_disaster_config()
-  else:
-    logging.info('Unable to load event configs!')
 
   cb_config = builder_base.Config(
       event_config=disaster_config,
@@ -327,8 +338,9 @@ def prepare_response(utterance: nl_utterance.Utterance,
         'place_type': p.place_type
     })
   data_dict = {
-      'place': ret_places_dict[0],
+      'place': ret_places_dict[0] if len(ret_places) > 0 else {},
       'places': ret_places_dict,
+      'entities': utterance.entities,
       'config': page_config,
       'context': context_history,
       'placeFallback': context_history[0]['placeFallback'],
@@ -336,7 +348,7 @@ def prepare_response(utterance: nl_utterance.Utterance,
       'placeSource': utterance.place_source.value,
       'pastSourceContext': utterance.past_source_context,
       'relatedThings': related_things,
-      'userMessages': user_message.msg_list
+      'userMessages': user_message.msg_list,
   }
   if user_message.show_form:
     data_dict['showForm'] = True
@@ -421,7 +433,7 @@ def abort(error_message: str,
                               cleaned_query=query,
                               places_detected=dutils.empty_place_detection(),
                               svs_detected=dutils.create_sv_detection(
-                                  query, dutils.empty_svs_score_dict()),
+                                  query, dutils.empty_var_detection_result()),
                               classifications=[],
                               llm_resp={})
   data_dict = dbg.result_with_debug_info(data_dict=res,
@@ -437,7 +449,6 @@ def abort(error_message: str,
   if blocked:
     _set_blocked(data_dict)
 
-  logging.info('NL Data API: Empty Exit')
   if (current_app.config['LOG_QUERY'] and (not test or test == _SANITY_TEST)):
     # Asynchronously log as bigtable write takes O(100ms)
     loop = asyncio.new_event_loop()

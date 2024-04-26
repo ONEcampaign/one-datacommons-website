@@ -19,12 +19,15 @@ if [[ $USE_SQLITE == "true" ]]; then
     export SQLITE_PATH=/sqlite/datacommons.db
 fi
 
+nginx -c /workspace/nginx.conf
+
 echo $GCS_DATA_PATH
 if [[ $GCS_DATA_PATH != "" ]]; then
     export USER_DATA_PATH=$GCS_DATA_PATH
 else
     export USER_DATA_PATH=/userdata/
 fi
+export IS_CUSTOM_DC=true
 
 /go/bin/mixer \
     --use_bigquery=false \
@@ -45,14 +48,14 @@ if [[ $DEBUG == "true" ]] then
         python3 nl_app.py 6060 &
     fi
     echo "Starting Website Server in debug mode."
-    python3 web_app.py &
+    python3 web_app.py 7070 &
 else
     if [[ $ENABLE_MODEL == "true" ]] then
         echo "Starting NL Server."
         gunicorn --log-level info --preload --timeout 1000 --bind 0.0.0.0:6060 -w 1 nl_app:app &
     fi
     echo "Starting Website Server."
-    gunicorn --log-level info --preload --timeout 1000 --bind 0.0.0.0:8080 -w 4 web_app:app &
+    gunicorn --log-level info --preload --timeout 1000 --bind 0.0.0.0:7070 -w 4 web_app:app &
 fi
 
 # Wait for any process to exit
