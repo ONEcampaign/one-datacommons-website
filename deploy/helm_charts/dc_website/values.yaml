@@ -22,6 +22,8 @@ website:
       wikidataId: null
       others: null
   nodePool: null
+  evalTool:
+    enabled: false
 nameOverride: ''
 fullnameOverride: ''
 namespace:
@@ -110,5 +112,4 @@ cronTesting:
   nodejsRoot: null
   screenshotDomain: null
   enableSanity: true
-  # node pool to use
-  nodePool:
+  nodePool: null
