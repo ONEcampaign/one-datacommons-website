@@ -12,13 +12,25 @@ steps:
   volumes:
   - name: 'ssh'
     path: /root/.ssh
+  # Update submodules
+- name: gcr.io/cloud-builders/git
+  args: ['submodule', 'update', '--init', '--recursive']
+  volumes:
+  - name: 'ssh'
+    path: /root/.ssh
+  # Build the image
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '--tag', '${_IMAGE_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_APP_NAME}:${SHORT_SHA}', '-f', 'build/web_compose/Dockerfile', '.']
+  # Push the image to Artifact Registry
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', '${_IMAGE_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_APP_NAME}:${SHORT_SHA}']
   # Update the image tag in the Helm Chart
 - name: 'linuxserver/yq'
   entrypoint: yq
   args:
     - '-i'
     - '-y'
-    - '.website.image.tag="13e20ab"'
+    - '.website.image.tag="${SHORT_SHA}"'
     - 'deploy/helm_charts/dc_website/values.yaml'
   # Configure kubectl
 - name: gcr.io/cloud-builders/kubectl
