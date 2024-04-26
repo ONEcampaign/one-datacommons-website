@@ -43,6 +43,26 @@ steps:
   env:
     - KUBECONFIG=/workspace/.kube/config
     - TILLERLESS=true
+  # Set author email
+- name: gcr.io/cloud-builders/git
+  args:
+    - config
+    - --global
+    - user.email
+    - "cloudbuild@one.org"
+  volumes:
+  - name: 'ssh'
+    path: /root/.ssh
+  # Set author name
+- name: gcr.io/cloud-builders/git
+  args:
+    - config
+    - --global
+    - user.name
+    - "Cloud Build"
+  volumes:
+  - name: 'ssh'
+    path: /root/.ssh
   # Commit Chart changes
 - name: gcr.io/cloud-builders/git
   args:
