@@ -108,31 +108,8 @@ nodejs:
   nodePool: null
 cronTesting:
   enabled: false
-<<<<<<< HEAD
   webApiRoot: null
   nodejsRoot: null
   screenshotDomain: null
   enableSanity: true
-||||||| merged common ancestors
-  # These are the in-cluster service endpoints that are set during script
-  # deployment runtime.
-  webApiRoot:
-  nodejsRoot:
-  # The domain to use for screenshot tests. Screenshot tests will only run if
-  # this is set.
-  screenshotDomain:
-  # whether or not sanity tests are enabled
-  enableSanity: true
-=======
-  # These are the in-cluster service endpoints that are set during script
-  # deployment runtime.
-  webApiRoot:
-  nodejsRoot:
-  # The domain to use for screenshot tests. Screenshot tests will only run if
-  # this is set.
-  screenshotDomain:
-  # whether or not sanity tests are enabled
-  enableSanity: true
-  # node pool to use
-  nodePool:
->>>>>>> staging
+  nodePool: null
