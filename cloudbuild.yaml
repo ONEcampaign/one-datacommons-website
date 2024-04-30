@@ -12,6 +12,9 @@ steps:
   volumes:
   - name: 'ssh'
     path: /root/.ssh
+  # Pull entire repo history
+- name: gcr.io/cloud-builders/git
+  args: ['fetch', '--unshallow']
   # Update the image tag in the Helm Chart
 - name: 'linuxserver/yq'
   entrypoint: yq
