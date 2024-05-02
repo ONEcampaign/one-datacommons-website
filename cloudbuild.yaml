@@ -80,9 +80,8 @@ steps:
 - name: gcr.io/cloud-builders/git
   args:
     - push
-    - --set-upstream
     - origin
-    - $BRANCH_NAME
+    - HEAD:$BRANCH_NAME
   volumes:
   - name: 'ssh'
     path: /root/.ssh
