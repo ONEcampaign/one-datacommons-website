@@ -92,7 +92,7 @@ steps:
 - name: gcr.io/cloud-builders/git
   args:
     - push
-    - origin
+    - $REPO_FULL_NAME
     - HEAD:$BRANCH_NAME
   volumes:
   - name: 'ssh'
