@@ -3,7 +3,7 @@ website:
   image:
     project: datcom-ci
     pullPolicy: Always
-    tag: latest
+    tag: d669408
   flaskEnv: custom
   gcsDataPath: gs://one-datacommons-imports-prod/dec7
   iap:
