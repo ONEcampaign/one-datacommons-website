@@ -113,3 +113,4 @@ cronTesting:
   screenshotDomain: null
   enableSanity: true
   nodePool: null
+  enableAdversarial: true
