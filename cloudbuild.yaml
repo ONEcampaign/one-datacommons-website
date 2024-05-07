@@ -22,7 +22,7 @@ steps:
     - '-i'
     - '-y'
     - '.website.image.tag="13e20ab"'
-    - 'deploy/helm_charts/dc_website/values.yaml'
+    - $_CHART_LOCATION/values.yaml
   # Configure kubectl
 - name: gcr.io/cloud-builders/kubectl
   args:
@@ -31,6 +31,20 @@ steps:
     - CLOUDSDK_COMPUTE_REGION=$_COMPUTE_LOCATION
     - CLOUDSDK_CONTAINER_CLUSTER=$_CLUSTER_NAME
     - KUBECONFIG=/workspace/.kube/config
+  # Bump the chart version
+- name: gcr.io/$PROJECT_ID/helm
+  id: Increment Chart version
+  args:
+    - release
+    - $_CHART_LOCATION
+    - --source
+    - helm
+    - --bumppatch
+    - --skip-application-version
+  env:
+    - HELM_CONFIG_HOME=/workspace/.helm/
+    - KUBECONFIG=/workspace/.kube/config
+    - TILLERLESS=true
   # Deploy the image to staging
 - name: gcr.io/$PROJECT_ID/helm
   id: Deploy chart
@@ -44,6 +58,49 @@ steps:
     - -n
     - $_NAMESPACE
   env:
+    - HELM_CONFIG_HOME=/workspace/.helm/
+    - KUBECONFIG=/workspace/.kube/config
+    - TILLERLESS=true
+  # Authenicate Helm with Artifact Registry
+- name: gcr.io/$PROJECT_ID/helm
+  id: Authenticate Helm with Registry
+  entrypoint: gcloud
+  args:
+    - auth
+    - application-default
+    - print-access-token
+    - "|"
+    - helm
+    - registry
+    - login
+    - -u
+    - oauth2accesstoken
+    - --password-stdin
+    - https://${_IMAGE_LOCATION}-docker.pkg.dev
+  env:
+    - HELM_CONFIG_HOME=/workspace/.helm/
+    - KUBECONFIG=/workspace/.kube/config
+    - TILLERLESS=true
+  # Package Chart
+- name: gcr.io/$PROJECT_ID/helm
+  id: Package Chart
+  args:
+    - helm
+    - package
+    - $_CHART_LOCATION
+  env:
+    - HELM_CONFIG_HOME=/workspace/.helm/
+    - KUBECONFIG=/workspace/.kube/config
+    - TILLERLESS=true
+  # Publish Chart
+- name: gcr.io/$PROJECT_ID/helm
+  id: Package Chart
+  args:
+    - helm
+    - push
+    - "dc-website-*.tgz oci://${_IMAGE_LOCATION}-docker.pkg.dev/$_PROJECT_ID/one-org-helm-charts"
+  env:
+    - HELM_CONFIG_HOME=/workspace/.helm/
     - KUBECONFIG=/workspace/.kube/config
     - TILLERLESS=true
   # Set author email
