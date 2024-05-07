@@ -94,7 +94,7 @@ steps:
     - TILLERLESS=true
   # Publish Chart
 - name: gcr.io/$PROJECT_ID/helm
-  id: Package Chart
+  id: Publish Chart
   args:
     - helm
     - push
