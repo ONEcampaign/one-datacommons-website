@@ -45,7 +45,7 @@ steps:
     - CLOUDSDK_CONTAINER_CLUSTER=$_CLUSTER_NAME
     - KUBECONFIG=/workspace/.kube/config
   # Bump the chart version
-- name: gcr.io/$PROJECT_ID/helm
+- name: gcr.io/$PROJECT_ID/helm:$_HELM_VERSION
   id: Increment Chart version
   args:
     - release
@@ -59,7 +59,7 @@ steps:
     - KUBECONFIG=/workspace/.kube/config
     - TILLERLESS=true
   # Deploy the image to staging
-- name: gcr.io/$PROJECT_ID/helm
+- name: gcr.io/$PROJECT_ID/helm:$_HELM_VERSION
   id: Deploy chart
   args:
     - upgrade
@@ -75,7 +75,7 @@ steps:
     - KUBECONFIG=/workspace/.kube/config
     - TILLERLESS=true
   # Authenicate Helm with Artifact Registry
-- name: gcr.io/$PROJECT_ID/helm
+- name: gcr.io/$PROJECT_ID/helm:$_HELM_VERSION
   id: Authenticate Helm with Registry
   entrypoint: gcloud
   args:
@@ -95,7 +95,7 @@ steps:
     - KUBECONFIG=/workspace/.kube/config
     - TILLERLESS=true
   # Package Chart
-- name: gcr.io/$PROJECT_ID/helm
+- name: gcr.io/$PROJECT_ID/helm:$_HELM_VERSION
   id: Package Chart
   args:
     - helm
@@ -106,7 +106,7 @@ steps:
     - KUBECONFIG=/workspace/.kube/config
     - TILLERLESS=true
   # Publish Chart
-- name: gcr.io/$PROJECT_ID/helm
+- name: gcr.io/$PROJECT_ID/helm:$_HELM_VERSION
   id: Publish Chart
   args:
     - helm
@@ -167,6 +167,7 @@ substitutions:
   _CHART_LOCATION: deploy/helm_charts/dc_website
   _VALUES_FILE: deploy/helm_charts/stagingValues.yaml
   _NAMESPACE: data-commons
+  _HELM_VERSION: 3.14.4
 availableSecrets:
   secretManager:
   - versionName: projects/$PROJECT_ID/secrets/github-ssh-key/versions/latest
