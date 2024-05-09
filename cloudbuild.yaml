@@ -28,7 +28,8 @@ steps:
     - $_CHART_LOCATION
     - --source
     - helm
-    - --bumppatch
+    - --bump
+    - patch
     - --skip-application-version
   env:
     - HELM_CONFIG_HOME=/workspace/.helm/
