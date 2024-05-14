@@ -111,6 +111,20 @@ class ExploreTest(NLWebServerTestCase):
                       check_detection=False,
                       detector=None):
     dbg = resp['debug']
+
+    # sort variables in the response because variable scores can change between
+    # runs. Sort by scores cut off after 6 digits after the decimal and for
+    # variables with the same truncated score, sort alphabetically
+    # TODO: Proper fix should be to make NL server more deterministic
+    if 'variables' in resp:
+      resp_var_to_score = {}
+      for i, sv in enumerate(dbg['sv_matching']['SV']):
+        score = dbg['sv_matching']['CosineScore'][i]
+        resp_var_to_score[sv] = float("{:.6f}".format(score))
+      sorted_variables = sorted(resp['variables'],
+                                key=lambda x: (-resp_var_to_score.get(x, 0), x))
+      resp['variables'] = sorted_variables
+
     resp['debug'] = {}
     resp['context'] = {}
     for category in resp.get('config', {}).get('categories', []):
@@ -246,12 +260,35 @@ class ExploreTest(NLWebServerTestCase):
                        test='unittest',
                        idx='medium_lance_ft')
 
+  def test_detection_basic_sdg(self):
+    self.run_detection('detection_api_sdg_idx', ['Health in USA'],
+                       test='unittest',
+                       idx='sdg_ft')
+
+  def test_detection_basic_undata(self):
+    self.run_detection('detection_api_undata_idx', ['Health in USA'],
+                       test='unittest',
+                       idx='undata_ft')
+
+  def test_detection_basic_bio(self):
+    self.run_detection('detection_api_bio_idx', ['Commute in California'],
+                       test='unittest',
+                       idx='bio_ft')
+
   def test_detection_basic_vertex(self):
-    # NOTE: Use the same test-name as above, since we expect the content to exactly
-    # match the one from above.
-    self.run_detection('detection_api_basic', ['Commute in California'],
+    self.run_detection('detection_api_vertex_ft_idx', ['Commute in California'],
                        test='unittest',
                        idx='medium_vertex_ft')
+
+  def test_detection_basic_uae(self):
+    self.run_detection('detection_api_uae_idx', ['Commute in California'],
+                       test='unittest',
+                       idx='medium_vertex_uae')
+
+  def test_detection_basic_sfr(self):
+    self.run_detection('detection_api_sfr_idx', ['Commute in California'],
+                       test='unittest',
+                       idx='medium_vertex_mistral')
 
   def test_detection_sdg(self):
     self.run_detection('detection_api_sdg', ['Health in USA'], dc='sdg')
@@ -436,6 +473,16 @@ class ExploreTest(NLWebServerTestCase):
         'How about the uninsured population?',
         'Which counties in california have median age over 40?',
         'What is the emissions in these counties?'
+    ],
+                                test='filter_test')
+
+  # This is the same as the query in `e2e_answer_places`, but
+  # without "filter_test", so filter query should not work.
+  # Specifically, the answer would have MAP and RANKING
+  # chart instead of a single BAR chart.
+  def test_filter_query_disabled(self):
+    self.run_detect_and_fulfill('filter_query_disabled', [
+        'Which counties in california have median age over 40?',
     ])
 
   def test_e2e_electrification_demo(self):
@@ -496,7 +543,8 @@ class ExploreTest(NLWebServerTestCase):
             # not have both the topics. Instead, the title has the topic
             # corresponding to the SV in the very first chart.
             'Poverty vs. unemployment rate in districts of Tamil Nadu',
-        ])
+        ],
+        test='filter_test')
 
   def test_e2e_correlation_bugs(self):
     self.run_detect_and_fulfill('e2e_correlation_bugs',
