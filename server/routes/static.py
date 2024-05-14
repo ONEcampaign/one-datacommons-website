@@ -91,7 +91,7 @@ def climate_finance():
   return lib_render.render_page("static/climate-finance.html", "climate-finance.html")
 
 @bp.route('/dc')
-def climate_finance():
+def dc_homepage():
     return lib_render.render_page("static/dc-homepage.html", "dc-homepage.html")
 
 @bp.route('/data/climate-finance-files')
