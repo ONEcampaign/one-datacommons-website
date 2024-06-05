@@ -21,20 +21,10 @@ steps:
     - CLOUDSDK_CONTAINER_CLUSTER=$_CLUSTER_NAME
     - KUBECONFIG=/workspace/.kube/config
   # Bump the chart version
-- name: gcr.io/$PROJECT_ID/helm:$_HELM_VERSION
+- name: alpine
   id: Increment Chart version
-  args:
-    - release
-    - $_CHART_LOCATION
-    - --source
-    - helm
-    - --bump
-    - patch
-    - --skip-application-version
-  env:
-    - HELM_CONFIG_HOME=/workspace/.helm/
-    - KUBECONFIG=/workspace/.kube/config
-    - TILLERLESS=true
+  entrypoint: sh
+  args: [ deploy/helm_charts/increment_version.sh ]
   # Deploy the image to staging
 - name: gcr.io/$PROJECT_ID/helm:$_HELM_VERSION
   id: Deploy chart
