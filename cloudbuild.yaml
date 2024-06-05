@@ -68,19 +68,12 @@ steps:
   # Authenicate Helm with Artifact Registry
 - name: gcr.io/$PROJECT_ID/helm:$_HELM_VERSION
   id: Authenticate Helm with Registry
-  entrypoint: gcloud
-  args:
-    - auth
-    - application-default
-    - print-access-token
-    - "|"
-    - helm
-    - registry
-    - login
-    - -u
-    - oauth2accesstoken
-    - --password-stdin
-    - https://${_IMAGE_LOCATION}-docker.pkg.dev
+  script: |
+    #!/bin/bash
+    gcloud auth application-default print-access-token | \
+      helm registry login -u oauth2accesstoken --password-stdin \
+      https://${_IMAGE_LOCATION}-docker.pkg.dev
+  automapSubstitutions: true
   env:
     - HELM_CONFIG_HOME=/workspace/.helm/
     - KUBECONFIG=/workspace/.kube/config
