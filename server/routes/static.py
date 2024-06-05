@@ -90,6 +90,10 @@ def feedback():
 def climate_finance():
   return lib_render.render_page("static/climate-finance.html", "climate-finance.html")
 
+@bp.route('/dc')
+def dc_homepage():
+    return lib_render.render_page("static/dc-homepage.html", "dc-homepage.html")
+
 @bp.route('/data/climate-finance-files')
 def data_climate_finance():
   return lib_render.render_page("static/data-climate-finance.html", "data-climate-finance.html")

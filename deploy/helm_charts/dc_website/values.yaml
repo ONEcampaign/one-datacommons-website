@@ -98,19 +98,35 @@ nl:
   models: null
   memory: 2G
   workers: 1
+  embeddingsSpec:
+    defaultIndex: ""
+    enabledIndexes: []
+    vertexAIModels:
+    enableReranking: false
+
+
+###############################################################################
+# Config for Stat Var Groups which is shared between Website and Mixer
+###############################################################################
 svg:
   blocklistFile: []
 nodejs:
   enabled: false
-  env: gke
+  env: "gke"
   replicas: null
   apiRoot: null
   nodePool: null
+
+###############################################################################
+# Config for Periodic Testing CronJob
+###############################################################################
 cronTesting:
   enabled: false
   webApiRoot: null
   nodejsRoot: null
   screenshotDomain: null
   enableSanity: true
-  nodePool: null
   enableAdversarial: true
+  nodePool: null
+  # schedule to run the cron tests on
+  schedule: null
