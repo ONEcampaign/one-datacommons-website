@@ -91,10 +91,11 @@ steps:
   # Publish Chart
 - name: gcr.io/$PROJECT_ID/helm:$_HELM_VERSION
   id: Publish Chart
-  args:
-    - push
-    - "dc-website-*.tgz"
-    - "oci://${_IMAGE_LOCATION}-docker.pkg.dev/$_PROJECT_ID/one-org-helm-charts"
+  script: |
+    #!/bin/bash
+    helm push dc-website-*.tgz \
+      oci://${_IMAGE_LOCATION}-docker.pkg.dev/$_PROJECT_ID/one-org-helm-charts
+  automapSubstitutions: true
   env:
     - HELM_CONFIG_HOME=/workspace/.helm/
     - KUBECONFIG=/workspace/.kube/config
