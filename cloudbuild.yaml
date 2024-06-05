@@ -86,7 +86,6 @@ steps:
 - name: gcr.io/$PROJECT_ID/helm:$_HELM_VERSION
   id: Package Chart
   args:
-    - helm
     - package
     - $_CHART_LOCATION
   env:
@@ -97,7 +96,6 @@ steps:
 - name: gcr.io/$PROJECT_ID/helm:$_HELM_VERSION
   id: Publish Chart
   args:
-    - helm
     - push
     - "dc-website-*.tgz oci://${_IMAGE_LOCATION}-docker.pkg.dev/$_PROJECT_ID/one-org-helm-charts"
   env:
