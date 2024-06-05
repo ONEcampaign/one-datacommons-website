@@ -18,13 +18,13 @@ from typing import cast, List
 
 from flask import current_app
 
-import server.lib.explore.params as params
-import server.lib.explore.topic as topic
 from server.lib.nl.common import utils
 from server.lib.nl.common.utterance import FulfillmentResult
 from server.lib.nl.common.utterance import QueryType
 from server.lib.nl.common.utterance import Utterance
 import server.lib.nl.detection.types as dtypes
+import server.lib.nl.explore.params as params
+import server.lib.nl.explore.topic as topic
 from server.lib.nl.fulfillment import base
 from server.lib.nl.fulfillment import event
 from server.lib.nl.fulfillment import filter_with_dual_vars
@@ -39,7 +39,7 @@ import server.lib.nl.fulfillment.utils as futils
 #
 # Populate chart candidates in the utterance.
 #
-def fulfill(uttr: Utterance, explore_mode: bool = False) -> PopulateState:
+def fulfill(uttr: Utterance) -> PopulateState:
   # Construct a common PopulateState
   state = PopulateState(uttr=uttr)
 
@@ -61,7 +61,6 @@ def fulfill(uttr: Utterance, explore_mode: bool = False) -> PopulateState:
   state.time_delta_types = utils.get_time_delta_types(uttr)
   state.quantity = utils.get_quantity(uttr)
   state.event_types = utils.get_event_types(uttr)
-  state.explore_mode = explore_mode
   state.single_date = utils.get_single_date(uttr)
   # Only one of single date or date range should be specified, so only get date
   # range if there is no single date.
@@ -169,7 +168,10 @@ def _perform_strict_mode_checks(uttr: Utterance) -> bool:
 
 def _produce_query_types(uttr: Utterance) -> List[QueryType]:
   query_types = []
-  if params.is_bio(uttr.insight_ctx) and uttr.entities and uttr.properties:
+  # Add triple query type even when there are no properties if there's no place
+  # detected because assume the user is specifically asking about the entity
+  if params.is_bio(uttr.insight_ctx) and uttr.entities and (uttr.properties or
+                                                            not uttr.places):
     query_types.append(QueryType.TRIPLE)
   # The remaining query types require places to be set
   if not uttr.places:

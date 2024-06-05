@@ -17,18 +17,20 @@ import copy
 import sys
 from typing import Dict, List
 
-from server.lib.explore import params
 from server.lib.nl.common import counters
 from server.lib.nl.common import serialize
 from server.lib.nl.common import utterance
 from server.lib.nl.detection import llm_api
 from server.lib.nl.detection import place
+from server.lib.nl.detection import rerank
 from server.lib.nl.detection import types
 from server.lib.nl.detection import utils as dutils
 from server.lib.nl.detection import variable
 from server.lib.nl.detection.types import ActualDetectorType
 from server.lib.nl.detection.types import Detection
 from server.lib.nl.detection.types import LlmApiType
+from server.lib.nl.explore import params
+import shared.lib.detected_variables as dvars
 
 # TODO: Add support for COMPARISON_FILTER and RANKING_FILTER
 _LLM_TYPE_TO_CLASSIFICATION_TYPE = {
@@ -99,12 +101,8 @@ _LLM_OP_TO_QUANTITY_OP = {
 
 
 # Returns False if the query fails safety check.
-def check_safety(query: str, llm_api_type: LlmApiType,
-                 ctr: counters.Counters) -> Detection:
-  if llm_api_type == LlmApiType.GeminiPro:
-    llm_resp = llm_api.detect_with_geminipro(query, [], ctr)
-  else:
-    llm_resp = llm_api.detect_with_palm(query, [], ctr)
+def check_safety(query: str, ctr: counters.Counters) -> Detection:
+  llm_resp = llm_api.detect_with_geminipro(query, [], ctr)
   if llm_resp.get('UNSAFE') == True:
     return False
   return True
@@ -113,10 +111,10 @@ def check_safety(query: str, llm_api_type: LlmApiType,
 def detect(query: str,
            prev_utterance: utterance.Utterance,
            index_type: str,
-           llm_api_type: LlmApiType,
            query_detection_debug_logs: Dict,
            mode: str,
            ctr: counters.Counters,
+           rerank_fn: rerank.RerankCallable = None,
            allow_triples: bool = False) -> Detection:
   # History
   history = []
@@ -125,11 +123,7 @@ def detect(query: str,
     history.append((u.query, u.llm_resp))
     u = u.prev_utterance
 
-  if llm_api_type == LlmApiType.GeminiPro:
-    llm_resp = llm_api.detect_with_geminipro(query, history, ctr)
-  else:
-    llm_resp = llm_api.detect_with_palm(query, history, ctr)
-
+  llm_resp = llm_api.detect_with_geminipro(query, history, ctr)
   if llm_resp.get('UNSAFE') == True:
     return None
 
@@ -165,21 +159,23 @@ def detect(query: str,
   }
 
   # SV Detection.
-  svs_score_dicts = []
+  var_detection_results: List[dvars.VarDetectionResult] = []
   dummy_dict = {}
   skip_topics = mode == params.QueryMode.TOOLFORMER
   for sv in sv_list:
     try:
-      svs_score_dicts.append(
-          variable.detect_svs(sv,
-                              index_type,
-                              dummy_dict,
-                              skip_topics=skip_topics))
+      var_detection_results.append(
+          variable.detect_vars(sv,
+                               index_type,
+                               ctr,
+                               dummy_dict,
+                               rerank_fn=rerank_fn,
+                               skip_topics=skip_topics))
     except ValueError as e:
-      ctr.err('llm_detect_svs_value_error', {'q': sv, 'err': str(e)})
-  svs_scores_dict = _merge_sv_dicts(sv_list, svs_score_dicts)
+      ctr.err('llm_detect_vars_value_error', {'q': sv, 'err': str(e)})
+  merged_var_detection = _merge_sv_dicts(sv_list, var_detection_results)
   sv_detection = dutils.create_sv_detection(query,
-                                            svs_scores_dict,
+                                            merged_var_detection,
                                             allow_triples=allow_triples)
 
   classifications = _build_classifications(llm_resp, filter_type)
@@ -190,8 +186,7 @@ def detect(query: str,
                    svs_detected=sv_detection,
                    classifications=classifications,
                    llm_resp=llm_resp,
-                   detector=ActualDetectorType.LLM,
-                   llm_api=llm_api_type)
+                   detector=ActualDetectorType.LLM)
 
 
 def _build_classifications(llm_resp: Dict,
@@ -220,35 +215,32 @@ def _build_classifications(llm_resp: Dict,
   return classifications
 
 
-def _merge_sv_dicts(sv_word_list: List[str],
-                    sv_scores_list: List[Dict]) -> Dict:
-  if not sv_scores_list:
-    return dutils.empty_svs_score_dict()
-  if len(sv_scores_list) == 1:
-    return sv_scores_list[0]
+def _merge_sv_dicts(
+    sv_word_list: List[str],
+    detection_list: List[dvars.VarDetectionResult]) -> dvars.VarDetectionResult:
+  if not detection_list:
+    return dutils.empty_var_detection_result()
+  if len(detection_list) == 1:
+    return detection_list[0]
 
   # This is the case of multiple stat-vars detected by PaLM, which we should
   # merge into the MultiSV case, for downstream handling.
 
   # Just something to fill up 'SV', 'CosineScore', etc.
-  merged_dict = sv_scores_list[0]
+  merged_result = detection_list[0]
 
   parts = []
-  for i in range(len(sv_scores_list)):
-    parts.append({
-        'QueryPart': sv_word_list[i],
-        'SV': sv_scores_list[i]['SV'],
-        'CosineScore': sv_scores_list[i]['CosineScore']
-    })
+  for i in range(len(detection_list)):
+    parts.append(
+        dvars.MultiVarCandidatePart(query_part=sv_word_list[i],
+                                    svs=detection_list[i].single_var.svs,
+                                    scores=detection_list[i].single_var.scores))
   # Set aggregate_score to 1.0 so that this should always trump singleSV case.
-  merged_dict['MultiSV'] = {
-      'Candidates': [{
-          'Parts': parts,
-          'AggCosineScore': 1.0,
-          'DelimBased': True
-      }]
-  }
-  return merged_dict
+  merged_result.multi_var = dvars.MultiVarCandidates(candidates=[
+      dvars.MultiVarCandidate(
+          parts=parts, aggregate_score=1.0, delim_based=True)
+  ])
+  return merged_result
 
 
 def _handle_compare(llm_val: str):

@@ -1,0 +1,160 @@
+steps:
+  # Configure the SSH client
+- name: 'gcr.io/cloud-builders/git'
+  secretEnv: ['SSH_KEY']
+  entrypoint: 'bash'
+  args:
+  - -c
+  - |
+    echo "$$SSH_KEY" >> /root/.ssh/id_rsa
+    chmod 400 /root/.ssh/id_rsa
+    cp known_hosts.github /root/.ssh/known_hosts
+  volumes:
+  - name: 'ssh'
+    path: /root/.ssh
+  # Pull entire repo history
+- name: gcr.io/cloud-builders/git
+  args: ['fetch', '--unshallow']
+  # Update submodules
+- name: gcr.io/cloud-builders/git
+  args: ['submodule', 'update', '--init', '--recursive']
+  volumes:
+  - name: 'ssh'
+    path: /root/.ssh
+  # Build the image
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '--tag', '${_IMAGE_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_APP_NAME}:${SHORT_SHA}', '-f', 'build/web_compose/Dockerfile', '.']
+  # Push the image to Artifact Registry
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', '${_IMAGE_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_APP_NAME}:${SHORT_SHA}']
+  # Update the image tag in the Helm Chart
+- name: 'linuxserver/yq'
+  entrypoint: yq
+  args:
+    - '-i'
+    - '-y'
+    - '.website.image.tag="${SHORT_SHA}"'
+    - 'deploy/helm_charts/dc_website/values.yaml'
+    - $_CHART_LOCATION/values.yaml
+  # Configure kubectl
+- name: gcr.io/cloud-builders/kubectl
+  args:
+    - cluster-info
+  env:
+    - CLOUDSDK_COMPUTE_REGION=$_COMPUTE_LOCATION
+    - CLOUDSDK_CONTAINER_CLUSTER=$_CLUSTER_NAME
+    - KUBECONFIG=/workspace/.kube/config
+  # Bump the chart version
+- name: alpine
+  id: Increment Chart version
+  entrypoint: sh
+  args: [ deploy/helm_charts/increment_version.sh ]
+  # Deploy the image to staging
+- name: gcr.io/$PROJECT_ID/helm:$_HELM_VERSION
+  id: Deploy chart
+  args:
+    - upgrade
+    - -i
+    - data-commons
+    - $_CHART_LOCATION
+    - -f
+    - $_VALUES_FILE
+    - -n
+    - $_NAMESPACE
+  env:
+    - HELM_CONFIG_HOME=/workspace/.helm/
+    - KUBECONFIG=/workspace/.kube/config
+    - TILLERLESS=true
+  # Authenicate Helm with Artifact Registry
+- name: gcr.io/$PROJECT_ID/helm:$_HELM_VERSION
+  id: Authenticate Helm with Registry
+  script: |
+    #!/bin/bash
+    gcloud auth application-default print-access-token | \
+      helm registry login -u oauth2accesstoken --password-stdin \
+      https://${_IMAGE_LOCATION}-docker.pkg.dev
+  automapSubstitutions: true
+  env:
+    - HELM_CONFIG_HOME=/workspace/.helm/
+    - KUBECONFIG=/workspace/.kube/config
+    - TILLERLESS=true
+  # Package Chart
+- name: gcr.io/$PROJECT_ID/helm:$_HELM_VERSION
+  id: Package Chart
+  args:
+    - package
+    - $_CHART_LOCATION
+  env:
+    - HELM_CONFIG_HOME=/workspace/.helm/
+    - KUBECONFIG=/workspace/.kube/config
+    - TILLERLESS=true
+  # Publish Chart
+- name: gcr.io/$PROJECT_ID/helm:$_HELM_VERSION
+  id: Publish Chart
+  script: |
+    #!/bin/bash
+    helm push dc-website-*.tgz \
+      oci://${_IMAGE_LOCATION}-docker.pkg.dev/$_PROJECT_ID/one-org-helm-charts
+  automapSubstitutions: true
+  env:
+    - HELM_CONFIG_HOME=/workspace/.helm/
+    - KUBECONFIG=/workspace/.kube/config
+    - TILLERLESS=true
+  # Set author email
+- name: gcr.io/cloud-builders/git
+  args:
+    - config
+    - --global
+    - user.email
+    - "cloudbuild@one.org"
+  volumes:
+  - name: 'ssh'
+    path: /root/.ssh
+  # Set author name
+- name: gcr.io/cloud-builders/git
+  args:
+    - config
+    - --global
+    - user.name
+    - "Cloud Build"
+  volumes:
+  - name: 'ssh'
+    path: /root/.ssh
+  # Commit Chart changes
+- name: gcr.io/cloud-builders/git
+  args:
+    - commit
+    - -a
+    - -m
+    - "Update image tag - $SHORT_SHA - [ci skip]"
+  volumes:
+  - name: 'ssh'
+    path: /root/.ssh
+  # Push Chart changes
+- name: gcr.io/cloud-builders/git
+  args:
+    - push
+    - git@github.com:$REPO_FULL_NAME
+    - HEAD:$BRANCH_NAME
+  volumes:
+  - name: 'ssh'
+    path: /root/.ssh
+images:
+- '${_IMAGE_LOCATION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/${_APP_NAME}:${SHORT_SHA}'
+substitutions:
+  _IMAGE_LOCATION: us
+  _COMPUTE_LOCATION: us-east4
+  _REPO_NAME: datacommons
+  _PROJECT_ID: one-data-commons
+  _APP_NAME: website-compose
+  _CLUSTER_NAME: staging-k8s-cluster-bngx
+  _CHART_LOCATION: deploy/helm_charts/dc_website
+  _VALUES_FILE: deploy/helm_charts/stagingValues.yaml
+  _NAMESPACE: data-commons
+  _HELM_VERSION: 3.14.4
+availableSecrets:
+  secretManager:
+  - versionName: projects/$PROJECT_ID/secrets/github-ssh-key/versions/latest
+    env: 'SSH_KEY'
+options:
+  logging: CLOUD_LOGGING_ONLY
