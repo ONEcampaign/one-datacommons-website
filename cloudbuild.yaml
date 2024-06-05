@@ -97,7 +97,8 @@ steps:
   id: Publish Chart
   args:
     - push
-    - "dc-website-*.tgz oci://${_IMAGE_LOCATION}-docker.pkg.dev/$_PROJECT_ID/one-org-helm-charts"
+    - "dc-website-*.tgz"
+    - "oci://${_IMAGE_LOCATION}-docker.pkg.dev/$_PROJECT_ID/one-org-helm-charts"
   env:
     - HELM_CONFIG_HOME=/workspace/.helm/
     - KUBECONFIG=/workspace/.kube/config
