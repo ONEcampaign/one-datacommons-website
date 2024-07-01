@@ -25,11 +25,13 @@ from typing import Dict, List, Set
 import urllib
 
 from flask import make_response
+from flask import request
 from google.protobuf import text_format
 
 from server.config import subject_page_pb2
 import server.lib.fetch as fetch
 import server.services.datacommons as dc
+import shared.model.loader as model_loader
 
 _ready_check_timeout = 300  # seconds
 _ready_check_sleep_seconds = 5
@@ -53,7 +55,10 @@ TOPIC_PAGE_CONFIGS = {
     'equity': ['USA', 'US_Places'],
     'poverty': ['USA', 'India'],
     'dev': ['CA', 'asia'],
-    'sdg': ['sdg']
+    'sdg': ['sdg'],
+    'economy': ['africa'],
+    'health': ['africa'],
+    'people': ['africa']
 }
 
 # Levels range from 0 (fastest, least compression), to 9 (slowest, most
@@ -252,6 +257,10 @@ CACHED_GEOJSON_FILES = {
 NL_CHART_TITLE_FILES = [
     'chart_titles_by_sv.json', 'chart_titles_by_sv_sdg.json'
 ]
+
+# Filter out observations with dates in the future for these variable DCIDs
+# when finding the date of highest coverage
+FILTER_FUTURE_OBSERVATIONS_FROM_VARIABLES = frozenset(["Count_Person"])
 
 
 def get_repo_root():
@@ -593,15 +602,21 @@ def _get_highest_coverage_date(observation_entity_counts_by_date,
     max_years_to_check: Only consider entity counts going back this number of
       years
   """
-  # Get observation dates in descending order, and filter out dates in the
-  # future (to exclude erroneous data)
-  todays_date = str(date.today())
+  # Get observation dates in descending order
   descending_observation_dates = [
       observation_date for observation_date in list(
           reversed(observation_entity_counts_by_date.get(
               'observationDates', [])))
-      if observation_date['date'] < todays_date
   ]
+  # Exclude erroneous data for particular variables with dates in the future
+  # TODO: Remove this check once data is corrected in b/327667797
+  if observation_entity_counts_by_date[
+      'variable'] in FILTER_FUTURE_OBSERVATIONS_FROM_VARIABLES:
+    todays_date = str(date.today())
+    descending_observation_dates = [
+        observation_date for observation_date in descending_observation_dates
+        if observation_date['date'] < todays_date
+    ]
   if len(descending_observation_dates) == 0:
     return None
   # Heuristic to fetch the "max_dates_to_check" most recent
@@ -629,3 +644,21 @@ def _get_highest_coverage_date(observation_entity_counts_by_date,
   } for obs in observation_dates]
   best_coverage = max(date_counts, key=lambda date_count: date_count['count'])
   return best_coverage['date']
+
+
+def get_vertex_ai_models():
+  vertex_ai_indexes = model_loader.load_indexes()
+  reranking_models = model_loader.load_models('RERANKING')
+  return dict(vertex_ai_indexes, **reranking_models)
+
+
+def post_body_cache_key():
+  """
+  Builds flask cache key for POST requests using the request path and
+  JSON-encoded post body
+  """
+  body_object = request.get_json()
+  full_path = request.full_path
+  post_body = json.dumps(body_object, sort_keys=True)
+  cache_key = f'{full_path},{post_body}'
+  return cache_key

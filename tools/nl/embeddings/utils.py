@@ -18,7 +18,6 @@ import itertools
 import logging
 import os
 from pathlib import Path
-import re
 from typing import Any, Dict, List, Tuple
 
 from file_util import create_file_handler
@@ -35,26 +34,42 @@ CURATED_ALTERNATIVES_COL = 'Curated_Alternatives'
 OVERRIDE_COL = 'Override_Alternatives'
 ALTERNATIVES_COL = 'Alternatives'
 
+DEFAULT_MODELS_BUCKET = 'datcom-nl-models'
+
 # Col names in the concatenated dataframe.
 COL_ALTERNATIVES = 'sentence'
 
 _EMBEDDINGS_YAML_PATH = "../../../deploy/nl/embeddings.yaml"
 _DEFAULT_EMBEDDINGS_INDEX_TYPE = "medium_ft"
-"""The embeddings filename pattern in embeddings.yaml.
-
-Expect: <embeddings_version>.<fine-tuned-model-version>.<base-model>.csv
-Example: embeddings_sdg_2023_09_12_16_38_04.ft_final_v20230717230459.all-MiniLM-L6-v2.csv
-
-Model version: <fine-tuned-model-version>.<base-model>
-Example: ft_final_v20230717230459.all-MiniLM-L6-v2
-
-If a string matches this pattern, the first group is the model version.
-"""
-_EMBEDDINGS_FILENAME_PATTERN = r"^[^.]+\.([^.]+\.[^.]+)\.csv$"
 
 _CHUNK_SIZE = 100
 
-_MODEL_ENDPOINT_RETRYS = 3
+_MODEL_ENDPOINT_RETRIES = 3
+
+_GCS_PATH_PREFIX = "gs://"
+
+
+def _is_gcs_path(path: str) -> bool:
+  return path.strip().startswith(_GCS_PATH_PREFIX)
+
+
+def _get_gcs_parts(gcs_path: str) -> Tuple[str, str]:
+  return gcs_path[len(_GCS_PATH_PREFIX):].split('/', 1)
+
+
+@dataclass
+class ModelConfig:
+  name: str
+  # the model info as it would come from embeddings.yaml
+  info: Dict[str, str]
+
+
+@dataclass
+# The info for a single embeddings index
+class EmbeddingConfig:
+  # the index info as it would come from embeddings.yaml
+  index_config: Dict[str, str]
+  model_config: ModelConfig
 
 
 @dataclass
@@ -164,24 +179,9 @@ def dedup_texts(df: pd.DataFrame) -> Tuple[Dict[str, str], List[List[str]]]:
   return (text2sv_dict, dup_sv_rows)
 
 
-def _download_file_from_gcs(ctx: Context, file_name: str) -> str:
-  """Downloads the specified file_name from GCS to the ctx.tmp folder.
-
-  Args:
-    ctx: Context which has the GCS bucket information.
-    file_name: the GCS bucket name for the file.
-
-  Returns the path to the local directory where the file was downloaded to.
-  ```
-  """
-  local_file_path = os.path.join(ctx.tmp, file_name)
-  blob = ctx.bucket.get_blob(file_name)
-  blob.download_to_filename(local_file_path)
-  return local_file_path
-
-
 def _download_model_from_gcs(ctx: Context, model_folder_name: str) -> str:
-  # TODO: deprecate this in favor of the function  in nl_server.gcs
+  # TODO: Move download_folder from nl_server.gcs to shared.lib.gcs
+  # and then use that function instead of this one.
   """Downloads a Sentence Tranformer model (or finetuned version) from GCS.
 
   Args:
@@ -196,7 +196,7 @@ def _download_model_from_gcs(ctx: Context, model_folder_name: str) -> str:
       model = SentenceTransformer(downloaded_model_path)
   ```
   """
-  local_dir = ctx.tmp
+  local_dir = os.path.join(ctx.tmp, DEFAULT_MODELS_BUCKET)
   # Get list of files
   blobs = ctx.bucket.list_blobs(prefix=model_folder_name)
   for blob in blobs:
@@ -226,7 +226,7 @@ def build_embeddings(ctx, text2sv: Dict[str, str]) -> pd.DataFrame:
     embeddings = []
     for i, chuck in enumerate(chunk_list(texts, _CHUNK_SIZE)):
       logging.info('texts %d to %d', i * _CHUNK_SIZE, (i + 1) * _CHUNK_SIZE - 1)
-      for i in range(_MODEL_ENDPOINT_RETRYS):
+      for i in range(_MODEL_ENDPOINT_RETRIES):
         try:
           resp = ctx.model_endpoint.predict(instances=chuck,
                                             timeout=600).predictions
@@ -246,41 +246,25 @@ def get_or_download_model_from_gcs(ctx: Context, model_version: str) -> str:
   If the model is already downloaded, it returns the model path.
   Otherwise, it downloads the model to the local file system and returns that path.
   """
-  tuned_model_path: str = ""
+  if _is_gcs_path(model_version):
+    _, folder_name = _get_gcs_parts(model_version)
+  else:
+    folder_name = model_version
+
+  tuned_model_path: str = os.path.join(ctx.tmp, DEFAULT_MODELS_BUCKET,
+                                       folder_name)
 
   # Check if this model is already downloaded locally.
-  if os.path.exists(os.path.join(ctx.tmp, model_version)):
-    tuned_model_path = os.path.join(ctx.tmp, model_version)
+  if os.path.exists(tuned_model_path):
     print(f"Model already downloaded at path: {tuned_model_path}")
   else:
     print(
-        f"Model not previously downloaded locally. Downloading from GCS: {model_version}"
+        f"Model not previously downloaded locally. Downloading from GCS: {folder_name}"
     )
-    tuned_model_path = _download_model_from_gcs(ctx, model_version)
+    tuned_model_path = _download_model_from_gcs(ctx, folder_name)
     print(f"Model downloaded locally to: {tuned_model_path}")
 
   return tuned_model_path
-
-
-def get_or_download_file_from_gcs(ctx: Context, file_name: str) -> str:
-  """Returns the local file path, downloading it if needed.
-
-  If the file is already downloaded, it returns the file path.
-  Otherwise, it downloads the file from GCS to the local file system and returns that path.
-  """
-  local_file_path: str = os.path.join(ctx.tmp, file_name)
-
-  # Check if this model is already downloaded locally.
-  if os.path.exists(local_file_path):
-    print(f"File already downloaded at path: {local_file_path}")
-  else:
-    print(
-        f"File not previously downloaded locally. Downloading from GCS: {file_name}"
-    )
-    local_file_path = _download_file_from_gcs(ctx, file_name)
-    print(f"File downloaded locally to: {local_file_path}")
-
-  return local_file_path
 
 
 def get_ft_model_from_gcs(ctx: Context,
@@ -289,44 +273,48 @@ def get_ft_model_from_gcs(ctx: Context,
   return SentenceTransformer(model_path)
 
 
-def get_default_ft_model_version() -> str:
-  """Gets the default index's (i.e. 'medium_ft') model version from embeddings.yaml.
-
-  It will raise an error if the file or default index is not found or
-  if the value does not conform to the pattern:
-  <embeddings_version>.<fine-tuned-model-version>.<base-model>.csv
-  Example: embeddings_sdg_2023_09_12_16_38_04.ft_final_v20230717230459.all-MiniLM-L6-v2.csv
+def _get_default_ft_model(embeddings_yaml_file_path: str) -> ModelConfig:
+  """Gets the default index's model version from embeddings.yaml.
   """
-  return _get_default_ft_model_version(_EMBEDDINGS_YAML_PATH)
+  return _get_default_ft_embeddings_info(embeddings_yaml_file_path).model_config
 
 
-def get_default_ft_embeddings_file_name() -> str:
-  """Gets the default index's (i.e. 'medium_ft') embeddings file name from embeddings.yaml.
+def get_default_ft_model() -> ModelConfig:
+  """Gets the default index's model version from embeddings.yaml.
   """
-  return _get_default_ft_embeddings_file_name(_EMBEDDINGS_YAML_PATH)
+  return _get_default_ft_model(_EMBEDDINGS_YAML_PATH)
 
 
-def _get_default_ft_embeddings_file_name(embeddings_yaml_file_path: str) -> str:
+def get_default_ft_embeddings_info() -> EmbeddingConfig:
+  return _get_default_ft_embeddings_info(_EMBEDDINGS_YAML_PATH)
+
+
+def _get_default_ft_embeddings_info(
+    embeddings_yaml_file_path: str) -> EmbeddingConfig:
   with open(embeddings_yaml_file_path, "r") as f:
     data = yaml.full_load(f)
-    if _DEFAULT_EMBEDDINGS_INDEX_TYPE not in data:
+    if _DEFAULT_EMBEDDINGS_INDEX_TYPE not in data['indexes']:
       raise ValueError(f"{_DEFAULT_EMBEDDINGS_INDEX_TYPE} not found.")
-    return data[_DEFAULT_EMBEDDINGS_INDEX_TYPE]
-
-
-def _get_default_ft_model_version(embeddings_yaml_file_path: str) -> str:
-  embeddings_file_name = _get_default_ft_embeddings_file_name(
-      embeddings_yaml_file_path)
-  matcher = re.match(_EMBEDDINGS_FILENAME_PATTERN, embeddings_file_name)
-  if not matcher:
-    raise ValueError(
-        f"Invalid embeddings filename value: {embeddings_file_name}")
-  return matcher.group(1)
+    index_info = data['indexes'][_DEFAULT_EMBEDDINGS_INDEX_TYPE]
+    model_name = index_info['model']
+    model_info = ModelConfig(name=model_name, info=data['models'][model_name])
+    return EmbeddingConfig(index_config=index_info, model_config=model_info)
 
 
 def save_embeddings_yaml_with_only_default_ft_embeddings(
-    embeddings_yaml_file_path: str, default_ft_embeddings_file_name: str):
-  data = {_DEFAULT_EMBEDDINGS_INDEX_TYPE: default_ft_embeddings_file_name}
+    embeddings_yaml_file_path: str,
+    default_ft_embeddings_info: EmbeddingConfig):
+  model_info = default_ft_embeddings_info.model_config
+  data = {
+      'version': 1,
+      'indexes': {
+          _DEFAULT_EMBEDDINGS_INDEX_TYPE:
+              default_ft_embeddings_info.index_config
+      },
+      'models': {
+          model_info.name: model_info.info
+      }
+  }
   with open(embeddings_yaml_file_path, "w") as f:
     yaml.dump(data, f)
 

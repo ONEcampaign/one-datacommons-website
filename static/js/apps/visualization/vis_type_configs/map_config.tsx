@@ -114,7 +114,6 @@ export function getChartArea(
           enclosedPlaceType={appContext.enclosedPlaceType}
           svgChartHeight={chartHeight}
           title={statVarLabel + " (${date})"}
-          showLoadingSpinner={true}
           allowZoom={true}
         />
         <ChartFooter
@@ -218,7 +217,6 @@ function getFooter(): string {
 
 export const MAP_CONFIG = {
   displayName: "Map Explorer",
-  icon: "public",
   svHierarchyType: StatVarHierarchyType.MAP,
   svHierarchyNumExistence: 10,
   singlePlace: true,

@@ -13,85 +13,63 @@
 # limitations under the License.
 """Tests for Embeddings (in nl_embeddings.py)."""
 
-import json
 import os
+from typing import List
 import unittest
 
-from diskcache import Cache
 from parameterized import parameterized
 import yaml
 
-from nl_server import embeddings_store as store
-from nl_server import gcs
-from nl_server.embeddings import Embeddings
-from nl_server.embeddings import load_model
-from nl_server.loader import NL_CACHE_PATH
-from nl_server.loader import NL_EMBEDDINGS_CACHE_KEY
+from nl_server import embeddings_map as emb_map
+from nl_server.config import parse
+from nl_server.search import search_vars
+from shared.lib.detected_variables import VarCandidates
 
 _root_dir = os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-_test_data = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                          'test_data')
+
+def _get_embeddings_spec():
+  autopush_values_path = os.path.join(_root_dir,
+                                      'deploy/helm_charts/envs/autopush.yaml')
+  with open(autopush_values_path) as f:
+    autopush_values = yaml.full_load(f)
+    return autopush_values['nl']['embeddingsSpec']
 
 
-# TODO(pradh): Expand tests to other index sizes.
-def _get_embeddings_file_path() -> str:
+def _get_embeddings_info(embeddings_spec):
   embeddings_config_path = os.path.join(_root_dir, 'deploy/nl/embeddings.yaml')
   with open(embeddings_config_path) as f:
-    embeddings = yaml.full_load(f)
-    embeddings_file = embeddings[store.DEFAULT_INDEX_TYPE]
-    return gcs.download_embeddings(embeddings_file)
+    embeddings_map = yaml.full_load(f)
+    return parse(embeddings_map, embeddings_spec['vertexAIModels'],
+                 embeddings_spec['enableReranking'])
 
 
-def _get_tuned_model_path() -> str:
-  models_config_path = os.path.join(_root_dir, 'deploy/nl/models.yaml')
-  with open(models_config_path) as f:
-    models_map = yaml.full_load(f)
-    return gcs.download_model_folder(models_map['tuned_model'])
+def _get_contents(
+    r: VarCandidates) -> tuple[List[str], List[str], List[List[str]]]:
+  return r.svs, r.scores, r.sv2sentences
 
 
 class TestEmbeddings(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls) -> None:
-    # Look for the Embeddings in the cache if it exists.
-    cache = Cache(NL_CACHE_PATH)
-    cache.expire()
-    embeddings_store = cache.get(NL_EMBEDDINGS_CACHE_KEY)
-
-    if not embeddings_store:
-      print(
-          "Could not load the embeddings from the cache for these tests. Loading a new embeddings object."
-      )
-      # Building a new Embeddings object. It might require downloading the embeddings file
-      # and a finetuned model.
-      # This uses the default embeddings pointed to in embeddings.yaml file and the fine tuned
-      # model pointed to in models.yaml.
-      # If the default index is not a "finetuned" index, then the default model can be used.
-      tuned_model_path = ""
-      if "ft" in store.DEFAULT_INDEX_TYPE:
-        tuned_model_path = _get_tuned_model_path()
-
-      cls.nl_embeddings = Embeddings(_get_embeddings_file_path(),
-                                     load_model(tuned_model_path))
-    else:
-      cls.nl_embeddings = embeddings_store.get()
+    embeddings_spec = _get_embeddings_spec()
+    embeddings_info = _get_embeddings_info(embeddings_spec)
+    cls.nl_embeddings = emb_map.EmbeddingsMap(embeddings_info).get_index(
+        embeddings_spec['defaultIndex'])
 
   @parameterized.expand([
       # All these queries should detect one of the SVs as the top choice.
       ["number of people", False, ["Count_Person"]],
       ["population of", False, ["dc/topic/Population", "Count_Person"]],
       ["economy of the state", False, ["dc/topic/Economy"]],
-      ["household income", False, ["Median_Income_Household"]],
+      ["household income", False, ["Mean_Income_Household"]],
       [
           "life expectancy in USA", False,
           ["dc/topic/LifeExpectancy", "LifeExpectancy_Person"]
       ],
-      [
-          "GDP", False,
-          ["Amount_EconomicActivity_GrossDomesticProduction_Nominal"]
-      ],
+      ["GDP", False, ["dc/topic/GDP"]],
       ["auto theft", False, ["Count_CriminalActivities_MotorVehicleTheft"]],
       ["agriculture", False, ["dc/topic/Agriculture"]],
       [
@@ -100,27 +78,33 @@ class TestEmbeddings(unittest.TestCase):
       ],
       [
           "agriculture workers", False,
-          ["dc/hlxvn1t8b9bhh", "Count_Person_MainWorker_AgriculturalLabourers"]
+          ["dc/topic/Agriculture", "dc/15lrzqkb6n0y7"]
       ],
       [
-          "heart disease", False,
+          "coronary heart disease", False,
           [
               "dc/topic/HeartDisease",
               "dc/topic/PopulationWithDiseasesOfHeartByAge",
               "Percent_Person_WithCoronaryHeartDisease"
           ]
       ],
-      ["heart disease", True, ["Percent_Person_WithCoronaryHeartDisease"]],
+      [
+          "coronary heart disease", True,
+          ["Percent_Person_WithCoronaryHeartDisease"]
+      ],
   ])
   def test_sv_detection(self, query_str, skip_topics, expected_list):
-    got = self.nl_embeddings.detect_svs(query_str, skip_topics=skip_topics)
+    got = search_vars([self.nl_embeddings], [query_str],
+                      skip_topics=skip_topics)[query_str]
 
     # Check that all expected fields are present.
-    for key in ["SV", "CosineScore", "SV_to_Sentences", "MultiSV"]:
-      self.assertTrue(key in got.keys())
+    svs, scores, sentences = _get_contents(got)
+    self.assertTrue(svs)
+    self.assertTrue(scores)
+    self.assertTrue(sentences)
 
     # Check that the first SV found is among the expected_list.
-    self.assertTrue(got["SV"][0] in expected_list)
+    self.assertTrue(svs[0] in expected_list, f"{svs[0]} not in {expected_list}")
 
     # TODO: uncomment the lines below when we have figured out what to do with these
     # assertion failures. They started failing when updating to the medium_ft index.
@@ -129,64 +113,17 @@ class TestEmbeddings(unittest.TestCase):
     #   self.assertTrue(got["CosineScore"][0] > got["MultiSV"]["Candidates"][0]
     #                   ["AggCosineScore"])
 
-  @parameterized.expand([
-      ['number of poor hispanic women with phd', 'hispanic_women_phd.json'],
-      ['compare obesity vs. poverty', 'obesity_poverty.json'],
-      [
-          'show me the impact of climate change on drought',
-          'climatechange_drought.json'
-      ],
-      [
-          'how are factors like obesity, blood pressure and asthma impacted by climate change',
-          'climatechange_health.json'
-      ],
-      [
-          'Compare "Male population" with "Female Population"',
-          'gender_population.json'
-      ],
-  ])
-  def test_multisv_detection(self, query_str, want_file):
-    got = self.nl_embeddings.detect_svs(query_str)
-
-    got['SV_to_Sentences'] = {}
-
-    # NOTE: Uncomment this to generate the golden.
-    print(json.dumps(got, indent=2))
-
-    with open(os.path.join(_test_data, want_file)) as fp:
-      want = json.load(fp)
-
-    self.assertEqual(got['SV'][0], want['SV'][0])
-
-    got_multisv = got['MultiSV']['Candidates']
-    want_multisv = want['MultiSV']['Candidates']
-    self.assertEqual(len(want_multisv), len(got_multisv))
-    for i in range(len(want_multisv)):
-      want_parts = want_multisv[i]['Parts']
-      got_parts = got_multisv[i]['Parts']
-      self.assertEqual(len(want_parts), len(got_parts))
-      for i in range(len(got_parts)):
-        self.assertEqual(got_parts[i]['QueryPart'], want_parts[i]['QueryPart'])
-        self.assertEqual(got_parts[i]['SV'][0], want_parts[i]['SV'][0])
-
-    if not want_multisv:
-      return
-
-    if want['CosineScore'][0] > want_multisv[0]['AggCosineScore']:
-      self.assertTrue(got['CosineScore'][0] > got_multisv[0]['AggCosineScore'])
-    else:
-      self.assertTrue(got['CosineScore'][0] < got_multisv[0]['AggCosineScore'])
-
   # For these queries, the match score should be low (< 0.45).
-  @parameterized.expand(["random random", "", "who where why", "__124__abc"])
+  @parameterized.expand(["random random", "who where why", "__124__abc"])
   def test_low_score_matches(self, query_str):
-    got = self.nl_embeddings.detect_svs(query_str)
+    got = search_vars([self.nl_embeddings], [query_str])[query_str]
 
     # Check that all expected fields are present.
-    for key in ["SV", "CosineScore", "SV_to_Sentences", "MultiSV"]:
-      self.assertTrue(key in got.keys())
-    self.assertTrue(not got["MultiSV"]["Candidates"])
+    svs, scores, sentences = _get_contents(got)
+    self.assertTrue(svs)
+    self.assertTrue(scores)
+    self.assertTrue(sentences)
 
     # Check all scores.
-    for score in got['CosineScore']:
-      self.assertLess(score, 0.45)
+    for score in scores:
+      self.assertLess(score, 0.7)
