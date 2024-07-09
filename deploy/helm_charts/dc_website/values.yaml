@@ -3,7 +3,7 @@ website:
   image:
     project: datcom-ci
     pullPolicy: Always
-    tag: d669408
+    tag: ddcc109
   flaskEnv: custom
   gcsDataPath: gs://one-datacommons-imports-prod/dec7
   iap:
@@ -99,27 +99,18 @@ nl:
   memory: 2G
   workers: 1
   embeddingsSpec:
-    defaultIndex: ""
+    defaultIndex: ''
     enabledIndexes: []
-    vertexAIModels:
+    vertexAIModels: null
     enableReranking: false
-
-
-###############################################################################
-# Config for Stat Var Groups which is shared between Website and Mixer
-###############################################################################
 svg:
   blocklistFile: []
 nodejs:
   enabled: false
-  env: "gke"
+  env: gke
   replicas: null
   apiRoot: null
   nodePool: null
-
-###############################################################################
-# Config for Periodic Testing CronJob
-###############################################################################
 cronTesting:
   enabled: false
   webApiRoot: null
@@ -128,5 +119,4 @@ cronTesting:
   enableSanity: true
   enableAdversarial: true
   nodePool: null
-  # schedule to run the cron tests on
   schedule: null

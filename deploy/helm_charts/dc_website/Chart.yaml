@@ -16,4 +16,4 @@ apiVersion: v2
 name: dc-website
 description: A Helm chart for Data Commons Website application.
 type: application
-version: 0.1.0
+version: 0.1.1
