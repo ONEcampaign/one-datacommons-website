@@ -21,17 +21,9 @@ steps:
     - KUBECONFIG=/workspace/.kube/config
     - TILLERLESS=true
 substitutions:
-  _IMAGE_LOCATION: us
   _COMPUTE_LOCATION: us-east4
-  _REPO_NAME: datacommons
-  _PROJECT_ID: one-data-commons
-  _APP_NAME: website-compose
   _CLUSTER_NAME: live-k8s-cluster-ezyd
   _CHART_LOCATION: deploy/helm_charts/dc_website
   _NAMESPACE: data-commons
-availableSecrets:
-  secretManager:
-  - versionName: projects/$PROJECT_ID/secrets/github-ssh-key/versions/latest
-    env: 'SSH_KEY'
 options:
   logging: CLOUD_LOGGING_ONLY
