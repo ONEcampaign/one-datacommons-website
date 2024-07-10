@@ -19,10 +19,10 @@ from typing import List
 from flask import current_app
 
 from server.lib import util as libutil
-import server.lib.explore.existence as ext
 from server.lib.nl.common import constants
 from server.lib.nl.common import utils
 from server.lib.nl.common import variable
+import server.lib.nl.common.existence_util as ext
 from server.lib.nl.common.rank_utils import filter_and_rank_places
 from server.lib.nl.common.rank_utils import filter_and_rank_places_per_capita
 from server.lib.nl.common.utterance import ChartOriginType
@@ -87,12 +87,17 @@ def populate(state: PopulateState,
 
     if not utils.has_map(state.place_type, places[0]):
       chart_vars.skip_map_for_ranking = True
+
+    sv_place_latest_date = ext.get_sv_place_latest_date(chart_vars.svs, places,
+                                                        state.place_type,
+                                                        state.exist_checks)
     return add_chart_to_utterance(ChartType.RANKING_WITH_MAP,
                                   state,
                                   chart_vars,
                                   places,
                                   chart_origin,
-                                  ranking_count=ranking_count)
+                                  ranking_count=ranking_count,
+                                  sv_place_latest_date=sv_place_latest_date)
 
 
 def _compute_answer_places(state: PopulateState, place: List[Place], sv: str):

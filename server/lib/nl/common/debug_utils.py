@@ -34,20 +34,21 @@ def result_with_debug_info(data_dict: Dict, status: str,
       'CosineScore':
           query_detection.svs_detected.single_sv.scores,
       'SV_to_Sentences':
-          query_detection.svs_detected.single_sv.sv2sentences,
+          query_detection.svs_detected.single_sv.sv2sentences_dict(),
       'MultiSV':
           dvars.multivar_candidates_to_dict(
               query_detection.svs_detected.multi_sv),
       'Query':
           query_detection.svs_detected.query
   }
-  svs_to_sentences = query_detection.svs_detected.single_sv.sv2sentences
+  svs_to_sentences = query_detection.svs_detected.single_sv.sv2sentences_dict()
   props_dict = {
       'PROP': query_detection.svs_detected.prop.svs,
       'CosineScore': query_detection.svs_detected.prop.scores,
-      'PROP_to_Sentences': query_detection.svs_detected.prop.sv2sentences
+      'PROP_to_Sentences':
+          query_detection.svs_detected.prop.sv2sentences_dict()
   }
-  props_to_sentences = query_detection.svs_detected.prop.sv2sentences
+  props_to_sentences = query_detection.svs_detected.prop.sv2sentences_dict()
 
   if svs_dict is None or not svs_dict:
     svs_dict = _empty_svs_score_dict()
@@ -107,7 +108,6 @@ def result_with_debug_info(data_dict: Dict, status: str,
       'status': status,
       'original_query': query_detection.original_query,
       'detection_type': query_detection.detector,
-      'llm_api_type': query_detection.llm_api,
       'place_detection_type': "dc",
       'sv_matching': svs_dict,
       'svs_to_sentences': svs_to_sentences,

@@ -17,17 +17,18 @@
 
 from typing import Dict, List
 
-from server.lib.explore.params import QueryMode
 from server.lib.fetch import property_values
 from server.lib.nl.common import constants
 from server.lib.nl.common import counters as ctr
 from server.lib.nl.common.utterance import QueryType
 from server.lib.nl.common.utterance import Utterance
+from server.lib.nl.detection.types import ActualDetectorType
 from server.lib.nl.detection.types import ClassificationType
 from server.lib.nl.detection.types import Detection
 from server.lib.nl.detection.types import NLClassifier
 from server.lib.nl.detection.types import PlaceDetection
 from server.lib.nl.detection.types import SVDetection
+from server.lib.nl.explore.params import QueryMode
 from server.lib.nl.fulfillment.types import ChartSpec
 from server.lib.nl.fulfillment.types import ChartType
 from shared.lib import constants as shared_constants
@@ -130,8 +131,11 @@ def get_top_sv_score(detection: Detection, cspec: ChartSpec) -> float:
   return 0
 
 
-def empty_svs_score_dict():
-  return {"SV": [], "CosineScore": [], "SV_to_Sentences": {}, "MultiSV": {}}
+def empty_var_detection_result() -> dvars.VarDetectionResult:
+  return dvars.VarDetectionResult(
+      single_var=empty_var_candidates(),
+      multi_var=dvars.MultiVarCandidates(candidates=[]),
+      model_threshold=shared_constants.SV_SCORE_DEFAULT_THRESHOLD)
 
 
 def empty_var_candidates():
@@ -142,20 +146,20 @@ def empty_var_candidates():
 # 1. sv candidates: svs that are Statistical Variable or Topic
 # 2. prop candidates: any other detected svs.
 def _get_sv_and_prop_candidates(
-    svs_scores_dict: Dict,
+    var_detection_result: dvars.VarDetectionResult,
     allow_triples: bool = False
 ) -> tuple[dvars.VarCandidates, dvars.VarCandidates]:
   sv_candidates = empty_var_candidates()
   prop_candidates = empty_var_candidates()
   if not allow_triples:
     # If triples are not allowed, assume all detected svs are sv type
-    sv_candidates = dvars.VarCandidates(
-        svs=svs_scores_dict['SV'],
-        scores=svs_scores_dict['CosineScore'],
-        sv2sentences=svs_scores_dict['SV_to_Sentences'])
+    sv_candidates = var_detection_result.single_var
     return sv_candidates, prop_candidates
-  sv_types = property_values(svs_scores_dict['SV'], 'typeOf')
-  for i, sv in enumerate(svs_scores_dict['SV']):
+
+  svar_result = var_detection_result.single_var
+
+  sv_types = property_values(svar_result.svs, 'typeOf')
+  for i, sv in enumerate(svar_result.svs):
     sv_type_list = sv_types.get(sv, [])
     # an sv is considered an sv if any of its types are Statistical Variable or
     # Topic. We want to check if an sv is type Statistical Variable or Topic
@@ -172,26 +176,32 @@ def _get_sv_and_prop_candidates(
         break
     candidate_to_add = sv_candidates if is_sv else prop_candidates
     candidate_to_add.svs.append(sv)
-    candidate_to_add.scores.append(svs_scores_dict['CosineScore'][i])
-    candidate_to_add.sv2sentences[sv] = svs_scores_dict['SV_to_Sentences'].get(
-        sv, [])
+    candidate_to_add.scores.append(svar_result.scores[i])
+    candidate_to_add.sv2sentences[sv] = svar_result.sv2sentences.get(sv, [])
   return sv_candidates, prop_candidates
 
 
-def create_sv_detection(
-    query: str,
-    svs_scores_dict: Dict,
-    sv_threshold: float = shared_constants.SV_SCORE_DEFAULT_THRESHOLD,
-    allow_triples: bool = False) -> SVDetection:
-  sv_candidates, prop_candidates = _get_sv_and_prop_candidates(
-      svs_scores_dict, allow_triples)
+def compute_final_threshold(model_threshold: float,
+                            threshold_override: float) -> float:
+  # Pick the higher of the two.
+  return max(model_threshold, threshold_override)
 
+
+def create_sv_detection(query: str,
+                        var_detection_result: dvars.VarDetectionResult,
+                        sv_threshold_override: float = 0,
+                        allow_triples: bool = False) -> SVDetection:
+  sv_candidates, prop_candidates = _get_sv_and_prop_candidates(
+      var_detection_result, allow_triples)
+
+  sv_threshold = compute_final_threshold(var_detection_result.model_threshold,
+                                         sv_threshold_override)
   return SVDetection(query=query,
                      single_sv=sv_candidates,
-                     multi_sv=dvars.dict_to_multivar_candidates(
-                         svs_scores_dict['MultiSV']),
+                     multi_sv=var_detection_result.multi_var,
                      prop=prop_candidates,
-                     sv_threshold=sv_threshold)
+                     sv_threshold=sv_threshold,
+                     model_threshold=var_detection_result.model_threshold)
 
 
 def empty_place_detection() -> PlaceDetection:
@@ -280,3 +290,9 @@ def remove_date_from_query(query: str,
     date_trigger = cl.attributes.date_trigger_strings[0]
     processed_query = processed_query.replace(date_trigger, "", 1)
   return processed_query
+
+
+def is_llm_detection(d: Detection) -> bool:
+  return d.detector in [
+      ActualDetectorType.LLM, ActualDetectorType.HybridLLMFull
+  ]

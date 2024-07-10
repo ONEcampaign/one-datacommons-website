@@ -21,12 +21,13 @@ fi
 
 nginx -c /workspace/nginx.conf
 
-echo $GCS_DATA_PATH
+echo "GCS Data Path: $GCS_DATA_PATH"
 if [[ $GCS_DATA_PATH != "" ]]; then
     export USER_DATA_PATH=$GCS_DATA_PATH
 else
     export USER_DATA_PATH=/userdata/
 fi
+export IS_CUSTOM_DC=true
 
 /go/bin/mixer \
     --use_bigquery=false \

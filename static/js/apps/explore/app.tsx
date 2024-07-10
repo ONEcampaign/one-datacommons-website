@@ -43,10 +43,7 @@ import {
   GA_PARAM_TOPIC,
   triggerGAEvent,
 } from "../../shared/ga_events";
-import {
-  QueryResult,
-  UserMessageInfo,
-} from "../../types/app/nl_interface_types";
+import { QueryResult, UserMessageInfo } from "../../types/app/explore_types";
 import { SubjectPageMetadata } from "../../types/subject_page_types";
 import { getUpdatedHash } from "../../utils/url_utils";
 import { AutoPlay } from "./autoplay";
@@ -183,8 +180,12 @@ export function App(props: { isDemo: boolean }): JSX.Element {
 
   function processFulfillData(fulfillData: any, shouldSetQuery: boolean): void {
     setDebugData(fulfillData["debug"]);
+    const userMessage = {
+      msgList: fulfillData["userMessages"] || [],
+      showForm: !!fulfillData["showForm"],
+    };
     if (!isFulfillDataValid) {
-      setUserMessage(fulfillData["userMessage"]);
+      setUserMessage(userMessage);
       setLoadingStatus(LoadingStatus.FAILED);
       return;
     }
@@ -193,18 +194,19 @@ export function App(props: { isDemo: boolean }): JSX.Element {
       name: fulfillData["place"]["name"],
       types: [fulfillData["place"]["place_type"]],
     };
+    const relatedThings = fulfillData["relatedThings"] || {};
     const pageMetadata: SubjectPageMetadata = {
       place: mainPlace,
       places: fulfillData["places"],
       pageConfig: fulfillData["config"],
-      childPlaces: fulfillData["relatedThings"]["childPlaces"],
-      peerPlaces: fulfillData["relatedThings"]["peerPlaces"],
-      parentPlaces: fulfillData["relatedThings"]["parentPlaces"],
-      parentTopics: fulfillData["relatedThings"]["parentTopics"],
-      childTopics: fulfillData["relatedThings"]["childTopics"],
-      peerTopics: fulfillData["relatedThings"]["peerTopics"],
-      exploreMore: fulfillData["relatedThings"]["exploreMore"],
-      mainTopics: fulfillData["relatedThings"]["mainTopics"],
+      childPlaces: relatedThings["childPlaces"],
+      peerPlaces: relatedThings["peerPlaces"],
+      parentPlaces: relatedThings["parentPlaces"],
+      parentTopics: relatedThings["parentTopics"],
+      childTopics: relatedThings["childTopics"],
+      peerTopics: relatedThings["peerTopics"],
+      exploreMore: relatedThings["exploreMore"],
+      mainTopics: relatedThings["mainTopics"],
       sessionId: "session" in fulfillData ? fulfillData["session"]["id"] : "",
     };
     if (
@@ -241,10 +243,6 @@ export function App(props: { isDemo: boolean }): JSX.Element {
         }
       }
     }
-    const userMessage = {
-      msgList: fulfillData["userMessages"] || [],
-      showForm: !!fulfillData["showForm"],
-    };
     savedContext.current = fulfillData["context"] || [];
     setPageMetadata(pageMetadata);
     setUserMessage(userMessage);
@@ -269,11 +267,11 @@ export function App(props: { isDemo: boolean }): JSX.Element {
     const topic = getSingleParam(hashParams[URL_HASH_PARAMS.TOPIC]);
     const place = getSingleParam(hashParams[URL_HASH_PARAMS.PLACE]);
     const dc = getSingleParam(hashParams[URL_HASH_PARAMS.DC]);
+    const idx = getSingleParam(hashParams[URL_HASH_PARAMS.IDX]);
     const disableExploreMore = getSingleParam(
       hashParams[URL_HASH_PARAMS.DISABLE_EXPLORE_MORE]
     );
     const detector = getSingleParam(hashParams[URL_HASH_PARAMS.DETECTOR]);
-    const llmApi = getSingleParam(hashParams[URL_HASH_PARAMS.LLM_API]);
     const testMode = getSingleParam(hashParams[URL_HASH_PARAMS.TEST_MODE]);
     const i18n = getSingleParam(hashParams[URL_HASH_PARAMS.I18N]);
     const defaultPlace = getSingleParam(
@@ -281,6 +279,7 @@ export function App(props: { isDemo: boolean }): JSX.Element {
     );
     const mode = getSingleParam(hashParams[URL_HASH_PARAMS.MODE]);
     let client = getSingleParam(hashParams[URL_HASH_PARAMS.CLIENT]);
+    const reranker = getSingleParam(hashParams[URL_HASH_PARAMS.RERANKER]);
 
     let fulfillmentPromise: Promise<any>;
     const gaTitle = query
@@ -299,14 +298,15 @@ export function App(props: { isDemo: boolean }): JSX.Element {
         query,
         savedContext.current,
         dc,
+        idx,
         disableExploreMore,
         detector,
-        llmApi,
         testMode,
         i18n,
         client,
         defaultPlace,
-        mode
+        mode,
+        reranker
       )
         .then((resp) => {
           processFulfillData(resp, false);
@@ -409,21 +409,19 @@ const fetchDetectAndFufillData = async (
   query: string,
   savedContext: any,
   dc: string,
+  idx: string,
   disableExploreMore: string,
   detector: string,
-  llmApi: string,
   testMode: string,
   i18n: string,
   client: string,
   defaultPlace: string,
-  mode: string
+  mode: string,
+  reranker: string
 ) => {
   const argsMap = new Map<string, string>();
   if (detector) {
     argsMap.set(URL_HASH_PARAMS.DETECTOR, detector);
-  }
-  if (llmApi) {
-    argsMap.set(URL_HASH_PARAMS.LLM_API, llmApi);
   }
   if (testMode) {
     argsMap.set(URL_HASH_PARAMS.TEST_MODE, testMode);
@@ -439,6 +437,12 @@ const fetchDetectAndFufillData = async (
   }
   if (mode) {
     argsMap.set(URL_HASH_PARAMS.MODE, mode);
+  }
+  if (reranker) {
+    argsMap.set(URL_HASH_PARAMS.RERANKER, reranker);
+  }
+  if (idx) {
+    argsMap.set(URL_HASH_PARAMS.IDX, idx);
   }
   const args = argsMap.size > 0 ? `&${generateArgsParams(argsMap)}` : "";
   try {

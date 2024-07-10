@@ -81,8 +81,8 @@ metadata:
 data:
   embeddings.yaml: {{ required "NL embeddings file is required" .Values.nl.embeddings | quote }}
   models.yaml: {{ required "NL models file is required" .Values.nl.models | quote }}
+  embeddings_spec.json: {{ .Values.nl.embeddingsSpec | toJson | quote }}
 {{- end }}
-
 
 {{- if .Values.website.redis.enabled }}
 ---
@@ -118,4 +118,5 @@ data:
   nodejsApiRoot: {{ .Values.cronTesting.nodejsApiRoot | quote }}
   screenshotDomain: {{ .Values.cronTesting.screenshotDomain | quote }}
   enableSanity: {{ .Values.cronTesting.enableSanity | quote }}
+  enableAdversarial: {{ .Values.cronTesting.enableAdversarial | quote }}
 {{- end }}

@@ -14,6 +14,7 @@
 
 import json
 import logging
+from typing import Dict, List
 
 from flask import Blueprint
 from flask import current_app
@@ -22,26 +23,42 @@ from markupsafe import escape
 
 from nl_server import config
 from nl_server import loader
-from shared.lib.constants import SV_SCORE_DEFAULT_THRESHOLD
+from nl_server import search
+from nl_server.embeddings import Embeddings
+from nl_server.embeddings_map import EmbeddingsMap
+from shared.lib import constants
+from shared.lib.custom_dc_util import is_custom_dc
+from shared.lib.detected_variables import var_candidates_to_dict
+from shared.lib.detected_variables import VarCandidates
 
 bp = Blueprint('main', __name__, url_prefix='/')
 
 
 @bp.route('/healthz')
 def healthz():
-  nl_embeddings = current_app.config[config.NL_EMBEDDINGS_KEY].get(
-      config.DEFAULT_INDEX_TYPE)
-  result = nl_embeddings.detect_svs('life expectancy',
-                                    SV_SCORE_DEFAULT_THRESHOLD,
-                                    skip_multi_sv=True)
-  if result.get('SV'):
-    return 'OK', 200
+  default_index_type = current_app.config[
+      config.EMBEDDINGS_SPEC_KEY].default_index
+  if not default_index_type:
+    logging.warning('Health Check Failed: Default index name empty!')
+    return 'Service Unavailable', 500
+  nl_embeddings: Embeddings = current_app.config[
+      config.NL_EMBEDDINGS_KEY].get_index(default_index_type)
+  if nl_embeddings:
+    query = nl_embeddings.store.healthcheck_query
+    result: VarCandidates = search.search_vars([nl_embeddings],
+                                               [query]).get(query)
+    if result and result.svs:
+      return 'OK', 200
+    else:
+      logging.warning(f'Health Check Failed: query "{query}" failed!')
+  else:
+    logging.warning('Health Check Failed: Default index not yet loaded!')
   return 'Service Unavailable', 500
 
 
-@bp.route('/api/search_sv/', methods=['GET'])
-def search_sv():
-  """Returns a dictionary with the following keys and values
+@bp.route('/api/search_vars/', methods=['POST'])
+def search_vars():
+  """Returns a dictionary with each input query as key and value as:
 
   {
     'SV': List[str]
@@ -49,31 +66,35 @@ def search_sv():
     'SV_to_Sentences': Dict[str, str]
   }
   """
-  query = str(escape(request.args.get('q')))
-  idx = str(escape(request.args.get('idx', config.DEFAULT_INDEX_TYPE)))
+  queries = request.json.get('queries', [])
+  queries = [str(escape(q)) for q in queries]
+
+  default_index_type = current_app.config[
+      config.EMBEDDINGS_SPEC_KEY].default_index
+  idx = str(escape(request.args.get('idx', default_index_type)))
   if not idx:
-    idx = config.DEFAULT_INDEX_TYPE
+    idx = default_index_type
 
-  threshold = escape(request.args.get('threshold'))
-  if threshold:
-    try:
-      threshold = float(threshold)
-    except Exception:
-      logging.error(f'Found non-float threshold value: {threshold}')
-      threshold = SV_SCORE_DEFAULT_THRESHOLD
-  else:
-    threshold = SV_SCORE_DEFAULT_THRESHOLD
-
-  skip_multi_sv = False
-  if request.args.get('skip_multi_sv'):
-    skip_multi_sv = True
+  emb_map: EmbeddingsMap = current_app.config[config.NL_EMBEDDINGS_KEY]
 
   skip_topics = False
   if request.args.get('skip_topics'):
     skip_topics = True
-  nl_embeddings = current_app.config[config.NL_EMBEDDINGS_KEY].get(idx)
-  return json.dumps(
-      nl_embeddings.detect_svs(query, threshold, skip_multi_sv, skip_topics))
+
+  reranker_name = str(escape(request.args.get('reranker', '')))
+  reranker_model = emb_map.get_reranking_model(
+      reranker_name) if reranker_name else None
+
+  nl_embeddings = _get_indexes(emb_map, idx)
+  debug_logs = {'sv_detection_query_index_type': idx}
+  results = search.search_vars(nl_embeddings, queries, skip_topics,
+                               reranker_model, debug_logs)
+  q2result = {q: var_candidates_to_dict(result) for q, result in results.items()}
+  return json.dumps({
+      'queryResults': q2result,
+      'scoreThreshold': _get_threshold(nl_embeddings),
+      'debugLogs': debug_logs
+  })
 
 
 @bp.route('/api/detect_verbs/', methods=['GET'])
@@ -83,7 +104,7 @@ def detect_verbs():
   List[str]
   """
   query = str(escape(request.args.get('q')))
-  nl_model = current_app.config[config.NL_MODEL_KEY]
+  nl_model = current_app.config[config.ATTRIBUTE_MODEL_KEY]
   return json.dumps(nl_model.detect_verbs(query.strip()))
 
 
@@ -96,3 +117,28 @@ def embeddings_version_map():
 def load():
   loader.load_custom_embeddings(current_app)
   return json.dumps(current_app.config[config.NL_EMBEDDINGS_VERSION_KEY])
+
+
+def _get_indexes(emb_map: EmbeddingsMap, idx: str) -> List[Embeddings]:
+  nl_embeddings: List[Embeddings] = []
+
+  if is_custom_dc() and idx != config.CUSTOM_DC_INDEX:
+    # Order custom index first, so that when the score is the same
+    # Custom DC will be preferred.
+    emb = emb_map.get_index(config.CUSTOM_DC_INDEX)
+    if emb:
+      nl_embeddings.append(emb)
+
+  emb = emb_map.get_index(idx)
+  if emb:
+    nl_embeddings.append(emb)
+
+  return nl_embeddings
+
+
+# NOTE: Custom DC embeddings addition needs to ensures that the
+#       base vs. custom models do not use different thresholds
+def _get_threshold(embeddings: List[Embeddings]) -> float:
+  if embeddings:
+    return embeddings[0].model.score_threshold
+  return constants.SV_SCORE_DEFAULT_THRESHOLD
