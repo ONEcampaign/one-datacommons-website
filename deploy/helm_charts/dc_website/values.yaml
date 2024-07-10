@@ -1,14 +1,14 @@
 website:
   githash: null
   image:
-    project: datcom-ci
+    project: one-website-1490370639043
     pullPolicy: Always
     tag: d669408
-  flaskEnv: custom
+  flaskEnv: "one"
   gcsDataPath: gs://one-datacommons-imports-prod/dec7
   iap:
     enabled: false
-  replicas: 1
+  replicas: 3
   redis:
     enabled: false
     configFile: null
@@ -30,12 +30,12 @@ namespace:
   create: false
   name: data-commons
 serviceAccount:
-  name: website-ksa
+  name: data-commons-production-k8s-sa
 ingress:
-  name: website-ingress
-  ipName: dc-website-ip
-  certName: dc-website-cert
-  enabled: false
+  name: data-commons-ingress-production
+  ipName: data-commons-k8s-ingress-production
+  certName: live-http-lb-certificate-20180823143833463300000001
+  enabled: true
 mixer:
   githash: null
   image:
