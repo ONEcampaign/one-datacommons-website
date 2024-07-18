@@ -1,6 +1,6 @@
 # Data Commons Website
 
-This repo hosts code for the Data Commons website.
+This repo hosts code for the Data Commons website (for ONE Data commons).
 
 ## About Data Commons
 
