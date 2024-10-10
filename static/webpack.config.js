@@ -37,6 +37,7 @@ const config = {
       __dirname + "/css/tools/stat_var.scss",
     ],
     dev: [__dirname + "/js/dev.ts", __dirname + "/css/dev.scss"],
+    diff: [__dirname + "/js/apps/diff/main.ts", __dirname + "/css/diff.scss"],
     timeline: [
       __dirname + "/js/tools/timeline/timeline.ts",
       __dirname + "/css/tools/timeline.scss",
@@ -51,6 +52,10 @@ const config = {
       __dirname + "/js/place/place_landing.ts",
       __dirname + "/css/place/place_landing.scss",
     ],
+    dev_place: [
+      __dirname + "/js/place/dev_place.ts",
+      __dirname + "/css/place/dev_place_page.scss",
+    ],
     topic_page: [
       __dirname + "/js/apps/topic_page/main.ts",
       __dirname + "/css/topic_page.scss",
@@ -63,9 +68,16 @@ const config = {
       __dirname + "/js/apps/explore/main.ts",
       __dirname + "/css/explore.scss",
     ],
-    nl_eval: [
-      __dirname + "/js/apps/nl_eval/main.ts",
-      __dirname + "/css/nl_eval.scss",
+    eval_embeddings: [
+      __dirname + "/js/apps/eval_embeddings/main.ts",
+      __dirname + "/css/eval_embeddings.scss",
+    ],
+    eval_retrieval_generation: [
+      __dirname + "/js/apps/eval_retrieval_generation/main.ts",
+      __dirname + "/css/eval_retrieval_generation.scss",
+    ],
+    eval_retrieval_generation_sxs: [
+      __dirname + "/js/apps/eval_retrieval_generation/sxs/main.ts",
     ],
     ranking: [
       __dirname + "/js/ranking/ranking.ts",

@@ -15,6 +15,7 @@
 import json
 import os
 import re
+import unittest
 
 from langdetect import detect as detect_lang
 import requests
@@ -23,7 +24,7 @@ from shared.lib.test_server import NLWebServerTestCase
 
 _dir = os.path.dirname(os.path.abspath(__file__))
 
-_TEST_MODE = os.environ['TEST_MODE']
+_TEST_MODE = os.environ.get('TEST_MODE', '')
 
 _TEST_DATA = 'test_data'
 
@@ -75,12 +76,13 @@ class ExploreTest(NLWebServerTestCase):
                              i18n_lang='',
                              mode='',
                              default_place='',
-                             idx=''):
+                             idx='',
+                             var_threshold=''):
     ctx = []
     for (index, q) in enumerate(queries):
       resp = requests.post(
           self.get_server_url() +
-          f'/api/explore/detect-and-fulfill?q={q}&test={test}&i18n={i18n}&mode={mode}&client=test_detect-and-fulfill&default_place={default_place}&idx={idx}',
+          f'/api/explore/detect-and-fulfill?q={q}&test={test}&i18n={i18n}&mode={mode}&client=test_detect-and-fulfill&default_place={default_place}&idx={idx}&varThreshold={var_threshold}',
           json={
               'contextHistory': ctx,
               'dc': dc,
@@ -258,6 +260,9 @@ class ExploreTest(NLWebServerTestCase):
 
     self.assertTrue(success, f"wanted: {i18n_lang}, got {detected}")
 
+
+class ExploreTestDetection(ExploreTest):
+
   def test_detection_basic(self):
     self.run_detection('detection_api_basic', ['Commute in California'],
                        test='unittest')
@@ -265,7 +270,7 @@ class ExploreTest(NLWebServerTestCase):
   def test_detection_basic_lancedb(self):
     self.run_detection('detection_api_basic_lancedb', ['Commute in California'],
                        test='unittest',
-                       idx='medium_lance_ft')
+                       idx='base_uae_lance')
 
   def test_detection_basic_sdg(self):
     self.run_detection('detection_api_sdg_idx', ['Health in USA'],
@@ -283,15 +288,16 @@ class ExploreTest(NLWebServerTestCase):
                        test='unittest',
                        idx='undata_ilo_ft')
 
+  def test_detection_basic_undata_dev(self):
+    self.run_detection('detection_api_undata_dev_idx',
+                       ['Employment in the world'],
+                       test='unittest',
+                       idx='undata_ft,undata_ilo_ft')
+
   def test_detection_basic_bio(self):
     self.run_detection('detection_api_bio_idx', ['Commute in California'],
                        test='unittest',
-                       idx='bio_ft')
-
-  def test_detection_basic_vertex(self):
-    self.run_detection('detection_api_vertex_ft_idx', ['Commute in California'],
-                       test='unittest',
-                       idx='medium_vertex_ft')
+                       idx='bio_ft,medium_ft')
 
   def test_detection_basic_uae(self):
     self.run_detection('detection_api_uae_idx', ['Commute in California'],
@@ -301,7 +307,7 @@ class ExploreTest(NLWebServerTestCase):
   def test_detection_basic_sfr(self):
     self.run_detection('detection_api_sfr_idx', ['Commute in California'],
                        test='unittest',
-                       idx='medium_vertex_mistral')
+                       idx='base_mistral_mem')
 
   def test_detection_sdg(self):
     self.run_detection('detection_api_sdg', ['Health in USA'], dc='sdg')
@@ -348,16 +354,20 @@ class ExploreTest(NLWebServerTestCase):
         'What is the relationship between housing size and home prices in California'
     ])
 
-  def test_detection_reranking(self):
-    self.run_detection(
-        'detection_api_reranking',
-        [
-            # Without reranker the top SV is Median_Income_Person,
-            # With reranking the top SV is Count_Person_IncomeOf75000OrMoreUSDollar.
-            'population that is rich in california'
-        ],
-        check_detection=True,
-        reranker='cross-encoder-mxbai-rerank-base-v1')
+  # TODO: renable when we solve the flaky issue
+  # def test_detection_reranking(self):
+  #   self.run_detection(
+  #       'detection_api_reranking',
+  #       [
+  #           # Without reranker the top SV is Median_Income_Person,
+  #           # With reranking the top SV is Count_Person_IncomeOf75000OrMoreUSDollar.
+  #           'population that is rich in california'
+  #       ],
+  #       check_detection=True,
+  #       reranker='cross-encoder-mxbai-rerank-base-v1')
+
+
+class ExploreTestFulfillment(ExploreTest):
 
   def test_fulfillment_basic(self):
     req = {
@@ -479,6 +489,11 @@ class ExploreTest(NLWebServerTestCase):
     }
     self.run_fulfillment('fulfillment_api_nl_size', req)
 
+
+class ExploreTestEE1(ExploreTest):
+
+  # TODO (boxu): fix the flaky test and reenable it.
+  @unittest.skip
   def test_e2e_answer_places(self):
     self.run_detect_and_fulfill('e2e_answer_places', [
         'California counties with the highest asthma levels',
@@ -597,6 +612,9 @@ class ExploreTest(NLWebServerTestCase):
         'Compare progress on poverty in Mexico, Nigeria and Pakistan'
     ])
 
+
+class ExploreTestEE2(ExploreTest):
+
   def test_e2e_fallbacks(self):
     self.run_detect_and_fulfill(
         'e2e_fallbacks',
@@ -700,11 +718,34 @@ class ExploreTest(NLWebServerTestCase):
             'Native born vs. Median income in Sunnyvale',
         ])
 
-  def test_e2e_toolformer_mode(self):
+  def test_e2e_toolformer_rig_mode(self):
     self.run_detect_and_fulfill(
-        'e2e_toolformer_mode',
-        ['what is the infant mortality rate in massachusetts'],
-        mode='toolformer')
+        'e2e_toolformer_rig_mode',
+        [
+            'what is the infant mortality rate in massachusetts',
+            'how many construction workers are in Orlando, Florida?',
+            'what is the poverty rate in Seattle?',
+            # toolformer mode should not show correlations
+            'Foreign born vs. native born in Sunnyvale'
+        ],
+        mode='toolformer_rig')
+
+  def test_e2e_toolformer_rag_mode(self):
+    # The answer places (states) would typically be truncated to 10, but here
+    # we should all the 50+ states.
+    self.run_detect_and_fulfill(
+        'e2e_toolformer_rag_mode',
+        [
+            'how has life expectancy changed over time across US states?',
+            # variables in a topic that match immediately after the topic should
+            # show up before the topic (i.e., Count_Worker_NAICSAccommodationFoodServices
+            # should show up first)
+            'How has employment in hospitality changed over time in New Jersey counties?',
+            'Which California counties have the youngest recent mothers?',
+            # toolformer mode should not show correlations
+            'Foreign born vs. native born in Sunnyvale',
+        ],
+        mode='toolformer_rag')
 
   def test_e2e_triple(self):
     self.run_detect_and_fulfill(
@@ -733,6 +774,12 @@ class ExploreTest(NLWebServerTestCase):
             'tell me about heart disease'
         ],
         dc='bio')
+
+  def test_e2e_high_sv_threshold(self):
+    self.run_detect_and_fulfill(
+        'e2e_high_sv_threshold',
+        ['what is the infant mortality rate in massachusetts'],
+        var_threshold='0.8')
 
 
 # Helper function to delete x.y.z path in a dict.

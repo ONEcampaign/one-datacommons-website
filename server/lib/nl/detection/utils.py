@@ -15,6 +15,7 @@
 
 # TODO: rename to variable_utils.py
 
+import re
 from typing import Dict, List
 
 from server.lib.fetch import property_values
@@ -296,3 +297,26 @@ def is_llm_detection(d: Detection) -> bool:
   return d.detector in [
       ActualDetectorType.LLM, ActualDetectorType.HybridLLMFull
   ]
+
+
+# Find "needle" at word boundary in "haystack".
+def find_word_boundary(haystack: str, needle: str):
+  # Create a regex pattern with word boundaries
+  pattern = r'\b' + re.escape(needle) + r'\b'
+  # Search for the pattern in the string
+  match = re.search(pattern, haystack)
+  # Return the start index if a match is found, otherwise -1
+  if match:
+    return match.start()
+  return -1
+
+
+# Replaces strings in a query given a dictionary where key is the original
+# string and value is the replacement string to use
+def replace_strings_in_query(query: str, replacements: Dict[str, str]) -> str:
+  processed_query = query
+  for orig, new in replacements.items():
+    # surround the original string with \b to ensure we're only replacing at a
+    # word boundary
+    processed_query = re.sub(rf"\b{orig}\b", new, processed_query)
+  return processed_query
