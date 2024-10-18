@@ -127,9 +127,15 @@
                 "tiles": [
                   {
                     "statVarKey": [
+<<<<<<< HEAD
                       "Count_Person_NowMarried_2019"
                     ],
                     "title": "Population: Female, Now Married in Counties of California (${date})",
+=======
+                      "Count_Person_Female_MarriedAndNotSeparated_2019"
+                    ],
+                    "title": "Non-Separated Married Women in Counties of California (${date})",
+>>>>>>> staging
                     "type": "MAP"
                   }
                 ]
@@ -142,16 +148,26 @@
                       "showHighestLowest": true
                     },
                     "statVarKey": [
+<<<<<<< HEAD
                       "Count_Person_NowMarried_2019"
                     ],
                     "title": "Population: Female, Now Married in Counties of California (${date})",
+=======
+                      "Count_Person_Female_MarriedAndNotSeparated_2019"
+                    ],
+                    "title": "Non-Separated Married Women in Counties of California (${date})",
+>>>>>>> staging
                     "type": "RANKING"
                   }
                 ]
               }
             ],
             "denom": "Count_Person",
+<<<<<<< HEAD
             "title": "Population: Female, Now Married in Counties of California"
+=======
+            "title": "Non-Separated Married Women in Counties of California"
+>>>>>>> staging
           },
           {
             "columns": [
@@ -162,9 +178,15 @@
                       "endDate": "2019"
                     },
                     "statVarKey": [
+<<<<<<< HEAD
                       "Count_Person_NowMarried_1145703171"
                     ],
                     "title": "Population: Female, Now Married in California",
+=======
+                      "Count_Person_Female_MarriedAndNotSeparated_2369573279"
+                    ],
+                    "title": "Non-Separated Married Women in California",
+>>>>>>> staging
                     "type": "LINE"
                   }
                 ]
@@ -172,18 +194,30 @@
               {
                 "tiles": [
                   {
+<<<<<<< HEAD
                     "description": "Population: Female, Now Married in California",
                     "statVarKey": [
                       "Count_Person_NowMarried_2019"
                     ],
                     "title": "Population: Female, Now Married in California",
+=======
+                    "description": "Non-Separated Married Women in California",
+                    "statVarKey": [
+                      "Count_Person_Female_MarriedAndNotSeparated_2019"
+                    ],
+                    "title": "Non-Separated Married Women in California",
+>>>>>>> staging
                     "type": "HIGHLIGHT"
                   }
                 ]
               }
             ],
             "denom": "Count_Person",
+<<<<<<< HEAD
             "title": "Population: Female, Now Married"
+=======
+            "title": "Non-Separated Married Women"
+>>>>>>> staging
           },
           {
             "columns": [
@@ -350,6 +384,7 @@
               {
                 "tiles": [
                   {
+<<<<<<< HEAD
                     "lineTileSpec": {
                       "endDate": "2019"
                     },
@@ -381,6 +416,8 @@
               {
                 "tiles": [
                   {
+=======
+>>>>>>> staging
                     "statVarKey": [
                       "Count_Person_Female_WithHealthInsurance_2019"
                     ],
@@ -417,7 +454,11 @@
                       "endDate": "2019"
                     },
                     "statVarKey": [
+<<<<<<< HEAD
                       "Count_Person_Female_WithHealthInsurance_3013967739"
+=======
+                      "Count_Person_Female_WithHealthInsurance_3376114862"
+>>>>>>> staging
                     ],
                     "title": "Women With Health Insurance in California",
                     "type": "LINE"
@@ -510,6 +551,7 @@
                 "tiles": [
                   {
                     "statVarKey": [
+<<<<<<< HEAD
                       "Count_Person_Civilian_Female_NonInstitutionalized_2019"
                     ],
                     "title": "Women Non Institutionalized in Counties of California (${date})",
@@ -574,6 +616,8 @@
                 "tiles": [
                   {
                     "statVarKey": [
+=======
+>>>>>>> staging
                       "Median_Age_Person_Female_2019"
                     ],
                     "title": "Women's Median Age in Counties of California (${date})",
@@ -799,7 +843,11 @@
                       "endDate": "2019"
                     },
                     "statVarKey": [
+<<<<<<< HEAD
                       "Count_Person_25OrMoreYears_EducationalAttainmentBachelorsDegreeOrHigher_Female_770342238"
+=======
+                      "Count_Person_25OrMoreYears_EducationalAttainmentBachelorsDegreeOrHigher_Female_1118952551"
+>>>>>>> staging
                     ],
                     "title": "Population: Bachelors Degree or Higher, Female in California",
                     "type": "LINE"
@@ -885,6 +933,105 @@
             ],
             "denom": "Count_Person",
             "title": "Women With Disabilities"
+<<<<<<< HEAD
+=======
+          },
+          {
+            "columns": [
+              {
+                "tiles": [
+                  {
+                    "statVarKey": [
+                      "Count_Person_25OrMoreYears_EducationalAttainmentBachelorsDegree_Female_2019"
+                    ],
+                    "title": "Bachelors, Women in Counties of California (${date})",
+                    "type": "MAP"
+                  }
+                ]
+              },
+              {
+                "tiles": [
+                  {
+                    "rankingTileSpec": {
+                      "rankingCount": 5,
+                      "showHighestLowest": true
+                    },
+                    "statVarKey": [
+                      "Count_Person_25OrMoreYears_EducationalAttainmentBachelorsDegree_Female_2019"
+                    ],
+                    "title": "Bachelors, Women in Counties of California (${date})",
+                    "type": "RANKING"
+                  }
+                ]
+              }
+            ],
+            "denom": "Count_Person",
+            "title": "Bachelors, Women in Counties of California"
+          },
+          {
+            "columns": [
+              {
+                "tiles": [
+                  {
+                    "lineTileSpec": {
+                      "endDate": "2019"
+                    },
+                    "statVarKey": [
+                      "Count_Person_25OrMoreYears_EducationalAttainmentBachelorsDegree_Female_1145703171"
+                    ],
+                    "title": "Bachelors, Women in California",
+                    "type": "LINE"
+                  }
+                ]
+              },
+              {
+                "tiles": [
+                  {
+                    "description": "Bachelors, Women in California",
+                    "statVarKey": [
+                      "Count_Person_25OrMoreYears_EducationalAttainmentBachelorsDegree_Female_2019"
+                    ],
+                    "title": "Bachelors, Women in California",
+                    "type": "HIGHLIGHT"
+                  }
+                ]
+              }
+            ],
+            "denom": "Count_Person",
+            "title": "Bachelors, Women"
+          },
+          {
+            "columns": [
+              {
+                "tiles": [
+                  {
+                    "lineTileSpec": {
+                      "endDate": "2019"
+                    },
+                    "statVarKey": [
+                      "Count_Person_Female_ForeignBorn_10983471"
+                    ],
+                    "title": "Foreign Born Women in California",
+                    "type": "LINE"
+                  }
+                ]
+              },
+              {
+                "tiles": [
+                  {
+                    "description": "Foreign Born Women in California",
+                    "statVarKey": [
+                      "Count_Person_Female_ForeignBorn_2019"
+                    ],
+                    "title": "Foreign Born Women in California",
+                    "type": "HIGHLIGHT"
+                  }
+                ]
+              }
+            ],
+            "denom": "Count_Person",
+            "title": "Foreign Born Women"
+>>>>>>> staging
           }
         ],
         "statVarSpec": {
@@ -893,6 +1040,7 @@
             "name": "Count of Mortality Event: Female",
             "statVar": "Count_Death_Female"
           },
+<<<<<<< HEAD
           "Count_Death_Female_AsAFractionOf_Count_Person_Female_1151455814": {
             "facetId": "1151455814",
             "name": "Count of Mortality Event: Female (As Fraction of Count Person Female)",
@@ -902,16 +1050,34 @@
             "date": "2019",
             "name": "Count of Mortality Event: Female (As Fraction of Count Person Female)",
             "statVar": "Count_Death_Female_AsAFractionOf_Count_Person_Female"
+=======
+          "Count_Person_25OrMoreYears_EducationalAttainmentBachelorsDegreeOrHigher_Female_1118952551": {
+            "facetId": "1118952551",
+            "name": "Population: Bachelors Degree or Higher, Female",
+            "statVar": "Count_Person_25OrMoreYears_EducationalAttainmentBachelorsDegreeOrHigher_Female"
+>>>>>>> staging
           },
           "Count_Person_25OrMoreYears_EducationalAttainmentBachelorsDegreeOrHigher_Female_2019": {
             "date": "2019",
             "name": "Population: Bachelors Degree or Higher, Female",
             "statVar": "Count_Person_25OrMoreYears_EducationalAttainmentBachelorsDegreeOrHigher_Female"
           },
+<<<<<<< HEAD
           "Count_Person_25OrMoreYears_EducationalAttainmentBachelorsDegreeOrHigher_Female_770342238": {
             "facetId": "770342238",
             "name": "Population: Bachelors Degree or Higher, Female",
             "statVar": "Count_Person_25OrMoreYears_EducationalAttainmentBachelorsDegreeOrHigher_Female"
+=======
+          "Count_Person_25OrMoreYears_EducationalAttainmentBachelorsDegree_Female_1145703171": {
+            "facetId": "1145703171",
+            "name": "Bachelors, Women",
+            "statVar": "Count_Person_25OrMoreYears_EducationalAttainmentBachelorsDegree_Female"
+          },
+          "Count_Person_25OrMoreYears_EducationalAttainmentBachelorsDegree_Female_2019": {
+            "date": "2019",
+            "name": "Bachelors, Women",
+            "statVar": "Count_Person_25OrMoreYears_EducationalAttainmentBachelorsDegree_Female"
+>>>>>>> staging
           },
           "Count_Person_3OrMoreYears_Female_EnrolledInSchool_1145703171": {
             "facetId": "1145703171",
@@ -923,6 +1089,7 @@
             "name": "Population: Female, Enrolled in School",
             "statVar": "Count_Person_3OrMoreYears_Female_EnrolledInSchool"
           },
+<<<<<<< HEAD
           "Count_Person_Civilian_Female_NonInstitutionalized_1145703171": {
             "facetId": "1145703171",
             "name": "Women Non Institutionalized",
@@ -933,6 +1100,8 @@
             "name": "Women Non Institutionalized",
             "statVar": "Count_Person_Civilian_Female_NonInstitutionalized"
           },
+=======
+>>>>>>> staging
           "Count_Person_Female_1145703171": {
             "facetId": "1145703171",
             "name": "Women",
@@ -953,6 +1122,19 @@
             "name": "Asian Monoracial Women",
             "statVar": "Count_Person_Female_AsianAlone"
           },
+<<<<<<< HEAD
+=======
+          "Count_Person_Female_ForeignBorn_10983471": {
+            "facetId": "10983471",
+            "name": "Foreign Born Women",
+            "statVar": "Count_Person_Female_ForeignBorn"
+          },
+          "Count_Person_Female_ForeignBorn_2019": {
+            "date": "2019",
+            "name": "Foreign Born Women",
+            "statVar": "Count_Person_Female_ForeignBorn"
+          },
+>>>>>>> staging
           "Count_Person_Female_FullTimeYearRoundWorker_2019": {
             "date": "2019",
             "name": "Population: 16 - 64 Years, Female, Full Time Year Round Worker",
@@ -963,6 +1145,19 @@
             "name": "Population: 16 - 64 Years, Female, Full Time Year Round Worker",
             "statVar": "Count_Person_Female_FullTimeYearRoundWorker"
           },
+<<<<<<< HEAD
+=======
+          "Count_Person_Female_MarriedAndNotSeparated_2019": {
+            "date": "2019",
+            "name": "Non-Separated Married Women",
+            "statVar": "Count_Person_Female_MarriedAndNotSeparated"
+          },
+          "Count_Person_Female_MarriedAndNotSeparated_2369573279": {
+            "facetId": "2369573279",
+            "name": "Non-Separated Married Women",
+            "statVar": "Count_Person_Female_MarriedAndNotSeparated"
+          },
+>>>>>>> staging
           "Count_Person_Female_TwoOrMoreRaces_1145703171": {
             "facetId": "1145703171",
             "name": "Women Identifying as Multiracial",
@@ -988,8 +1183,13 @@
             "name": "Women With Health Insurance",
             "statVar": "Count_Person_Female_WithHealthInsurance"
           },
+<<<<<<< HEAD
           "Count_Person_Female_WithHealthInsurance_3013967739": {
             "facetId": "3013967739",
+=======
+          "Count_Person_Female_WithHealthInsurance_3376114862": {
+            "facetId": "3376114862",
+>>>>>>> staging
             "name": "Women With Health Insurance",
             "statVar": "Count_Person_Female_WithHealthInsurance"
           },
@@ -1003,6 +1203,7 @@
             "name": "Men",
             "statVar": "Count_Person_Male"
           },
+<<<<<<< HEAD
           "Count_Person_NowMarried_1145703171": {
             "facetId": "1145703171",
             "name": "Population: Female, Now Married",
@@ -1013,6 +1214,8 @@
             "name": "Population: Female, Now Married",
             "statVar": "Count_Person_NowMarried"
           },
+=======
+>>>>>>> staging
           "Count_Person_WithDisability_Female_2019": {
             "date": "2019",
             "name": "Women With Disabilities",
@@ -1420,6 +1623,7 @@
     },
     "childTopics": [],
     "exploreMore": {
+<<<<<<< HEAD
       "Count_Death_Female_AsAFractionOf_Count_Person_Female": {
         "causeOfDeath": [
           "Count_MortalityEvent_AIDS_Female_AsAFractionOf_Count_Person_Female",
@@ -1441,6 +1645,8 @@
           "Count_MortalityEvent_AorticAneurysmAndDissection_Female_AsAFractionOf_Count_Person_Female"
         ]
       },
+=======
+>>>>>>> staging
       "Count_Person_25OrMoreYears_EducationalAttainmentBachelorsDegreeOrHigher_Female": {
         "age": [
           "Count_Person_18To24Years_EducationalAttainmentBachelorsDegreeOrHigher_Female",
@@ -1448,6 +1654,7 @@
           "Count_Person_45To64Years_EducationalAttainmentBachelorsDegreeOrHigher_Female"
         ]
       },
+<<<<<<< HEAD
       "Count_Person_Civilian_Female_NonInstitutionalized": {
         "age": [
           "dc/09z87msgrnz46",
@@ -1462,6 +1669,15 @@
           "dc/vqxc814k47fc5",
           "dc/x8zvw66c41lx",
           "dc/z3blp4w0t2nv2"
+=======
+      "Count_Person_25OrMoreYears_EducationalAttainmentBachelorsDegree_Female": {
+        "age": [
+          "Count_Person_18To24Years_EducationalAttainmentBachelorsDegree_Female",
+          "Count_Person_25To34Years_EducationalAttainmentBachelorsDegree_Female",
+          "Count_Person_35To44Years_EducationalAttainmentBachelorsDegree_Female",
+          "Count_Person_45To64Years_EducationalAttainmentBachelorsDegree_Female",
+          "Count_Person_65OrMoreYears_EducationalAttainmentBachelorsDegree_Female"
+>>>>>>> staging
         ]
       },
       "Count_Person_Female": {
@@ -1474,6 +1690,13 @@
           "Count_Person_67To69Years_Female",
           "Count_Person_Upto14Years_Female"
         ],
+<<<<<<< HEAD
+=======
+        "educationalAttainment": [
+          "Count_Person_25OrMoreYears_EducationalAttainmentBachelorsDegreeOrHigher_Female",
+          "Count_Person_25OrMoreYears_EducationalAttainmentBachelorsDegree_Female"
+        ],
+>>>>>>> staging
         "race": [
           "Count_Person_Female_AsianAlone",
           "Count_Person_Female_TwoOrMoreRaces",
@@ -1590,6 +1813,18 @@
           "Count_Person_9Years_Female_AsianAlone"
         ]
       },
+<<<<<<< HEAD
+=======
+      "Count_Person_Female_MarriedAndNotSeparated": {
+        "age": [
+          "Count_Person_15To19Years_Female_MarriedAndNotSeparated",
+          "Count_Person_20To34Years_Female_MarriedAndNotSeparated",
+          "Count_Person_35To44Years_Female_MarriedAndNotSeparated",
+          "Count_Person_45To54Years_Female_MarriedAndNotSeparated",
+          "Count_Person_55To64Years_Female_MarriedAndNotSeparated"
+        ]
+      },
+>>>>>>> staging
       "Count_Person_Female_TwoOrMoreRaces": {
         "age": [
           "Count_Person_0To4Years_Female_TwoOrMoreRaces",

@@ -1,5 +1,6 @@
 {
   "client": "test_detect-and-fulfill",
+<<<<<<< HEAD
   "config": {
     "categories": [
       {
@@ -71,5 +72,19 @@
   "userMessage": "See relevant information based on the previous query.",
   "userMessages": [
     "See relevant information based on the previous query."
+=======
+  "config": {},
+  "context": {},
+  "debug": {},
+  "failure": "Sorry, could not complete your request. No entity found in the query.",
+  "place": {
+    "dcid": "",
+    "name": "",
+    "place_type": ""
+  },
+  "userMessage": "Sorry, could not complete your request. No entity found in the query.",
+  "userMessages": [
+    "Sorry, could not complete your request. No entity found in the query."
+>>>>>>> staging
   ]
 }

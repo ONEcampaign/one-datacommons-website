@@ -248,8 +248,7 @@
                   {
                     "barTileSpec": {
                       "maxPlaces": 15,
-                      "maxVariables": 15,
-                      "sort": "DESCENDING"
+                      "maxVariables": 15
                     },
                     "comparisonPlaces": [
                       "geoId/06"
@@ -613,11 +612,19 @@
                       "startDate": "2014"
                     },
                     "statVarKey": [
+<<<<<<< HEAD
                       "Count_Person_AmericanIndianAndAlaskaNativeAloneOrInCombinationWithOneOrMoreOtherRaces_1647577208",
                       "Count_Person_AsianAloneOrInCombinationWithOneOrMoreOtherRaces_1647577208",
                       "Count_Person_BlackOrAfricanAmericanAloneOrInCombinationWithOneOrMoreOtherRaces_1647577208",
                       "Count_Person_NativeHawaiianAndOtherPacificIslanderAloneOrInCombinationWithOneOrMoreOtherRaces_1647577208",
                       "Count_Person_WhiteAloneOrInCombinationWithOneOrMoreOtherRaces_1647577208"
+=======
+                      "Count_Person_AmericanIndianAndAlaskaNativeAloneOrInCombinationWithOneOrMoreOtherRaces_3935616881",
+                      "Count_Person_AsianAloneOrInCombinationWithOneOrMoreOtherRaces_3935616881",
+                      "Count_Person_BlackOrAfricanAmericanAloneOrInCombinationWithOneOrMoreOtherRaces_3935616881",
+                      "Count_Person_NativeHawaiianAndOtherPacificIslanderAloneOrInCombinationWithOneOrMoreOtherRaces_3935616881",
+                      "Count_Person_WhiteAloneOrInCombinationWithOneOrMoreOtherRaces_3935616881"
+>>>>>>> staging
                     ],
                     "title": "Monoracial/multiracial Breakdown in California",
                     "type": "LINE"
@@ -1419,8 +1426,13 @@
             "name": "American Indian and Alaska Native Population, Monoracial/Multiracial",
             "statVar": "Count_Person_AmericanIndianAndAlaskaNativeAloneOrInCombinationWithOneOrMoreOtherRaces"
           },
+<<<<<<< HEAD
           "Count_Person_AmericanIndianAndAlaskaNativeAloneOrInCombinationWithOneOrMoreOtherRaces_1647577208": {
             "facetId": "1647577208",
+=======
+          "Count_Person_AmericanIndianAndAlaskaNativeAloneOrInCombinationWithOneOrMoreOtherRaces_3935616881": {
+            "facetId": "3935616881",
+>>>>>>> staging
             "name": "American Indian and Alaska Native Population, Monoracial/Multiracial",
             "statVar": "Count_Person_AmericanIndianAndAlaskaNativeAloneOrInCombinationWithOneOrMoreOtherRaces"
           },
@@ -1432,8 +1444,13 @@
             "name": "Asian Population, Monoracial/Multiracial",
             "statVar": "Count_Person_AsianAloneOrInCombinationWithOneOrMoreOtherRaces"
           },
+<<<<<<< HEAD
           "Count_Person_AsianAloneOrInCombinationWithOneOrMoreOtherRaces_1647577208": {
             "facetId": "1647577208",
+=======
+          "Count_Person_AsianAloneOrInCombinationWithOneOrMoreOtherRaces_3935616881": {
+            "facetId": "3935616881",
+>>>>>>> staging
             "name": "Asian Population, Monoracial/Multiracial",
             "statVar": "Count_Person_AsianAloneOrInCombinationWithOneOrMoreOtherRaces"
           },
@@ -1449,8 +1466,13 @@
             "name": "Black Monoracial Population",
             "statVar": "Count_Person_BlackOrAfricanAmericanAlone"
           },
+<<<<<<< HEAD
           "Count_Person_BlackOrAfricanAmericanAloneOrInCombinationWithOneOrMoreOtherRaces_1647577208": {
             "facetId": "1647577208",
+=======
+          "Count_Person_BlackOrAfricanAmericanAloneOrInCombinationWithOneOrMoreOtherRaces_3935616881": {
+            "facetId": "3935616881",
+>>>>>>> staging
             "name": "Black Population, Monoracial/Multiracial",
             "statVar": "Count_Person_BlackOrAfricanAmericanAloneOrInCombinationWithOneOrMoreOtherRaces"
           },
@@ -1537,8 +1559,13 @@
             "name": "Men",
             "statVar": "Count_Person_Male"
           },
+<<<<<<< HEAD
           "Count_Person_NativeHawaiianAndOtherPacificIslanderAloneOrInCombinationWithOneOrMoreOtherRaces_1647577208": {
             "facetId": "1647577208",
+=======
+          "Count_Person_NativeHawaiianAndOtherPacificIslanderAloneOrInCombinationWithOneOrMoreOtherRaces_3935616881": {
+            "facetId": "3935616881",
+>>>>>>> staging
             "name": "Native Hawaiian and Other Pacific Islander Population, Monoracial/Multiracial",
             "statVar": "Count_Person_NativeHawaiianAndOtherPacificIslanderAloneOrInCombinationWithOneOrMoreOtherRaces"
           },
@@ -1615,8 +1642,13 @@
             "name": "White Hispanic Monoracial Population",
             "statVar": "Count_Person_WhiteAloneNotHispanicOrLatino"
           },
+<<<<<<< HEAD
           "Count_Person_WhiteAloneOrInCombinationWithOneOrMoreOtherRaces_1647577208": {
             "facetId": "1647577208",
+=======
+          "Count_Person_WhiteAloneOrInCombinationWithOneOrMoreOtherRaces_3935616881": {
+            "facetId": "3935616881",
+>>>>>>> staging
             "name": "White Population, Monoracial/Multiracial",
             "statVar": "Count_Person_WhiteAloneOrInCombinationWithOneOrMoreOtherRaces"
           },
@@ -2098,7 +2130,12 @@
           "Count_Person_55To64Years",
           "Count_Person_5To17Years",
           "Count_Person_65To74Years",
+<<<<<<< HEAD
           "Count_Person_75OrMoreYears"
+=======
+          "Count_Person_75OrMoreYears",
+          "Count_Person_Upto9Years"
+>>>>>>> staging
         ],
         "gender": [
           "Count_Person_Female",

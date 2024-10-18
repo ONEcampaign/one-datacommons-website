@@ -20,6 +20,7 @@
   "variables": [
     "dc/topic/CommuteTime",
     "dc/topic/WorkCommute",
+<<<<<<< HEAD
     "dc/topic/CommuteModeByOccupation",
     "dc/topic/CommuteMode",
     "dc/vgwx3kjjzz8wf",
@@ -30,5 +31,12 @@
     "Count_Household_With2AvailableVehicles",
     "Count_Household_With3AvailableVehicles",
     "Count_Household_With1AvailableVehicles"
+=======
+    "dc/topic/CommuteMode",
+    "dc/topic/CommuteModeByOccupation",
+    "dc/h7ft916g93ys2",
+    "dc/fyc3yvjy0xw6g",
+    "dc/hbkh95kc7pkb6"
+>>>>>>> staging
   ]
 }

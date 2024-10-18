@@ -24,7 +24,15 @@ import {
   getBlockEventTypeSpecs,
 } from "../js/components/subject_page/disaster_event_block";
 import { StatVarProvider } from "../js/components/subject_page/stat_var_provider";
+<<<<<<< HEAD
 import { NamedTypedPlace, StatVarSpec } from "../js/shared/types";
+=======
+import {
+  NamedTypedNode,
+  NamedTypedPlace,
+  StatVarSpec,
+} from "../js/shared/types";
+>>>>>>> staging
 import {
   BlockConfig,
   EventTypeSpec,
@@ -33,10 +41,21 @@ import {
   getDate,
   getSeverityFilters,
 } from "../js/utils/disaster_event_map_utils";
+<<<<<<< HEAD
 import { getTileEventTypeSpecs } from "../js/utils/tile_utils";
 import { BARD_CLIENT_URL_PARAM } from "./constants";
 import { getBarTileResult } from "./tiles/bar_tile";
 import { getDisasterMapTileResult } from "./tiles/disaster_map_tile";
+=======
+import {
+  getHighlightTileDescription,
+  getTileEventTypeSpecs,
+} from "../js/utils/tile_utils";
+import { BARD_CLIENT_URL_PARAM, TOOLFORMER_RIG_MODE } from "./constants";
+import { getBarTileResult } from "./tiles/bar_tile";
+import { getDisasterMapTileResult } from "./tiles/disaster_map_tile";
+import { getHighlightTileResult } from "./tiles/highlight_tile";
+>>>>>>> staging
 import { getLineTileResult } from "./tiles/line_tile";
 import { getMapTileResult } from "./tiles/map_tile";
 import { getRankingTileResult } from "./tiles/ranking_tile";
@@ -46,11 +65,25 @@ import { QueryResult, TileResult } from "./types";
 const NS_TO_MS_SCALE_FACTOR = BigInt(1000000);
 const MS_TO_S_SCALE_FACTOR = 1000;
 const QUERY_MAX_RESULTS = 3;
+<<<<<<< HEAD
 // Allowed chart types if client is Bard.
 const BARD_ALLOWED_CHARTS = new Set(["LINE", "BAR", "RANKING", "SCATTER"]);
 // The root to use to form the dc link in the tile results
 // TODO: update this to use bard.datacommons.org
 const DC_URL_ROOT = "https://datacommons.org/explore#q=";
+=======
+// Allowed chart types if mode is Bard.
+const BARD_ALLOWED_CHARTS = new Set(["LINE", "BAR", "RANKING", "SCATTER"]);
+// Allowed chart types if mode is toolformer rig
+const TOOLFORMER_RIG_ALLOWED_CHARTS = new Set(["LINE", "HIGHLIGHT"]);
+// The root to use to form the dc link in the tile results
+// TODO: update this to use bard.datacommons.org
+const DC_URL_ROOT = "https://datacommons.org/explore#q=";
+// Detector to use when handling nl queries
+const QUERY_DETECTOR = "heuristic";
+// Number of related questions to return
+const NUM_RELATED_QUESTIONS = 6;
+>>>>>>> staging
 
 // Get the elapsed time in seconds given the start and end times in nanoseconds.
 function getElapsedTime(startTime: bigint, endTime: bigint): number {
@@ -73,7 +106,12 @@ function getBlockTileResults(
   useChartUrl: boolean,
   apikey: string,
   apiRoot: string,
+<<<<<<< HEAD
   allowedTilesTypes?: Set<string>
+=======
+  allowedTilesTypes?: Set<string>,
+  mode?: string
+>>>>>>> staging
 ): Promise<TileResult[] | TileResult>[] {
   const tilePromises = [];
   const svProvider = new StatVarProvider(svSpec);
@@ -97,7 +135,12 @@ function getBlockTileResults(
               apiRoot,
               urlRoot,
               useChartUrl,
+<<<<<<< HEAD
               apikey
+=======
+              apikey,
+              mode
+>>>>>>> staging
             )
           );
           break;
@@ -129,7 +172,12 @@ function getBlockTileResults(
               apiRoot,
               urlRoot,
               useChartUrl,
+<<<<<<< HEAD
               apikey
+=======
+              apikey,
+              mode
+>>>>>>> staging
             )
           );
           break;
@@ -165,6 +213,16 @@ function getBlockTileResults(
             )
           );
           break;
+<<<<<<< HEAD
+=======
+        case "HIGHLIGHT":
+          tileSvSpec = svProvider.getSpec(tile.statVarKey[0], { blockDenom });
+          tile.description = getHighlightTileDescription(tile, blockDenom);
+          tilePromises.push(
+            getHighlightTileResult(tileId, tile, place, tileSvSpec, apiRoot)
+          );
+          break;
+>>>>>>> staging
         default:
           break;
       }
@@ -230,6 +288,38 @@ function getDisasterBlockTileResults(
   return tilePromises;
 }
 
+<<<<<<< HEAD
+=======
+// Takes related things and constructs related questions
+function getRelatedQuestions(
+  relatedThings: Record<string, Array<any>>,
+  place: NamedTypedNode
+): string[] {
+  const relatedQuestions = [];
+  const relatedTopics = [
+    ...(relatedThings["childTopics"] || []),
+    ...(relatedThings["peerTopics"] || []),
+  ];
+
+  // Alternate getting topics from the front and the end of the list to get a
+  // mix of questions using child and peer topics.
+  let getFromFront = true;
+  while (
+    !_.isEmpty(relatedTopics) &&
+    relatedQuestions.length < NUM_RELATED_QUESTIONS
+  ) {
+    const topic = getFromFront ? relatedTopics.shift() : relatedTopics.pop();
+    if (!("name" in topic)) {
+      continue;
+    }
+    const topicString = (topic["name"] as string).toLowerCase();
+    relatedQuestions.push(`Tell me about ${topicString} in ${place.name}`);
+    getFromFront = !getFromFront;
+  }
+  return relatedQuestions;
+}
+
+>>>>>>> staging
 // The handler that gets the result for the /nodejs/query endpoint
 export async function getQueryResult(
   query: string,
@@ -239,6 +329,7 @@ export async function getQueryResult(
   apikey: string,
   urlRoot: string,
   client: string,
+<<<<<<< HEAD
   mode: string
 ): Promise<QueryResult> {
   const startTime = process.hrtime.bigint();
@@ -255,6 +346,45 @@ export async function getQueryResult(
         `${apiRoot}/api/explore/detect-and-fulfill?q=${query}&mode=${mode}&client=${client}`,
         {}
       );
+=======
+  mode: string,
+  varThreshold: string,
+  wantRelatedQuestions: boolean,
+  idx?: string
+): Promise<QueryResult> {
+  const startTime = process.hrtime.bigint();
+
+  let allowedTileTypes = null;
+  // if mode is empty or mode=bard, use BARD_ALLOWED_CHARTS
+  // if mode=toolformer_rig, use TOOLFORMER_RIG_ALLOWED_CHARTS
+  if (!mode || mode === BARD_CLIENT_URL_PARAM) {
+    allowedTileTypes = BARD_ALLOWED_CHARTS;
+  } else if (mode === TOOLFORMER_RIG_MODE) {
+    allowedTileTypes = TOOLFORMER_RIG_ALLOWED_CHARTS;
+  }
+
+  // Get the nl detect-and-fulfill result for the query
+  // TODO: only generate related things when we need to generate related question
+  let nlResp = null;
+  let url = `${apiRoot}/api/explore/detect-and-fulfill?q=${query}&detector=${QUERY_DETECTOR}`;
+  const params = {
+    client,
+    idx,
+    mode,
+    skipRelatedThings: wantRelatedQuestions ? "" : "true",
+    varThreshold,
+  };
+  Object.keys(params)
+    .sort()
+    .forEach((urlKey) => {
+      if (!params[urlKey]) {
+        return;
+      }
+      url += `&${urlKey}=${params[urlKey]}`;
+    });
+  try {
+    nlResp = await axios.post(url, {});
+>>>>>>> staging
   } catch (e) {
     console.error("Error making request:\n", e.message);
     return { err: "Error fetching data." };
@@ -279,6 +409,10 @@ export async function getQueryResult(
       config["metadata"]["containedPlaceTypes"][place.types[0]] ||
       enclosedPlaceType;
   }
+<<<<<<< HEAD
+=======
+  const relatedThings = nlResp.data["relatedThings"] || {};
+>>>>>>> staging
 
   // If no place, return here
   if (!place.dcid) {
@@ -329,7 +463,12 @@ export async function getQueryResult(
             useChartUrl,
             apikey,
             apiRoot,
+<<<<<<< HEAD
             allowedTileTypes
+=======
+            allowedTileTypes,
+            mode
+>>>>>>> staging
           );
       }
       tilePromises.push(...blockTilePromises);
@@ -364,7 +503,17 @@ export async function getQueryResult(
       getTileResults: getElapsedTime(nlResultTime, endTime),
       total: getElapsedTime(startTime, endTime),
     },
+<<<<<<< HEAD
   };
 
   return { charts: processedResults, debug };
+=======
+    websiteCommit: process.env.WEBSITE_HASH || "",
+  };
+  const result: QueryResult = { charts: processedResults, debug };
+  if (wantRelatedQuestions) {
+    result.relatedQuestions = getRelatedQuestions(relatedThings, place);
+  }
+  return result;
+>>>>>>> staging
 }

@@ -20,6 +20,7 @@
   "variables": [
     "dc/topic/ILOEMPPIFLNB",
     "dc/topic/ILOEMPNORMNB",
+<<<<<<< HEAD
     "dc/topic/ILOEMPNIFLNB",
     "dc/topic/ILOEMPSTATNB",
     "dc/topic/ILOEMPPIFLRT",
@@ -38,5 +39,16 @@
     "dc/topic/ILOEMP2NIFRT",
     "dc/topic/ILOHOW2TOTNB",
     "dc/topic/ILOEIP2JOBNB"
+=======
+    "dc/topic/ILOEMPSTATNB",
+    "dc/topic/ILOEMPPIFLRT",
+    "dc/topic/ILOLUUXLUXNB",
+    "dc/topic/ILOEMPNIFLRT",
+    "dc/topic/ILOEMP5NIFNB",
+    "dc/topic/ILOEMP5PIFRT",
+    "dc/topic/ILOEMP5PIFNB",
+    "dc/topic/ILOLUUXLUXRT",
+    "dc/topic/ILOLAIINSPNB"
+>>>>>>> staging
   ]
 }

@@ -421,6 +421,7 @@
             "denom": "Count_Person",
             "infoMessage": "Data for \"Morocco, Ghana, Uganda, Guinea, Senegal, Mali, Rwanda and Somalia\" is currently unavailable. See the following statistics on the other places.",
             "title": "Annual Amount of Emissions: Petrochemical Production, Greenhouse Gas"
+<<<<<<< HEAD
           },
           {
             "columns": [
@@ -489,6 +490,8 @@
             ],
             "denom": "Count_Person",
             "title": "Annual Amount of Emissions: Enteric Fermentation, Greenhouse Gas"
+=======
+>>>>>>> staging
           }
         ],
         "statVarSpec": {

@@ -63,10 +63,20 @@ def populate(state: PopulateState, chart_vars: ChartVars, places: List[Place],
                             [p.dcid for p in places])
     return False
 
+<<<<<<< HEAD
   if chart_vars.source_topic != PROJECTED_TEMP_TOPIC:
     return _populate_explore(state, chart_vars, places, chart_origin, rank)
   else:
     return _populate_legacy(state, chart_vars, places, chart_origin, rank)
+=======
+  if chart_vars.source_topic == PROJECTED_TEMP_TOPIC:
+    # PROJECTED_TEMP_TOPIC has some very custom handling in config-builder,
+    # that needs to be deprecated.
+    # TODO: Deprecate this flow completely!
+    return _populate_specific(state, chart_vars, places, chart_origin, rank)
+  else:
+    return _populate_explore(state, chart_vars, places, chart_origin, rank)
+>>>>>>> staging
 
 
 def _populate_explore(state: PopulateState, chart_vars: ChartVars,
@@ -132,9 +142,15 @@ def _populate_explore(state: PopulateState, chart_vars: ChartVars,
   return added
 
 
+<<<<<<< HEAD
 def _populate_legacy(state: PopulateState, chart_vars: ChartVars,
                      places: List[Place], chart_origin: ChartOriginType,
                      rank: int) -> bool:
+=======
+def _populate_specific(state: PopulateState, chart_vars: ChartVars,
+                       places: List[Place], chart_origin: ChartOriginType,
+                       rank: int) -> bool:
+>>>>>>> staging
   if state.ranking_types:
     # Ranking query
     if state.place_type:

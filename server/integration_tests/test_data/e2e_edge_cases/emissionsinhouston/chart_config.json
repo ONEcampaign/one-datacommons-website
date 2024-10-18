@@ -360,7 +360,11 @@
                 "tiles": [
                   {
                     "statVarKey": [
+<<<<<<< HEAD
                       "Annual_Amount_Emissions_SCC_3_IndustrialProcesses"
+=======
+                      "Annual_Amount_Emissions_SCC_23_IndustrialProcesses"
+>>>>>>> staging
                     ],
                     "title": "Annual Emissions: Industrial Processes in Fort Bend County",
                     "type": "LINE"
@@ -372,7 +376,11 @@
                   {
                     "description": "Annual Emissions: Industrial Processes in Fort Bend County",
                     "statVarKey": [
+<<<<<<< HEAD
                       "Annual_Amount_Emissions_SCC_3_IndustrialProcesses"
+=======
+                      "Annual_Amount_Emissions_SCC_23_IndustrialProcesses"
+>>>>>>> staging
                     ],
                     "title": "Annual Emissions: Industrial Processes in Fort Bend County",
                     "type": "HIGHLIGHT"
@@ -389,9 +397,15 @@
                 "tiles": [
                   {
                     "statVarKey": [
+<<<<<<< HEAD
                       "Annual_Amount_Emissions_SCC_21_StationarySourceFuelCombustion"
                     ],
                     "title": "Annual Emissions: Stationary Source Fuel Combustion in Fort Bend County",
+=======
+                      "Annual_Amount_Emissions_SCC_3_IndustrialProcesses"
+                    ],
+                    "title": "Annual Emissions: Industrial Processes in Fort Bend County",
+>>>>>>> staging
                     "type": "LINE"
                   }
                 ]
@@ -399,18 +413,30 @@
               {
                 "tiles": [
                   {
+<<<<<<< HEAD
                     "description": "Annual Emissions: Stationary Source Fuel Combustion in Fort Bend County",
                     "statVarKey": [
                       "Annual_Amount_Emissions_SCC_21_StationarySourceFuelCombustion"
                     ],
                     "title": "Annual Emissions: Stationary Source Fuel Combustion in Fort Bend County",
+=======
+                    "description": "Annual Emissions: Industrial Processes in Fort Bend County",
+                    "statVarKey": [
+                      "Annual_Amount_Emissions_SCC_3_IndustrialProcesses"
+                    ],
+                    "title": "Annual Emissions: Industrial Processes in Fort Bend County",
+>>>>>>> staging
                     "type": "HIGHLIGHT"
                   }
                 ]
               }
             ],
             "denom": "Count_Person",
+<<<<<<< HEAD
             "title": "Annual Emissions: Stationary Source Fuel Combustion"
+=======
+            "title": "Annual Emissions: Industrial Processes"
+>>>>>>> staging
           },
           {
             "columns": [
@@ -418,9 +444,15 @@
                 "tiles": [
                   {
                     "statVarKey": [
+<<<<<<< HEAD
                       "Annual_Amount_Emissions_SCC_22_MobileSources"
                     ],
                     "title": "Annual Emissions: Mobile Sources in Fort Bend County",
+=======
+                      "Annual_Amount_Emissions_SCC_21_StationarySourceFuelCombustion"
+                    ],
+                    "title": "Annual Emissions: Stationary Source Fuel Combustion in Fort Bend County",
+>>>>>>> staging
                     "type": "LINE"
                   }
                 ]
@@ -428,18 +460,30 @@
               {
                 "tiles": [
                   {
+<<<<<<< HEAD
                     "description": "Annual Emissions: Mobile Sources in Fort Bend County",
                     "statVarKey": [
                       "Annual_Amount_Emissions_SCC_22_MobileSources"
                     ],
                     "title": "Annual Emissions: Mobile Sources in Fort Bend County",
+=======
+                    "description": "Annual Emissions: Stationary Source Fuel Combustion in Fort Bend County",
+                    "statVarKey": [
+                      "Annual_Amount_Emissions_SCC_21_StationarySourceFuelCombustion"
+                    ],
+                    "title": "Annual Emissions: Stationary Source Fuel Combustion in Fort Bend County",
+>>>>>>> staging
                     "type": "HIGHLIGHT"
                   }
                 ]
               }
             ],
             "denom": "Count_Person",
+<<<<<<< HEAD
             "title": "Annual Emissions: Mobile Sources"
+=======
+            "title": "Annual Emissions: Stationary Source Fuel Combustion"
+>>>>>>> staging
           }
         ],
         "statVarSpec": {
@@ -491,9 +535,15 @@
             "name": "Annual Emissions: Stationary Source Fuel Combustion",
             "statVar": "Annual_Amount_Emissions_SCC_21_StationarySourceFuelCombustion"
           },
+<<<<<<< HEAD
           "Annual_Amount_Emissions_SCC_22_MobileSources": {
             "name": "Annual Emissions: Mobile Sources",
             "statVar": "Annual_Amount_Emissions_SCC_22_MobileSources"
+=======
+          "Annual_Amount_Emissions_SCC_23_IndustrialProcesses": {
+            "name": "Annual Emissions: Industrial Processes",
+            "statVar": "Annual_Amount_Emissions_SCC_23_IndustrialProcesses"
+>>>>>>> staging
           },
           "Annual_Amount_Emissions_SCC_25_StorageAndTransport": {
             "name": "Annual Emissions: Storage and Transport",

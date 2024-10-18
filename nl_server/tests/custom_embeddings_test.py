@@ -20,12 +20,19 @@ import unittest
 
 from parameterized import parameterized
 
+<<<<<<< HEAD
 from nl_server import embeddings_map as emb_map
 from nl_server.config import parse
 from nl_server.embeddings import Embeddings
+=======
+from nl_server.config import LocalModelConfig
+from nl_server.config import MemoryIndexConfig
+from nl_server.config import ServerConfig
+from nl_server.embeddings import Embeddings
+from nl_server.registry import Registry
+>>>>>>> staging
 from nl_server.search import search_vars
 from shared.lib.constants import SV_SCORE_DEFAULT_THRESHOLD
-from shared.lib.gcs import TEMP_DIR
 
 _test_data = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                           'test_data')
@@ -34,10 +41,14 @@ _DEFAULT_FILE: str = 'default.ft_final_v20230717230459.all-MiniLM-L6-v2.csv'
 _CUSTOM_FILE: str = 'custom.ft_final_v20230717230459.all-MiniLM-L6-v2.csv'
 _TUNED_MODEL_NAME: str = 'ft_final_v20230717230459'
 _TUNED_MODEL_GCS: str = 'gs://datcom-nl-models/ft_final_v20230717230459.all-MiniLM-L6-v2'
+<<<<<<< HEAD
+=======
+_TEMP_DIR = '/tmp'
+>>>>>>> staging
 
 
 def _copy(fname: str):
-  dst = os.path.join(TEMP_DIR, fname)
+  dst = os.path.join(_TEMP_DIR, fname)
   shutil.copy(os.path.join(_test_data, fname), dst)
   return dst
 
@@ -64,6 +75,7 @@ class TestEmbeddings(unittest.TestCase):
     cls.default_file = _copy(_DEFAULT_FILE)
     cls.custom_file = _copy(_CUSTOM_FILE)
 
+<<<<<<< HEAD
     cls.custom = emb_map.EmbeddingsMap(
         parse(
             {
@@ -88,6 +100,35 @@ class TestEmbeddings(unittest.TestCase):
                     }
                 }
             }, {}, False))
+=======
+    server_config = ServerConfig(version='1',
+                                 default_indexes=['medium_ft'],
+                                 indexes={
+                                     'medium_ft':
+                                         MemoryIndexConfig(
+                                             store_type='MEMORY',
+                                             model=_TUNED_MODEL_NAME,
+                                             embeddings_path=cls.default_file,
+                                         ),
+                                     'custom_ft':
+                                         MemoryIndexConfig(
+                                             store_type='MEMORY',
+                                             model=_TUNED_MODEL_NAME,
+                                             embeddings_path=cls.custom_file,
+                                         )
+                                 },
+                                 models={
+                                     _TUNED_MODEL_NAME:
+                                         LocalModelConfig(
+                                             type='LOCAL',
+                                             gcs_folder=_TUNED_MODEL_GCS,
+                                             usage='EMBEDDINGS',
+                                         )
+                                 },
+                                 enable_reranking=False)
+
+    cls.custom = Registry(server_config)
+>>>>>>> staging
 
   def test_entries(self):
     self.assertEqual(1, len(self.custom.get_index('medium_ft').store.dcids))
@@ -115,6 +156,7 @@ class TestEmbeddings(unittest.TestCase):
     _test_query(self, indexes, query, expected)
 
   def test_merge_custom_embeddings(self):
+<<<<<<< HEAD
     embeddings = emb_map.EmbeddingsMap(
         parse(
             {
@@ -162,6 +204,42 @@ class TestEmbeddings(unittest.TestCase):
     emb_list = [
         embeddings.get_index("custom_ft"),
         embeddings.get_index("medium_ft")
+=======
+    server_config = ServerConfig(version='1',
+                                 default_indexes=['medium_ft'],
+                                 indexes={
+                                     'medium_ft':
+                                         MemoryIndexConfig(
+                                             store_type='MEMORY',
+                                             model=_TUNED_MODEL_NAME,
+                                             embeddings_path=self.default_file,
+                                         )
+                                 },
+                                 models={
+                                     _TUNED_MODEL_NAME:
+                                         LocalModelConfig(
+                                             type='LOCAL',
+                                             gcs_folder=_TUNED_MODEL_GCS,
+                                             usage='EMBEDDINGS',
+                                         )
+                                 },
+                                 enable_reranking=False)
+    registry: Registry = Registry(server_config)
+    _test_query(self, [registry.get_index("medium_ft")], "money",
+                "dc/topic/sdg_1")
+    _test_query(self, [registry.get_index("medium_ft")], "food", "")
+
+    server_config.indexes['custom_ft'] = MemoryIndexConfig(
+        store_type='MEMORY',
+        model=_TUNED_MODEL_NAME,
+        embeddings_path=self.custom_file,
+    )
+    registry.load(server_config)
+
+    emb_list = [
+        registry.get_index("custom_ft"),
+        registry.get_index("medium_ft")
+>>>>>>> staging
     ]
     _test_query(self, emb_list, "money", "dc/topic/sdg_1")
     _test_query(self, emb_list, "food", "dc/topic/sdg_2")

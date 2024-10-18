@@ -11,15 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for Embeddings (in nl_embeddings.py)."""
+"""Tests for Embeddings"""
 
+<<<<<<< HEAD
 import os
+=======
+>>>>>>> staging
 from typing import List
 import unittest
 
 from parameterized import parameterized
-import yaml
 
+<<<<<<< HEAD
 from nl_server import embeddings_map as emb_map
 from nl_server.config import parse
 from nl_server.search import search_vars
@@ -45,6 +48,14 @@ def _get_embeddings_info(embeddings_spec):
                  embeddings_spec['enableReranking'])
 
 
+=======
+from nl_server import config_reader
+from nl_server.registry import Registry
+from nl_server.search import search_vars
+from shared.lib.detected_variables import VarCandidates
+
+
+>>>>>>> staging
 def _get_contents(
     r: VarCandidates) -> tuple[List[str], List[str], List[List[str]]]:
   return r.svs, r.scores, r.sv2sentences
@@ -54,10 +65,19 @@ class TestEmbeddings(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls) -> None:
+<<<<<<< HEAD
     embeddings_spec = _get_embeddings_spec()
     embeddings_info = _get_embeddings_info(embeddings_spec)
     cls.nl_embeddings = emb_map.EmbeddingsMap(embeddings_info).get_index(
         embeddings_spec['defaultIndex'])
+=======
+    catalog = config_reader.read_catalog()
+    env = config_reader.read_env()
+    server_config = config_reader.get_server_config(catalog, env)
+    registry = Registry(server_config)
+    default_indexes = registry.server_config().default_indexes
+    cls.embeddings = registry.get_index(default_indexes[0])
+>>>>>>> staging
 
   @parameterized.expand([
       # All these queries should detect one of the SVs as the top choice.
@@ -94,7 +114,11 @@ class TestEmbeddings(unittest.TestCase):
       ],
   ])
   def test_sv_detection(self, query_str, skip_topics, expected_list):
+<<<<<<< HEAD
     got = search_vars([self.nl_embeddings], [query_str],
+=======
+    got = search_vars([self.embeddings], [query_str],
+>>>>>>> staging
                       skip_topics=skip_topics)[query_str]
 
     # Check that all expected fields are present.
@@ -116,7 +140,11 @@ class TestEmbeddings(unittest.TestCase):
   # For these queries, the match score should be low (< 0.45).
   @parameterized.expand(["random random", "who where why", "__124__abc"])
   def test_low_score_matches(self, query_str):
+<<<<<<< HEAD
     got = search_vars([self.nl_embeddings], [query_str])[query_str]
+=======
+    got = search_vars([self.embeddings], [query_str])[query_str]
+>>>>>>> staging
 
     # Check that all expected fields are present.
     svs, scores, sentences = _get_contents(got)

@@ -1,5 +1,7 @@
 {
+  "blocked": true,
   "client": "test_detect-and-fulfill",
+<<<<<<< HEAD
   "config": {
     "categories": [
       {
@@ -964,15 +966,18 @@
       ]
     }
   },
+=======
+  "config": {},
+>>>>>>> staging
   "context": {},
   "debug": {},
-  "entities": [],
-  "pastSourceContext": "",
+  "failure": "Sorry, could not complete your request.",
   "place": {
-    "dcid": "geoId/06",
-    "name": "California",
-    "place_type": "State"
+    "dcid": "",
+    "name": "",
+    "place_type": ""
   },
+<<<<<<< HEAD
   "placeFallback": {},
   "placeSource": "CURRENT_QUERY",
   "places": [
@@ -1989,5 +1994,10 @@
   "userMessage": "See relevant statistics based on the previous query.",
   "userMessages": [
     "See relevant statistics based on the previous query."
+=======
+  "userMessage": "Sorry, could not complete your request.",
+  "userMessages": [
+    "Sorry, could not complete your request."
+>>>>>>> staging
   ]
 }

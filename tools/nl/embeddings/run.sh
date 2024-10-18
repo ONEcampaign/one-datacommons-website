@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2023 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 function help {
   echo "Usage: -bflce <embeddings-size>"
   echo "$0 -b <embeddings-size> # 'small' or 'medium'. This option uses the base default sentence_transformer model."
@@ -20,13 +21,37 @@ function help {
   echo "$0 -l <embeddings-size> <lancedb_output_path> # This option is used to generate the lanceDB index."
   echo "$0 -c <embeddings-size> <curated_input_dirs> <alternatives_filepattern> # This option creates custom embeddings (using the finetuned model in PROD)."
   echo "$0 -e <embeddings-size> <vertex_ai_endpoint_id> # This option creates embeddings using a Vertex AI model endpoint."
+=======
+# Usage function
+usage() {
+  echo "Usage: $0 -e <embeddings-name> -o <output_dir>"
+  exit 1
+>>>>>>> staging
 }
 
-if [[ $# -le 1 ]]; then
-  help
-  exit 1
+# Parse options
+while [[ "$#" -gt 0 ]]; do
+  case $1 in
+    -e)
+        embeddings_name="$2"
+        shift 2
+        ;;
+    -o)
+        output_dir="$2"
+        shift 2
+        ;;
+    *)
+        echo "Unknown option: $1"
+        usage
+        ;;
+  esac
+done
+
+if [ -z "$output_dir" ]; then
+  output_dir="gs://datcom-nl-models/${embeddings_name}_$(date +'%Y_%m_%d_%H_%M_%S')/"
 fi
 
+<<<<<<< HEAD
 while getopts beflc OPTION; do
   case $OPTION in
     b)
@@ -93,15 +118,18 @@ while getopts beflc OPTION; do
         help
     esac
 done
+=======
+# Print options
+echo "Embeddings name: $embeddings_name"
+echo "Output directory: $output_dir"
+>>>>>>> staging
 
 cd ../../..
 python3 -m venv .env
 source .env/bin/activate
-cd tools/nl/embeddings
-python3 -m pip install --upgrade pip
-pip3 install torch==2.2.2 --extra-index-url https://download.pytorch.org/whl/cpu
-pip3 install -r requirements.txt
+pip3 install -r tools/nl/embeddings/requirements.txt -q
 
+<<<<<<< HEAD
 if [[ "$MODEL_ENDPOINT_ID" != "" ]];then
   python3 build_embeddings.py --embeddings_size=$2 \
     --vertex_ai_prediction_endpoint_id=$MODEL_ENDPOINT_ID \
@@ -118,3 +146,13 @@ elif [[ "$FINETUNED_MODEL" != "" ]]; then
 else
   python3 build_embeddings.py --embeddings_size=$2
 fi
+=======
+export TOKENIZERS_PARALLELISM=false
+
+python3 -m tools.nl.embeddings.build_embeddings \
+  --embeddings_name=$embeddings_name \
+  --output_dir=$output_dir
+
+deactivate
+cd tools/nl/embeddings
+>>>>>>> staging

@@ -25,8 +25,13 @@ from server.lib.nl.common import utils
 from server.lib.nl.explore.params import DCNames
 from shared.lib.custom_dc_util import get_custom_dc_topic_cache_path
 from shared.lib.custom_dc_util import is_custom_dc
+<<<<<<< HEAD
 from shared.lib.gcs import download_gcs_file
 from shared.lib.gcs import is_gcs_path
+=======
+from shared.lib.gcs import is_gcs_path
+from shared.lib.gcs import maybe_download
+>>>>>>> staging
 
 
 # This might be a topic or svpg
@@ -62,6 +67,15 @@ TOPIC_CACHE_FILES = {
         'server/config/nl_page/undata_topic_cache.json',
         'server/config/nl_page/undata_enum_topic_cache.json',
     ],
+<<<<<<< HEAD
+=======
+    DCNames.UNDATA_DEV_DC.value: [
+        'server/config/nl_page/sdg_topic_cache.json',
+        'server/config/nl_page/undata_topic_cache.json',
+        'server/config/nl_page/undata_enum_topic_cache.json',
+        'server/config/nl_page/undata_ilo_topic_cache.json'
+    ],
+>>>>>>> staging
     DCNames.UNDATA_ILO_DC.value: [
         'server/config/nl_page/undata_ilo_topic_cache.json'
     ],
@@ -244,7 +258,11 @@ def _get_local_custom_dc_topic_cache_path() -> str:
   logging.info("Custom DC topic cache will be loaded from: %s", path)
 
   if is_gcs_path(path):
+<<<<<<< HEAD
     return download_gcs_file(path)
+=======
+    return maybe_download(path)
+>>>>>>> staging
 
   if not os.path.exists(path):
     logging.warning(

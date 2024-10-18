@@ -9,6 +9,7 @@
               {
                 "tiles": [
                   {
+<<<<<<< HEAD
                     "answerTableTileSpec": {
                       "columns": [
                         {
@@ -215,6 +216,12 @@
                     ],
                     "title": "Here are all the properties for rs13317 and rs7903146",
                     "type": "ANSWER_TABLE"
+=======
+                    "entities": [
+                      "bio/rs7903146"
+                    ],
+                    "type": "ENTITY_OVERVIEW"
+>>>>>>> staging
                   }
                 ]
               }
@@ -228,11 +235,14 @@
   "debug": {},
   "entities": [
     {
+<<<<<<< HEAD
       "dcid": "bio/rs13317",
       "name": "rs13317",
       "type": ""
     },
     {
+=======
+>>>>>>> staging
       "dcid": "bio/rs7903146",
       "name": "rs7903146",
       "type": ""

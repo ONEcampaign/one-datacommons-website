@@ -1,6 +1,6 @@
 # Data Commons Website
 
-This repo hosts code for the Data Commons website.
+This repo hosts code for the Data Commons website (for ONE Data commons).
 
 ## About Data Commons
 
@@ -31,6 +31,8 @@ Add datacommonsorg/website repo as a remote:
 git remote add dc https://github.com/datacommonsorg/website.git
 ```
 
+Run the prerequisite steps in the [developer guide](docs/developer_guide.md).
+
 Every time when you want to send a Pull Request, do the following steps:
 
 ```shell
@@ -54,7 +56,8 @@ Wait for approval of the Pull Request and merge the change.
 
 ### Local Development
 
-Check steps in [developer guide](docs/developer_guide.md)
+Check steps in [developer guide](docs/developer_guide.md) for more detailed
+instructions.
 
 ## License
 

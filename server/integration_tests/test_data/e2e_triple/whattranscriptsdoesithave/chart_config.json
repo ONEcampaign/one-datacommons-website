@@ -9,6 +9,7 @@
               {
                 "tiles": [
                   {
+<<<<<<< HEAD
                     "answerTableTileSpec": {
                       "columns": [
                         {
@@ -28,6 +29,12 @@
                     ],
                     "title": "The Has RNA Transcript for FGFR1 are as follows:",
                     "type": "ANSWER_TABLE"
+=======
+                    "entities": [
+                      "bio/FGFR1"
+                    ],
+                    "type": "ENTITY_OVERVIEW"
+>>>>>>> staging
                   }
                 ]
               }
@@ -44,6 +51,7 @@
       "dcid": "bio/FGFR1",
       "name": "FGFR1",
       "type": ""
+<<<<<<< HEAD
     },
     {
       "dcid": "bio/galGal5_FGFR1",
@@ -74,6 +82,8 @@
       "dcid": "bio/mm9_Fgfr1",
       "name": "Fgfr1",
       "type": ""
+=======
+>>>>>>> staging
     }
   ],
   "pastSourceContext": "",

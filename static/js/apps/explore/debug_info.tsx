@@ -198,7 +198,9 @@ export function DebugInfo(props: DebugInfoProps): JSX.Element {
     entitiesResolved: props.debugData["entities_resolved"] || [],
     mainPlaceDCID: props.debugData["main_place_dcid"],
     mainPlaceName: props.debugData["main_place_name"],
+    queryIndexTypes: props.debugData["query_index_types"],
     queryWithoutPlaces: props.debugData["query_with_places_removed"],
+    queryWithoutStopWords: props.debugData["query_with_stop_words_removal"],
     queryDetectionDebugLogs: props.debugData["query_detection_debug_logs"],
     svScores: props.debugData["sv_matching"] || {},
     svSentences: props.debugData["svs_to_sentences"],
@@ -238,28 +240,46 @@ export function DebugInfo(props: DebugInfoProps): JSX.Element {
             <br></br>
           </Row>
           <Row>
-            <b>Execution Status: </b> {debugInfo.status}
+            <b>Execution Status: </b>{" "}
+            <span className="highlight">{debugInfo.status}</span>
           </Row>
           <Row>
+<<<<<<< HEAD
             <b>Detection Type: </b> {debugInfo.detectionType}
+=======
+            <b>Detection Type: </b>
+            <span className="highlight">{debugInfo.detectionType}</span>
+>>>>>>> staging
           </Row>
           <Row>
             <b>Place Detection Type: </b>{" "}
-            {debugInfo.placeDetectionType.toUpperCase()}
+            <span className="highlight">
+              {debugInfo.placeDetectionType.toUpperCase()}
+            </span>
           </Row>
           <Row>
-            <b>Original Query: </b> {debugInfo.originalQuery}
+            <b>Original Query: </b>
+            <span className="highlight">{debugInfo.originalQuery}</span>
           </Row>
           <Row>
-            <b>Blocked:</b> {debugInfo.blocked.toString()}
+            <b>Blocked:</b>{" "}
+            <span className="highlight">{debugInfo.blocked.toString()}</span>
+          </Row>
+          <Row>
+            <b>Query index types: </b>
+            <span className="highlight">
+              {debugInfo.queryIndexTypes.join(", ")}
+            </span>
           </Row>
           <Row>
             <b>Query without places: </b>
-            {debugInfo.queryWithoutPlaces}
+            <span className="highlight">{debugInfo.queryWithoutPlaces}</span>
           </Row>
           <Row>
-            <b>Query used for variable detection: </b>
-            {debugInfo.svScores.Query || ""}
+            <b>Query without stop words: </b>
+            <span className="highlight">
+              {debugInfo.queryWithoutStopWords || ""}
+            </span>
           </Row>
           <Row>
             <b>Place Detection:</b>
@@ -267,18 +287,40 @@ export function DebugInfo(props: DebugInfoProps): JSX.Element {
           <Row>
             <Col>
               Places Detected:{" "}
-              {debugInfo.placesDetected
-                ? debugInfo.placesDetected.join(", ")
-                : ""}
+              <span className="highlight">
+                {" "}
+                {debugInfo.placesDetected
+                  ? debugInfo.placesDetected.join(", ")
+                  : ""}
+              </span>
             </Col>
           </Row>
           <Row>
-            <Col>Places Resolved: {debugInfo.placesResolved}</Col>
+            <Col>
+              Places Resolved:
+              <span className="highlight">{debugInfo.placesResolved}</span>
+            </Col>
           </Row>
           <Row>
             <Col>
-              Main Place: {debugInfo.mainPlaceName} (dcid:{" "}
-              {debugInfo.mainPlaceDCID})
+              Main Place:
+              <span className="highlight">
+                {debugInfo.mainPlaceName} (dcid: {debugInfo.mainPlaceDCID})
+              </span>
+            </Col>
+          </Row>
+          <Row>
+            <b>Entity Detection:</b>
+          </Row>
+          <Row>
+            <Col>
+              Entities Detected: {debugInfo.entitiesDetected.join(", ")}
+            </Col>
+          </Row>
+          <Row>
+            <Col>
+              Entities Resolved:{" "}
+              <span className="highlight">{debugInfo.entitiesResolved}</span>
             </Col>
           </Row>
           <Row>
@@ -296,7 +338,7 @@ export function DebugInfo(props: DebugInfoProps): JSX.Element {
             <b>Query Type Detection:</b>
           </Row>
           <Row>
-            <Col>Ranking classification: {debugInfo.rankingClassification}</Col>
+            <Col>Ranking classification: </Col>
           </Row>
           <Row>
             <Col>
@@ -377,6 +419,32 @@ export function DebugInfo(props: DebugInfoProps): JSX.Element {
                 Object.values(debugInfo.svScores.SV || {}),
                 debugInfo.svSentences
               )}
+<<<<<<< HEAD
+=======
+            </Col>
+          </Row>
+          <Row>
+            <b>Property Matches:</b>
+          </Row>
+          <Row>Note: Properties with scores less than 0.5 are not used.</Row>
+          <Row>
+            <Col>
+              {monoVarScoresElement(
+                Object.values(debugInfo.propScores.PROP || {}),
+                Object.values(debugInfo.propScores.CosineScore || {})
+              )}
+            </Col>
+          </Row>
+          <Row>
+            <b>Property Sentences Matched:</b>
+          </Row>
+          <Row>
+            <Col>
+              {svToSentences(
+                Object.values(debugInfo.propScores.PROP || {}),
+                debugInfo.propSentences
+              )}
+>>>>>>> staging
             </Col>
           </Row>
           <Row>

@@ -33,9 +33,12 @@ import {
 import { URL_PATH } from "../../constants/app/visualization_constants";
 import { ChartQuadrant } from "../../constants/scatter_chart_constants";
 import { CSV_FIELD_DELIMITER } from "../../constants/tile_constants";
+<<<<<<< HEAD
+=======
+import { useLazyLoad } from "../../shared/hooks";
+>>>>>>> staging
 import { PointApiResponse, SeriesApiResponse } from "../../shared/stat_types";
 import { NamedTypedPlace, StatVarSpec } from "../../shared/types";
-import { loadSpinner, removeSpinner } from "../../shared/util";
 import { SHOW_POPULATION_OFF } from "../../tools/scatter/context";
 import { getStatWithinPlace } from "../../tools/scatter/util";
 import { ScatterTileSpec } from "../../types/subject_page_proto_types";
@@ -44,19 +47,27 @@ import {
   getHash,
 } from "../../utils/app/visualization_utils";
 import { stringifyFn } from "../../utils/axios";
+<<<<<<< HEAD
+=======
+import { getDataCommonsClient } from "../../utils/data_commons_client";
+>>>>>>> staging
 import { getSeriesWithin } from "../../utils/data_fetch_utils";
 import { datacommonsClient } from "../../utils/datacommons_client";
 import { getStringOrNA } from "../../utils/number_utils";
 import { getPlaceScatterData } from "../../utils/scatter_data_utils";
 import { getDateRange } from "../../utils/string_utils";
 import {
+  clearContainer,
   getDenomInfo,
   getFirstCappedStatVarSpecDate,
   getNoDataErrorMsg,
   getStatFormat,
   getStatVarNames,
   ReplacementStrings,
+<<<<<<< HEAD
   showError,
+=======
+>>>>>>> staging
   transformCsvHeader,
 } from "../../utils/tile_utils";
 import { ChartTileContainer } from "./chart_tile";
@@ -77,8 +88,6 @@ export interface ScatterTilePropType {
   apiRoot?: string;
   // Whether or not to show the explore more button.
   showExploreMore?: boolean;
-  // Whether or not to show a loading spinner when fetching data.
-  showLoadingSpinner?: boolean;
   // Text to show in footer
   footnote?: string;
   // The property to use to get place names.
@@ -87,6 +96,13 @@ export interface ScatterTilePropType {
   subtitle?: string;
   // Optional: Override sources for this tile
   sources?: string[];
+  // Optional: only load this component when it's near the viewport
+  lazyLoad?: boolean;
+  /**
+   * Optional: If lazy loading is enabled, load the component when it is within
+   * this margin of the viewport. Default: "0px"
+   */
+  lazyLoadMargin?: string;
 }
 
 interface RawData {
@@ -119,20 +135,28 @@ export function ScatterTile(props: ScatterTilePropType): JSX.Element {
   const [scatterChartData, setScatterChartData] = useState<
     ScatterChartData | undefined
   >(null);
-
+  const [isLoading, setIsLoading] = useState(true);
+  const { shouldLoad, containerRef } = useLazyLoad(props.lazyLoadMargin);
   useEffect(() => {
+    if (props.lazyLoad && !shouldLoad) {
+      return;
+    }
     if (scatterChartData && areDataPropsEqual()) {
       // only re-fetch if the props that affect data fetch are not equal
       return;
     }
-    loadSpinner(getSpinnerId());
     (async () => {
-      const data = await fetchData(props);
-      if (props && data && _.isEqual(data.props, props)) {
-        setScatterChartData(data);
+      try {
+        setIsLoading(true);
+        const data = await fetchData(props);
+        if (props && data && _.isEqual(data.props, props)) {
+          setScatterChartData(data);
+        }
+      } finally {
+        setIsLoading(false);
       }
     })();
-  }, [props, scatterChartData]);
+  }, [props, scatterChartData, shouldLoad]);
 
   const drawFn = useCallback(() => {
     if (!scatterChartData || !areDataPropsEqual()) {
@@ -145,32 +169,49 @@ export function ScatterTile(props: ScatterTilePropType): JSX.Element {
       tooltip.current,
       props.scatterTileSpec || {}
     );
-    removeSpinner(getSpinnerId());
-  }, [props.svgChartHeight, props.scatterTileSpec, scatterChartData]);
+  }, [
+    props.svgChartHeight,
+    props.scatterTileSpec,
+    scatterChartData,
+    shouldLoad,
+  ]);
 
   useDrawOnResize(drawFn, svgContainer.current);
 
   return (
     <ChartTileContainer
-      id={props.id}
-      title={props.title}
-      subtitle={props.subtitle}
-      sources={props.sources || (scatterChartData && scatterChartData.sources)}
-      replacementStrings={getReplacementStrings(props, scatterChartData)}
-      className={`${props.className} scatter-chart`}
       allowEmbed={true}
+<<<<<<< HEAD
       getDataCsv={getDataCsvCallback(props, scatterChartData)}
       isInitialLoading={_.isNull(scatterChartData)}
+=======
+      apiRoot={props.apiRoot}
+      className={`${props.className} scatter-chart`}
+>>>>>>> staging
       exploreLink={props.showExploreMore ? getExploreLink(props) : null}
-      hasErrorMsg={scatterChartData && !!scatterChartData.errorMsg}
       footnote={props.footnote}
+      getDataCsv={getDataCsvCallback(props, scatterChartData)}
+      errorMsg={scatterChartData && scatterChartData.errorMsg}
+      id={props.id}
+      isInitialLoading={_.isNull(scatterChartData)}
+      isLoading={isLoading}
+      replacementStrings={getReplacementStrings(props, scatterChartData)}
+      sources={props.sources || (scatterChartData && scatterChartData.sources)}
+      subtitle={props.subtitle}
+      title={props.title}
+      statVarSpecs={props.statVarSpec}
+      forwardRef={containerRef}
     >
       <div className="scatter-tile-content">
         <div
           id={props.id}
           className="scatter-svg-container"
           ref={svgContainer}
-          style={{ minHeight: props.svgChartHeight }}
+          style={{
+            minHeight: props.svgChartHeight,
+            display:
+              scatterChartData && scatterChartData.errorMsg ? "none" : "block",
+          }}
         />
         <div
           id="scatter-tooltip"
@@ -178,19 +219,8 @@ export function ScatterTile(props: ScatterTilePropType): JSX.Element {
           style={{ visibility: "hidden" }}
         />
       </div>
-      {props.showLoadingSpinner && (
-        <div id={getSpinnerId()}>
-          <div className="screen">
-            <div id="spinner"></div>
-          </div>
-        </div>
-      )}
     </ChartTileContainer>
   );
-
-  function getSpinnerId(): string {
-    return `scatter-spinner-${props.id}`;
-  }
 
   function areDataPropsEqual(): boolean {
     const oldDataProps = [
@@ -217,6 +247,10 @@ function getDataCsvCallback(
   scatterChartData: ScatterChartData
 ): () => Promise<string> {
   return () => {
+<<<<<<< HEAD
+=======
+    const dataCommonsClient = getDataCommonsClient(props.apiRoot);
+>>>>>>> staging
     // Assume both variables will have the same date
     // TODO: Update getCsv to handle different dates for different variables
     const date = getFirstCappedStatVarSpecDate(props.statVarSpec);
@@ -227,7 +261,11 @@ function getDataCsvCallback(
     const entityProps = props.placeNameProp
       ? [props.placeNameProp, ISO_CODE_ATTRIBUTE]
       : undefined;
+<<<<<<< HEAD
     return datacommonsClient.getCsv({
+=======
+    return dataCommonsClient.getCsv({
+>>>>>>> staging
       childType: props.enclosedPlaceType,
       date,
       entityProps,
@@ -470,7 +508,7 @@ export function draw(
   chartTitle?: string
 ): void {
   if (chartData.errorMsg) {
-    showError(chartData.errorMsg, svgContainer);
+    clearContainer(svgContainer);
     return;
   }
   const width = svgWidth || svgContainer.offsetWidth;

@@ -235,6 +235,7 @@
             "description": "Predicted max temperature with 95% chance, at least once in the year, according to a CMIP6 ensemble model as per SSP 585 (pessimistic) scenario.",
             "footnote": "SSP585 is a pessimistic pathway. It is an update to RCP 8.5 with an additional radiative forcing of 8.5 W/m\u00b2. RCP 8.5 is more likely than not to result in global temperature rise between 3 \u00b0C and 12.6 \u00b0C by 2100.",
             "title": "Max Temperature (\u00b0C) Once in Year With 95% Chance: SP585 in Counties of California"
+<<<<<<< HEAD
           },
           {
             "columns": [
@@ -443,6 +444,8 @@
               }
             ],
             "title": "Min Temperature in Counties of California"
+=======
+>>>>>>> staging
           }
         ],
         "statVarSpec": {
@@ -478,6 +481,7 @@
             "name": "Max Temperature (\u00b0C) Once In Year With 95% Chance: SP585",
             "statVar": "MaxTemp_Daily_Hist_95PctProb_Greater_Atleast1DayAYear_CMIP6_Ensemble_SSP585"
           },
+<<<<<<< HEAD
           "Max_Temperature": {
             "name": "Maximum Temperature",
             "statVar": "Max_Temperature"
@@ -494,6 +498,8 @@
             "name": "Temperature in a Location",
             "statVar": "Temperature"
           },
+=======
+>>>>>>> staging
           "ranking-DiffRelativeToAvg_1980_2010_MaxTemp_Daily_Hist_95PctProb_Greater_Atleast1DayADecade_CMIP6_Ensemble_SSP245": {
             "name": "SSP245 (intermediate), \u00b0C",
             "statVar": "DiffRelativeToAvg_1980_2010_MaxTemp_Daily_Hist_95PctProb_Greater_Atleast1DayADecade_CMIP6_Ensemble_SSP245"

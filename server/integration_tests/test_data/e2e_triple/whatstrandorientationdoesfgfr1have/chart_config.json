@@ -9,6 +9,7 @@
               {
                 "tiles": [
                   {
+<<<<<<< HEAD
                     "answerTableTileSpec": {
                       "columns": [
                         {
@@ -28,6 +29,12 @@
                     ],
                     "title": "The Strand Orientation for FGFR1 are as follows:",
                     "type": "ANSWER_TABLE"
+=======
+                    "entities": [
+                      "bio/FGFR1"
+                    ],
+                    "type": "ENTITY_OVERVIEW"
+>>>>>>> staging
                   }
                 ]
               }
@@ -42,6 +49,7 @@
   "entities": [
     {
       "dcid": "bio/FGFR1",
+<<<<<<< HEAD
       "name": "FGFR1",
       "type": ""
     },
@@ -62,6 +70,8 @@
     },
     {
       "dcid": "bio/hg38_FGFR1",
+=======
+>>>>>>> staging
       "name": "FGFR1",
       "type": ""
     },

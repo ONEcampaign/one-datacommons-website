@@ -24,7 +24,11 @@ export const URL_HASH_PARAMS = {
   TOPIC: "t",
   QUERY: "q",
   DC: "dc",
+<<<<<<< HEAD
   // Embeddings index name (listed in embeddings.yaml)
+=======
+  // Embeddings index name (listed in catalog.yaml)
+>>>>>>> staging
   IDX: "idx",
   DISABLE_EXPLORE_MORE: "em",
   // old query param
@@ -42,6 +46,10 @@ export const URL_HASH_PARAMS = {
   DEFAULT_PLACE: "default_place",
   MODE: "mode",
   RERANKER: "reranker",
+<<<<<<< HEAD
+=======
+  INCLUDE_STOP_WORDS: "includeStopWords",
+>>>>>>> staging
 };
 export const CLIENT_TYPES = {
   // User typed in a p=X&t=Y URL

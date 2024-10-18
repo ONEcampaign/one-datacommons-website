@@ -484,9 +484,15 @@
                 "tiles": [
                   {
                     "statVarKey": [
+<<<<<<< HEAD
                       "Count_Person_Civilian_FamilyHousehold_NonInstitutionalized"
                     ],
                     "title": "Population: Civilian, Family Household, Non Institutionalized in California",
+=======
+                      "Mean_Income_Household_MarriedCoupleFamilyHousehold"
+                    ],
+                    "title": "Average Income for Married Couple Family Households in California",
+>>>>>>> staging
                     "type": "LINE"
                   }
                 ]
@@ -494,16 +500,25 @@
               {
                 "tiles": [
                   {
+<<<<<<< HEAD
                     "description": "Population: Civilian, Family Household, Non Institutionalized in California",
                     "statVarKey": [
                       "Count_Person_Civilian_FamilyHousehold_NonInstitutionalized"
                     ],
                     "title": "Population: Civilian, Family Household, Non Institutionalized in California",
+=======
+                    "description": "Average Income for Married Couple Family Households in California",
+                    "statVarKey": [
+                      "Mean_Income_Household_MarriedCoupleFamilyHousehold"
+                    ],
+                    "title": "Average Income for Married Couple Family Households in California",
+>>>>>>> staging
                     "type": "HIGHLIGHT"
                   }
                 ]
               }
             ],
+<<<<<<< HEAD
             "denom": "Count_Person",
             "title": "Population: Civilian, Family Household, Non Institutionalized"
           },
@@ -565,6 +580,8 @@
                 ]
               }
             ],
+=======
+>>>>>>> staging
             "title": "Average Income for Married Couple Family Households"
           },
           {
@@ -871,6 +888,68 @@
               }
             ],
             "title": "Mean Income Deficit of Household: Married Couple Family Household in Counties of California"
+<<<<<<< HEAD
+=======
+          },
+          {
+            "columns": [
+              {
+                "tiles": [
+                  {
+                    "statVarKey": [
+                      "Median_Earnings_Person"
+                    ],
+                    "title": "Individual Median Earnings in California",
+                    "type": "LINE"
+                  }
+                ]
+              },
+              {
+                "tiles": [
+                  {
+                    "description": "Individual Median Earnings in California",
+                    "statVarKey": [
+                      "Median_Earnings_Person"
+                    ],
+                    "title": "Individual Median Earnings in California",
+                    "type": "HIGHLIGHT"
+                  }
+                ]
+              }
+            ],
+            "title": "Individual Median Earnings"
+          },
+          {
+            "columns": [
+              {
+                "tiles": [
+                  {
+                    "statVarKey": [
+                      "Median_Earnings_Person"
+                    ],
+                    "title": "Individual Median Earnings in Counties of California (${date})",
+                    "type": "MAP"
+                  }
+                ]
+              },
+              {
+                "tiles": [
+                  {
+                    "rankingTileSpec": {
+                      "rankingCount": 5,
+                      "showHighestLowest": true
+                    },
+                    "statVarKey": [
+                      "Median_Earnings_Person"
+                    ],
+                    "title": "Individual Median Earnings in Counties of California (${date})",
+                    "type": "RANKING"
+                  }
+                ]
+              }
+            ],
+            "title": "Individual Median Earnings in Counties of California"
+>>>>>>> staging
           }
         ],
         "statVarSpec": {
@@ -878,6 +957,7 @@
             "name": "Count of Household: Family Household",
             "statVar": "Count_Household_FamilyHousehold"
           },
+<<<<<<< HEAD
           "Count_Person_Civilian_FamilyHousehold_NonInstitutionalized": {
             "name": "Population: Civilian, Family Household, Non Institutionalized",
             "statVar": "Count_Person_Civilian_FamilyHousehold_NonInstitutionalized"
@@ -886,6 +966,12 @@
             "name": "Mean Earnings of Household: Foreign Born, Asia",
             "statVar": "Mean_Earnings_Household_ForeignBorn_PlaceOfBirthAsia"
           },
+=======
+          "Mean_Earnings_Household_ForeignBorn_PlaceOfBirthAsia": {
+            "name": "Mean Earnings of Household: Foreign Born, Asia",
+            "statVar": "Mean_Earnings_Household_ForeignBorn_PlaceOfBirthAsia"
+          },
+>>>>>>> staging
           "Mean_Earnings_Household_ForeignBorn_PlaceOfBirthNorthamerica": {
             "name": "Mean Earnings of Household: Foreign Born, Northamerica",
             "statVar": "Mean_Earnings_Household_ForeignBorn_PlaceOfBirthNorthamerica"
@@ -914,6 +1000,13 @@
             "name": "Average Income for Nonfamily Households",
             "statVar": "Mean_Income_Household_NonfamilyHousehold"
           },
+<<<<<<< HEAD
+=======
+          "Median_Earnings_Person": {
+            "name": "Individual Median Earnings",
+            "statVar": "Median_Earnings_Person"
+          },
+>>>>>>> staging
           "Median_Earnings_Person_Female": {
             "name": "Median Earnings for Women",
             "statVar": "Median_Earnings_Person_Female"
@@ -1328,9 +1421,13 @@
       "Count_Household_FamilyHousehold": {
         "benefitsStatus": [
           "Count_Household_WithFoodStampsInThePast12Months_FamilyHousehold",
+<<<<<<< HEAD
           "Count_Household_WithSSIAndOrCashAssistanceInThePast12Months_FamilyHousehold",
           "Count_Household_WithSocialSecurityIncomeInThePast12Months_FamilyHousehold",
           "Count_Household_WithoutFoodStampsInThePast12Months_FamilyHousehold"
+=======
+          "Count_Household_WithSSIAndOrCashAssistanceInThePast12Months_FamilyHousehold"
+>>>>>>> staging
         ],
         "familyIncome": [
           "Count_Household_0.5OrLessRatioToPovertyLine_FamilyHousehold",
@@ -1350,10 +1447,17 @@
           "Mean_Income_Household_NonfamilyHousehold"
         ]
       },
+<<<<<<< HEAD
       "Median_Income_Household": {
         "benefitsStatus": [
           "Median_Income_Household_WithFoodStampsInThePast12Months",
           "Median_Income_Household_WithoutFoodStampsInThePast12Months"
+=======
+      "Median_Earnings_Person": {
+        "gender": [
+          "Median_Earnings_Person_Female",
+          "Median_Earnings_Person_Male"
+>>>>>>> staging
         ]
       }
     },

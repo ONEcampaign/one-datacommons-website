@@ -13,17 +13,28 @@
 # limitations under the License.
 """LanceDB Embeddings store."""
 
+<<<<<<< HEAD
 import logging
+=======
+>>>>>>> staging
 from typing import List
 
 import lancedb
 
+<<<<<<< HEAD
 from nl_server import gcs
+=======
+from nl_server.cache import get_cache_root
+>>>>>>> staging
 from nl_server.config import LanceDBIndexConfig
 from nl_server.embeddings import EmbeddingsMatch
 from nl_server.embeddings import EmbeddingsResult
 from nl_server.embeddings import EmbeddingsStore
+<<<<<<< HEAD
 from shared.lib.gcs import is_gcs_path
+=======
+from shared.lib import gcs
+>>>>>>> staging
 
 TABLE_NAME = 'datacommons'
 
@@ -43,16 +54,26 @@ class LanceDBStore(EmbeddingsStore):
 
     if idx_info.embeddings_path.startswith('/'):
       lance_db_dir = idx_info.embeddings_path
+<<<<<<< HEAD
     elif is_gcs_path(idx_info.embeddings_path):
       logging.info('Downloading embeddings from GCS path: ')
       lance_db_dir = gcs.download_folder(idx_info.embeddings_path)
+=======
+    elif gcs.is_gcs_path(idx_info.embeddings_path):
+      lance_db_dir = gcs.maybe_download(idx_info.embeddings_path,
+                                        get_cache_root())
+>>>>>>> staging
       if not lance_db_dir:
         raise AssertionError(
             f'Embeddings not downloaded from GCS. Please check the path: {idx_info.embeddings_path}'
         )
     else:
       raise AssertionError(
+<<<<<<< HEAD
           f'"embeddings" path must start with `/` or `gs://`: {idx_info.embeddings_path}'
+=======
+          f'"embeddings_path" path must start with `/` or `gs://`: {idx_info.embeddings_path}'
+>>>>>>> staging
       )
 
     self.db = lancedb.connect(lance_db_dir)

@@ -19,12 +19,18 @@
  */
 
 import _ from "lodash";
+<<<<<<< HEAD
 import React, { useRef } from "react";
 import { Spinner } from "reactstrap";
+=======
+import React, { MutableRefObject, useRef } from "react";
+>>>>>>> staging
 
 import { ASYNC_ELEMENT_HOLDER_CLASS } from "../../constants/css_constants";
 import { INITIAL_LOADING_CLASS } from "../../constants/tile_constants";
 import { ChartEmbed } from "../../place/chart_embed";
+import { IconPlaceholder } from "../../shared/components";
+import { StatVarSpec } from "../../shared/types";
 import {
   formatString,
   getChartTitle,
@@ -34,6 +40,7 @@ import {
 } from "../../utils/tile_utils";
 import { NlChartFeedback } from "../nl_feedback";
 import { ChartFooter } from "./chart_footer";
+import { LoadingHeader } from "./loading_header";
 interface ChartTileContainerProp {
   id: string;
   isLoading?: boolean;
@@ -52,24 +59,32 @@ interface ChartTileContainerProp {
   isInitialLoading?: boolean;
   // Object used for the explore link
   exploreLink?: { displayText: string; url: string };
-  // Whether or not there is an error message in the chart.
-  hasErrorMsg?: boolean;
+  // Optional: Error message
+  errorMsg?: string;
   // Text to show in footer
   footnote?: string;
   // Subtitle text
   subtitle?: string;
+  // Stat Vars for metadata rendering.
+  statVarSpecs?: StatVarSpec[];
+  // API root used for DC tool links.
+  apiRoot?: string;
+  // Optional ref for tile container element
+  forwardRef?: MutableRefObject<HTMLDivElement | null>;
+  // Optional: Chart height
+  chartHeight?: number;
 }
 
 export function ChartTileContainer(props: ChartTileContainerProp): JSX.Element {
-  const containerRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const embedModalElement = useRef<ChartEmbed>(null);
   // on initial loading, hide the title text
   const title = !props.isInitialLoading
     ? getChartTitle(props.title, props.replacementStrings)
     : "";
-  const showSources = !_.isEmpty(props.sources) && !props.hasErrorMsg;
+  const showSources = !_.isEmpty(props.sources) && !props.errorMsg;
   const showEmbed =
-    props.allowEmbed && !props.isInitialLoading && !props.hasErrorMsg;
+    props.allowEmbed && !props.isInitialLoading && !props.errorMsg;
   return (
     <div
       className={`chart-container ${ASYNC_ELEMENT_HOLDER_CLASS} ${
@@ -82,8 +97,10 @@ export function ChartTileContainer(props: ChartTileContainerProp): JSX.Element {
         className={`chart-content ${
           props.isInitialLoading ? INITIAL_LOADING_CLASS : ""
         }`}
+        ref={props.forwardRef}
       >
         <div className="chart-headers">
+<<<<<<< HEAD
           {
             /* We want to render this header element even if title is empty
             to keep the space on the page */
@@ -99,13 +116,27 @@ export function ChartTileContainer(props: ChartTileContainerProp): JSX.Element {
               </h4>
             )
           }
+=======
+          {props.errorMsg && <h4 className="text-danger">{props.errorMsg}</h4>}
+          <LoadingHeader isLoading={props.isLoading} title={title} />
+>>>>>>> staging
           <slot name="subheader" {...{ part: "subheader" }}>
             {props.subtitle && !props.isInitialLoading ? (
               <div className="subheader">{props.subtitle}</div>
             ) : null}
           </slot>
-          {showSources && <TileSources sources={props.sources} />}
+          {showSources && (
+            <TileSources
+              apiRoot={props.apiRoot}
+              containerRef={containerRef}
+              sources={props.sources}
+              statVarSpecs={props.statVarSpecs}
+            />
+          )}
         </div>
+        {props.errorMsg && (
+          <IconPlaceholder height={props.chartHeight} iconName="warning" />
+        )}
         {props.children}
       </div>
       <ChartFooter
