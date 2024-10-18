@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Cloud build file to manually trigger building and pushing a CDC docker image.
+# Cloud build file to manually trigger building and pushing a CDC data docker image.
 # This cloud build is typically executed by invoking
 # the wrapper script ./scripts/push_cdc_data_image.sh.
 
