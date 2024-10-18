@@ -15,7 +15,11 @@
 
 from typing import Dict
 
+<<<<<<< HEAD
 import server.lib.nl.common.counters as ctr
+=======
+from server.lib.nl.common.counters import Counters
+>>>>>>> staging
 from server.lib.nl.detection import heuristic_classifiers
 from server.lib.nl.detection import place
 from server.lib.nl.detection import utils as dutils
@@ -23,10 +27,12 @@ from server.lib.nl.detection import variable
 from server.lib.nl.detection.types import ActualDetectorType
 from server.lib.nl.detection.types import ClassificationType
 from server.lib.nl.detection.types import Detection
+from server.lib.nl.detection.types import DetectionArgs
 from server.lib.nl.detection.types import NLClassifier
 from server.lib.nl.detection.types import SimpleClassificationAttributes
 from server.lib.nl.explore import params
 from server.lib.nl.explore.params import QueryMode
+<<<<<<< HEAD
 
 
 def detect(orig_query: str,
@@ -38,8 +44,24 @@ def detect(orig_query: str,
            reranker: str = '',
            allow_triples: bool = False) -> Detection:
   place_detection = place.detect_from_query_dc(orig_query,
+=======
+
+TOOLFORMER_QUERY_REPLACEMENTS = {"residents": "people", "global": "world"}
+
+
+def detect(orig_query: str, cleaned_query: str,
+           query_detection_debug_logs: Dict, counters: Counters,
+           dargs: DetectionArgs) -> Detection:
+  # If in toolformer mode, process the query by replacing strings in
+  # the query
+  query_with_string_replacements = orig_query
+  if (params.is_toolformer_mode(dargs.mode)):
+    query_with_string_replacements = dutils.replace_strings_in_query(
+        orig_query, TOOLFORMER_QUERY_REPLACEMENTS)
+  place_detection = place.detect_from_query_dc(query_with_string_replacements,
+>>>>>>> staging
                                                query_detection_debug_logs,
-                                               allow_triples)
+                                               dargs.allow_triples)
 
   query = place_detection.query_without_place_substr
 
@@ -61,13 +83,12 @@ def detect(orig_query: str,
       heuristic_classifiers.general(query, ClassificationType.PER_CAPITA,
                                     "PerCapita"),
       heuristic_classifiers.date(query, counters),
+      heuristic_classifiers.general(query, ClassificationType.TEMPORAL,
+                                    "Temporal")
   ]
 
-  if mode == QueryMode.STRICT:
+  if dargs.mode == QueryMode.STRICT:
     classifications.append(heuristic_classifiers.detailed_action(query))
-    classifications.append(
-        heuristic_classifiers.general(query, ClassificationType.TEMPORAL,
-                                      "Temporal"))
 
   # Set the Classifications list.
   classifications = [c for c in classifications if c is not None]
@@ -79,6 +100,7 @@ def detect(orig_query: str,
                      attributes=SimpleClassificationAttributes()))
 
   # Step 4: Identify the SV matched based on the query.
+<<<<<<< HEAD
   sv_threshold_override = params.sv_threshold_override(mode)
   sv_detection_query = dutils.remove_date_from_query(query, classifications)
   skip_topics = mode == params.QueryMode.TOOLFORMER
@@ -88,16 +110,33 @@ def detect(orig_query: str,
         sv_detection_query, index_type, counters,
         query_detection_debug_logs["query_transformations"],
         sv_threshold_override, reranker, skip_topics)
+=======
+  sv_detection_query = dutils.remove_date_from_query(query, classifications)
+  sv_detection_result = dutils.empty_var_detection_result()
+  try:
+    sv_detection_result = variable.detect_vars(
+        orig_query=sv_detection_query,
+        debug_logs=query_detection_debug_logs["query_transformations"],
+        dargs=dargs)
+>>>>>>> staging
   except ValueError as e:
     counters.err('detect_vars_value_error', {
         'q': sv_detection_query,
         'err': str(e)
     })
   # Set the SVDetection.
+<<<<<<< HEAD
   sv_detection = dutils.create_sv_detection(sv_detection_query,
                                             sv_detection_result,
                                             sv_threshold_override,
                                             allow_triples)
+=======
+  sv_threshold_override = params.sv_threshold_override(dargs)
+  sv_detection = dutils.create_sv_detection(sv_detection_query,
+                                            sv_detection_result,
+                                            sv_threshold_override,
+                                            dargs.allow_triples)
+>>>>>>> staging
 
   return Detection(original_query=orig_query,
                    cleaned_query=cleaned_query,

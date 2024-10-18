@@ -1,5 +1,6 @@
 # Custom Data Commons
 
+<<<<<<< HEAD
 A custom Data Commons (DC) can hold new data and include UI modifications that are
 custom to a third party's need.
 
@@ -497,3 +498,6 @@ Below is a detailed description of all the variables available.
 | DB_PASS              | [`USE_CLOUDSQL=true`]Cloud SQL database password                                                 |
 | ADMIN_SECRET         | [Optional] Secret token to perform /admin page operation                                         |
 | MAPS_API_KEY         | [Optional] Used for map visulization place search                                                |
+=======
+The contents of this page have moved to https://docs.datacommons.org/custom_dc/.
+>>>>>>> staging

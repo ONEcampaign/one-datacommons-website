@@ -49,7 +49,11 @@ export function queryAxiosMock(): void {
 
   when(axios.post)
     .calledWith(
+<<<<<<< HEAD
       "/api/explore/detect-and-fulfill?q=family earnings in north dakota&mode=strict&client=bard",
+=======
+      "/api/explore/detect-and-fulfill?q=family earnings in north dakota&detector=heuristic&client=bard&skipRelatedThings=true",
+>>>>>>> staging
       {}
     )
     .mockResolvedValue(TIMELINE_NL_RESP);
@@ -65,6 +69,7 @@ export function queryAxiosMock(): void {
       paramsSerializer: stringifyFn,
     })
     .mockResolvedValue(HOUSEHOLD_INCOME_LATEST_POINTS_RESP);
+<<<<<<< HEAD
   when(axios.get)
     .calledWith("/api/observations/series", {
       params: {
@@ -81,6 +86,18 @@ export function queryAxiosMock(): void {
         variables: ["Median_Income_Household_FamilyHousehold"],
       },
       paramsSerializer: stringifyFn,
+=======
+  when(axios.post)
+    .calledWith("/api/observations/series", {
+      entities: ["geoId/38"],
+      variables: ["Mean_Income_Household_FamilyHousehold"],
+    })
+    .mockResolvedValue(MEAN_HOUSEHOLD_INCOME_SERIES_RESP);
+  when(axios.post)
+    .calledWith("/api/observations/series", {
+      entities: ["geoId/38"],
+      variables: ["Median_Income_Household_FamilyHousehold"],
+>>>>>>> staging
     })
     .mockResolvedValue(MEDIAN_HOUSEHOLD_INCOME_SERIES_RESP);
   when(axios.post)
@@ -156,7 +173,11 @@ export function queryAxiosMock(): void {
    */
   when(axios.post)
     .calledWith(
+<<<<<<< HEAD
       "/api/explore/detect-and-fulfill?q=top jobs in santa clara county&mode=strict&client=bard",
+=======
+      "/api/explore/detect-and-fulfill?q=top jobs in santa clara county&detector=heuristic&client=bard&skipRelatedThings=true",
+>>>>>>> staging
       {}
     )
     .mockResolvedValue(BAR_NL_RESP);
@@ -213,7 +234,11 @@ export function queryAxiosMock(): void {
    */
   when(axios.post)
     .calledWith(
+<<<<<<< HEAD
       "/api/explore/detect-and-fulfill?q=obesity vs. poverty in counties of california&mode=strict&client=bard",
+=======
+      "/api/explore/detect-and-fulfill?q=obesity vs. poverty in counties of california&detector=heuristic&client=bard&skipRelatedThings=true",
+>>>>>>> staging
       {}
     )
     .mockResolvedValue(SCATTER_NL_RESP);

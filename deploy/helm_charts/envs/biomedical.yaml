@@ -12,6 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+# DNS
+domain: biomedical.datacommons.org
+ip: 34.49.89.118
+
+>>>>>>> staging
 # Helm config
 project: "datcom-biomedical"
 cluster_prefix: "website"
@@ -42,6 +49,7 @@ serviceGroups:
 
 nl:
   enabled: true
+<<<<<<< HEAD
   embeddingsSpec:
     defaultIndex: "bio_ft"
     enabledIndexes: [
@@ -50,3 +58,14 @@ nl:
       "sdg_ft",
       "undata_ft",
     ]
+=======
+  env:
+    default_indexes:
+      - bio_ft
+      - medium_ft
+    enabled_indexes:
+      - bio_ft
+      - medium_ft
+      - sdg_ft
+      - undata_ft
+>>>>>>> staging

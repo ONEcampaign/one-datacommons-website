@@ -149,18 +149,30 @@
               {
                 "tiles": [
                   {
+<<<<<<< HEAD
                     "description": "Deaths in China",
                     "statVarKey": [
                       "Count_Death"
                     ],
                     "title": "Deaths in China",
+=======
+                    "description": "Number of Deaths in China",
+                    "statVarKey": [
+                      "Count_Death"
+                    ],
+                    "title": "Number of Deaths in China",
+>>>>>>> staging
                     "type": "HIGHLIGHT"
                   }
                 ]
               }
             ],
             "denom": "Count_Person",
+<<<<<<< HEAD
             "title": "Deaths"
+=======
+            "title": "Number of Deaths"
+>>>>>>> staging
           },
           {
             "columns": [
@@ -275,7 +287,11 @@
                 ]
               }
             ],
+<<<<<<< HEAD
             "footnote": "Includes data from the following sources: united nations Inter-agency group for child mortality estimation (UN IGME), 2023.",
+=======
+            "footnote": "Includes data from the following sources: united nations Inter-agency group for child mortality estimation (UN IGME), 2024.",
+>>>>>>> staging
             "title": "Neonatal Mortality Rate"
           },
           {
@@ -361,6 +377,7 @@
                 "tiles": [
                   {
                     "statVarKey": [
+<<<<<<< HEAD
                       "WHO/MORT_MATERNALNUM"
                     ],
                     "title": "Number of Maternal Deaths in China",
@@ -389,6 +406,8 @@
                 "tiles": [
                   {
                     "statVarKey": [
+=======
+>>>>>>> staging
                       "sdg/SH_STA_MORT.SEX--F"
                     ],
                     "title": "Maternal Mortality Ratio in China",
@@ -417,6 +436,37 @@
               {
                 "tiles": [
                   {
+<<<<<<< HEAD
+=======
+                    "statVarKey": [
+                      "WHO/MORT_MATERNALNUM"
+                    ],
+                    "title": "Number of Maternal Deaths in China",
+                    "type": "LINE"
+                  }
+                ]
+              },
+              {
+                "tiles": [
+                  {
+                    "description": "Number of Maternal Deaths in China",
+                    "statVarKey": [
+                      "WHO/MORT_MATERNALNUM"
+                    ],
+                    "title": "Number of Maternal Deaths in China",
+                    "type": "HIGHLIGHT"
+                  }
+                ]
+              }
+            ],
+            "title": "Number of Maternal Deaths"
+          },
+          {
+            "columns": [
+              {
+                "tiles": [
+                  {
+>>>>>>> staging
                     "barTileSpec": {
                       "maxPlaces": 15,
                       "maxVariables": 15,
@@ -453,13 +503,83 @@
               }
             ],
             "title": "Mortality Rates by Causes"
+<<<<<<< HEAD
+=======
+          },
+          {
+            "columns": [
+              {
+                "tiles": [
+                  {
+                    "statVarKey": [
+                      "Count_Death_0Years_AsFractionOf_Count_BirthEvent_LiveBirth"
+                    ],
+                    "title": "Infant Mortality Rate in China",
+                    "type": "LINE"
+                  }
+                ]
+              },
+              {
+                "tiles": [
+                  {
+                    "description": "Infant Mortality Rate in China",
+                    "statVarKey": [
+                      "Count_Death_0Years_AsFractionOf_Count_BirthEvent_LiveBirth"
+                    ],
+                    "title": "Infant Mortality Rate in China",
+                    "type": "HIGHLIGHT"
+                  }
+                ]
+              }
+            ],
+            "description": "Infant mortality rate is the number of infants dying before reaching one year of age, per 1,000 live births in a given year. Estimates developed by the UN Inter-agency group for child mortality estimation (UNICEF, WHO, world bank, UN DESA population division) at www.Childmortality.Org.",
+            "title": "Infant Mortality Rate"
+          },
+          {
+            "columns": [
+              {
+                "tiles": [
+                  {
+                    "statVarKey": [
+                      "Count_Death_LessThan1Year_AsAFractionOf_Count_BirthEvent"
+                    ],
+                    "title": "Count of Mortality Event: 1 Years or Less (As Fraction of Count Birth Event) in China",
+                    "type": "LINE"
+                  }
+                ]
+              },
+              {
+                "tiles": [
+                  {
+                    "description": "Count of Mortality Event: 1 Years or Less (As Fraction of Count Birth Event) in China",
+                    "statVarKey": [
+                      "Count_Death_LessThan1Year_AsAFractionOf_Count_BirthEvent"
+                    ],
+                    "title": "Count of Mortality Event: 1 Years or Less (As Fraction of Count Birth Event) in China",
+                    "type": "HIGHLIGHT"
+                  }
+                ]
+              }
+            ],
+            "title": "Count of Mortality Event: 1 Years or Less (As Fraction of Count Birth Event)"
+>>>>>>> staging
           }
         ],
         "statVarSpec": {
           "Count_Death": {
+<<<<<<< HEAD
             "name": "Deaths",
             "statVar": "Count_Death"
           },
+=======
+            "name": "Number of Deaths",
+            "statVar": "Count_Death"
+          },
+          "Count_Death_0Years_AsFractionOf_Count_BirthEvent_LiveBirth": {
+            "name": "Infant Mortality Rate",
+            "statVar": "Count_Death_0Years_AsFractionOf_Count_BirthEvent_LiveBirth"
+          },
+>>>>>>> staging
           "Count_Death_AsAFractionOfCount_Person": {
             "name": "Deaths Per Capita",
             "statVar": "Count_Death_AsAFractionOfCount_Person"
@@ -468,6 +588,13 @@
             "name": "% of Suicide Events",
             "statVar": "Count_Death_IntentionalSelfHarm_AsFractionOf_Count_Person"
           },
+<<<<<<< HEAD
+=======
+          "Count_Death_LessThan1Year_AsAFractionOf_Count_BirthEvent": {
+            "name": "Count of Mortality Event: 1 Years or Less (As Fraction of Count Birth Event)",
+            "statVar": "Count_Death_LessThan1Year_AsAFractionOf_Count_BirthEvent"
+          },
+>>>>>>> staging
           "LifeExpectancy_Person": {
             "name": "Life Expectancy",
             "statVar": "LifeExpectancy_Person"

@@ -98,6 +98,8 @@
                     ],
                     "statVarKey": [
                       "Count_Person_Illiterate_AsAFractionOf_Count_Person_multiple_place_bar_block"
+<<<<<<< HEAD
+=======
                     ],
                     "title": "Population: Illiterate (Per Capita) (${date})",
                     "type": "BAR"
@@ -139,8 +141,189 @@
               }
             ],
             "denom": "Count_Person",
+            "title": "Population: Literate, Urban"
+          },
+          {
+            "columns": [
+              {
+                "tiles": [
+                  {
+                    "barTileSpec": {
+                      "maxPlaces": 15,
+                      "maxVariables": 15,
+                      "sort": "DESCENDING"
+                    },
+                    "comparisonPlaces": [
+                      "wikidataId/Q1165",
+                      "wikidataId/Q1184",
+                      "wikidataId/Q1168",
+                      "wikidataId/Q1498",
+                      "wikidataId/Q1193",
+                      "wikidataId/Q1188",
+                      "wikidataId/Q1195",
+                      "wikidataId/Q1164",
+                      "wikidataId/Q1437",
+                      "wikidataId/Q22048"
+                    ],
+                    "statVarKey": [
+                      "Count_Person_Literate_Male_multiple_place_bar_block"
+>>>>>>> staging
+                    ],
+                    "title": "Population: Male, Literate (${date})",
+                    "type": "BAR"
+                  }
+                ]
+              }
+            ],
+            "denom": "Count_Person",
+            "title": "Population: Male, Literate"
+          },
+          {
+            "columns": [
+              {
+                "tiles": [
+                  {
+                    "barTileSpec": {
+                      "maxPlaces": 15,
+                      "maxVariables": 15,
+                      "sort": "DESCENDING"
+                    },
+                    "comparisonPlaces": [
+                      "wikidataId/Q1165",
+                      "wikidataId/Q1184",
+                      "wikidataId/Q1168",
+                      "wikidataId/Q1498",
+                      "wikidataId/Q1193",
+                      "wikidataId/Q1188",
+                      "wikidataId/Q1195",
+                      "wikidataId/Q1164",
+                      "wikidataId/Q1437",
+                      "wikidataId/Q22048"
+                    ],
+                    "statVarKey": [
+<<<<<<< HEAD
+                      "Count_Person_Literate_Urban_multiple_place_bar_block"
+                    ],
+                    "title": "Population: Literate, Urban (${date})",
+=======
+                      "Count_Person_Literate_Rural_multiple_place_bar_block"
+                    ],
+                    "title": "Population: Literate, Rural (${date})",
+>>>>>>> staging
+                    "type": "BAR"
+                  }
+                ]
+              }
+            ],
+            "denom": "Count_Person",
+<<<<<<< HEAD
             "startWithDenom": true,
             "title": "Population: Literate, Urban"
+=======
+            "title": "Population: Literate, Rural"
+          },
+          {
+            "columns": [
+              {
+                "tiles": [
+                  {
+                    "barTileSpec": {
+                      "maxPlaces": 15,
+                      "maxVariables": 15,
+                      "sort": "DESCENDING"
+                    },
+                    "comparisonPlaces": [
+                      "wikidataId/Q1165",
+                      "wikidataId/Q1184",
+                      "wikidataId/Q1168",
+                      "wikidataId/Q1498",
+                      "wikidataId/Q1193",
+                      "wikidataId/Q1188",
+                      "wikidataId/Q1195",
+                      "wikidataId/Q1164",
+                      "wikidataId/Q1437",
+                      "wikidataId/Q22048"
+                    ],
+                    "statVarKey": [
+                      "Count_Person_Illiterate_Urban_multiple_place_bar_block"
+                    ],
+                    "title": "Population: Illiterate, Urban (${date})",
+                    "type": "BAR"
+                  }
+                ]
+              }
+            ],
+            "denom": "Count_Person",
+            "title": "Population: Illiterate, Urban"
+          },
+          {
+            "columns": [
+              {
+                "tiles": [
+                  {
+                    "barTileSpec": {
+                      "maxPlaces": 15,
+                      "maxVariables": 15,
+                      "sort": "DESCENDING"
+                    },
+                    "comparisonPlaces": [
+                      "wikidataId/Q1165",
+                      "wikidataId/Q1184",
+                      "wikidataId/Q1168",
+                      "wikidataId/Q1498",
+                      "wikidataId/Q1193",
+                      "wikidataId/Q1188",
+                      "wikidataId/Q1195",
+                      "wikidataId/Q1164",
+                      "wikidataId/Q1437",
+                      "wikidataId/Q22048"
+                    ],
+                    "statVarKey": [
+                      "Count_Person_Literate_Female_multiple_place_bar_block"
+                    ],
+                    "title": "Population: Female, Literate (${date})",
+                    "type": "BAR"
+                  }
+                ]
+              }
+            ],
+            "denom": "Count_Person",
+            "title": "Population: Female, Literate"
+          },
+          {
+            "columns": [
+              {
+                "tiles": [
+                  {
+                    "barTileSpec": {
+                      "maxPlaces": 15,
+                      "maxVariables": 15,
+                      "sort": "DESCENDING"
+                    },
+                    "comparisonPlaces": [
+                      "wikidataId/Q1165",
+                      "wikidataId/Q1184",
+                      "wikidataId/Q1168",
+                      "wikidataId/Q1498",
+                      "wikidataId/Q1193",
+                      "wikidataId/Q1188",
+                      "wikidataId/Q1195",
+                      "wikidataId/Q1164",
+                      "wikidataId/Q1437",
+                      "wikidataId/Q22048"
+                    ],
+                    "statVarKey": [
+                      "Count_Person_Illiterate_Male_multiple_place_bar_block"
+                    ],
+                    "title": "Population: Male, Illiterate (${date})",
+                    "type": "BAR"
+                  }
+                ]
+              }
+            ],
+            "denom": "Count_Person",
+            "title": "Population: Male, Illiterate"
+>>>>>>> staging
           },
           {
             "columns": [
@@ -235,15 +418,16 @@
                       "wikidataId/Q22048"
                     ],
                     "statVarKey": [
-                      "Count_Person_Illiterate_Urban_multiple_place_bar_block"
+                      "Count_Person_Illiterate_Female_multiple_place_bar_block"
                     ],
-                    "title": "Population: Illiterate, Urban (${date})",
+                    "title": "Population: Female, Illiterate (${date})",
                     "type": "BAR"
                   }
                 ]
               }
             ],
             "denom": "Count_Person",
+<<<<<<< HEAD
             "startWithDenom": true,
             "title": "Population: Illiterate, Urban"
           },
@@ -385,6 +569,8 @@
             ],
             "denom": "Count_Person",
             "startWithDenom": true,
+=======
+>>>>>>> staging
             "title": "Population: Female, Illiterate"
           },
           {
@@ -419,7 +605,10 @@
               }
             ],
             "denom": "Count_Person",
+<<<<<<< HEAD
             "startWithDenom": true,
+=======
+>>>>>>> staging
             "title": "Population: Houseless, Literate"
           },
           {
@@ -454,7 +643,10 @@
               }
             ],
             "denom": "Count_Person",
+<<<<<<< HEAD
             "startWithDenom": true,
+=======
+>>>>>>> staging
             "title": "Population: Houseless, Illiterate"
           },
           {
@@ -489,7 +681,10 @@
               }
             ],
             "denom": "Count_Person",
+<<<<<<< HEAD
             "startWithDenom": true,
+=======
+>>>>>>> staging
             "title": "Population: Houseless, Literate, Urban"
           },
           {
@@ -524,7 +719,10 @@
               }
             ],
             "denom": "Count_Person",
+<<<<<<< HEAD
             "startWithDenom": true,
+=======
+>>>>>>> staging
             "title": "Population: Houseless, Illiterate, Urban"
           },
           {
@@ -559,7 +757,10 @@
               }
             ],
             "denom": "Count_Person",
+<<<<<<< HEAD
             "startWithDenom": true,
+=======
+>>>>>>> staging
             "title": "Population: Houseless, Literate, Rural"
           }
         ],
@@ -777,8 +978,8 @@
           "indianCensus/Count_Person_Religion_Buddhist_Literate_Female",
           "indianCensus/Count_Person_Religion_Christian_Literate_Female",
           "indianCensus/Count_Person_Religion_Hindu_Literate_Female",
-          "indianCensus/Count_Person_Religion_Jain_Literate_Female",
           "indianCensus/Count_Person_Religion_Muslim_Literate_Female",
+<<<<<<< HEAD
           "indianCensus/Count_Person_Religion_OtherReligionsAndPersuasions_Literate_Female",
           "indianCensus/Count_Person_Religion_ReligionNotStated_Literate_Female",
           "indianCensus/Count_Person_Religion_Sikh_Literate_Female"
@@ -786,6 +987,9 @@
         "socialCategory": [
           "Count_Person_ScheduledCaste_Literate_Female",
           "Count_Person_ScheduledTribe_Literate_Female"
+=======
+          "indianCensus/Count_Person_Religion_OtherReligionsAndPersuasions_Literate_Female"
+>>>>>>> staging
         ]
       }
     },

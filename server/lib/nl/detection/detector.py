@@ -28,6 +28,10 @@ from server.lib.nl.detection import place
 from server.lib.nl.detection import types
 from server.lib.nl.detection.place_utils import get_similar
 from server.lib.nl.detection.types import ActualDetectorType
+<<<<<<< HEAD
+=======
+from server.lib.nl.detection.types import DetectionArgs
+>>>>>>> staging
 from server.lib.nl.detection.types import PlaceDetection
 from server.lib.nl.detection.types import RequestedDetectorType
 from server.lib.nl.detection.utils import empty_var_candidates
@@ -50,6 +54,7 @@ MAX_CHILD_LIMIT = 50
 # For `hybrid` detection, it first calls Heuristic detector, and
 # based on `need_llm()`, decides to call the LLM detector.
 #
+<<<<<<< HEAD
 def detect(detector_type: str,
            original_query: str,
            no_punct_query: str,
@@ -60,6 +65,11 @@ def detect(detector_type: str,
            counters: Counters,
            reranker: str = '',
            allow_triples: bool = False) -> types.Detection:
+=======
+def detect(detector_type: str, original_query: str, no_punct_query: str,
+           prev_utterance: Utterance, query_detection_debug_logs: Dict,
+           counters: Counters, dargs: DetectionArgs) -> types.Detection:
+>>>>>>> staging
   #
   # In the absence of the PALM API key, fallback to heuristic.
   #
@@ -80,12 +90,18 @@ def detect(detector_type: str,
     llm_detection = llm_detector.detect(
         query=original_query,
         prev_utterance=prev_utterance,
+<<<<<<< HEAD
         index_type=embeddings_index_type,
         query_detection_debug_logs=query_detection_debug_logs,
         mode=mode,
         ctr=counters,
         reranker=reranker,
         allow_triples=allow_triples)
+=======
+        query_detection_debug_logs=query_detection_debug_logs,
+        counters=counters,
+        dargs=dargs)
+>>>>>>> staging
     return llm_detection
 
   #
@@ -94,12 +110,18 @@ def detect(detector_type: str,
   heuristic_detection = heuristic_detector.detect(
       orig_query=original_query,
       cleaned_query=no_punct_query,
+<<<<<<< HEAD
       index_type=embeddings_index_type,
       query_detection_debug_logs=query_detection_debug_logs,
       mode=mode,
       counters=counters,
       reranker=reranker,
       allow_triples=allow_triples)
+=======
+      query_detection_debug_logs=query_detection_debug_logs,
+      counters=counters,
+      dargs=dargs)
+>>>>>>> staging
   if detector_type == RequestedDetectorType.Heuristic.value:
     return heuristic_detection
 
@@ -125,12 +147,18 @@ def detect(detector_type: str,
   llm_detection = llm_detector.detect(
       query=original_query,
       prev_utterance=prev_utterance,
+<<<<<<< HEAD
       index_type=embeddings_index_type,
       query_detection_debug_logs=query_detection_debug_logs,
       mode=mode,
       ctr=counters,
       reranker=reranker,
       allow_triples=allow_triples)
+=======
+      query_detection_debug_logs=query_detection_debug_logs,
+      counters=counters,
+      dargs=dargs)
+>>>>>>> staging
   if not llm_detection:
     counters.err('info_llm_blocked', '')
     return None

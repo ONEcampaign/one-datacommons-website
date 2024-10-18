@@ -149,8 +149,12 @@
                   {
                     "barTileSpec": {
                       "maxPlaces": 15,
+<<<<<<< HEAD
                       "maxVariables": 15,
                       "sort": "DESCENDING"
+=======
+                      "maxVariables": 15
+>>>>>>> staging
                     },
                     "comparisonPlaces": [
                       "geoId/12"

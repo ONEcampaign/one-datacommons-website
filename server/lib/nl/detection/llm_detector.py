@@ -17,9 +17,13 @@ import copy
 import sys
 from typing import Dict, List
 
+<<<<<<< HEAD
 from server.lib.nl.common import counters
+=======
+>>>>>>> staging
 from server.lib.nl.common import serialize
 from server.lib.nl.common import utterance
+from server.lib.nl.common.counters import Counters
 from server.lib.nl.detection import llm_api
 from server.lib.nl.detection import place
 from server.lib.nl.detection import types
@@ -27,7 +31,11 @@ from server.lib.nl.detection import utils as dutils
 from server.lib.nl.detection import variable
 from server.lib.nl.detection.types import ActualDetectorType
 from server.lib.nl.detection.types import Detection
+<<<<<<< HEAD
 from server.lib.nl.detection.types import LlmApiType
+=======
+from server.lib.nl.detection.types import DetectionArgs
+>>>>>>> staging
 from server.lib.nl.explore import params
 import shared.lib.detected_variables as dvars
 
@@ -100,13 +108,18 @@ _LLM_OP_TO_QUANTITY_OP = {
 
 
 # Returns False if the query fails safety check.
+<<<<<<< HEAD
 def check_safety(query: str, ctr: counters.Counters) -> Detection:
+=======
+def check_safety(query: str, ctr: Counters) -> Detection:
+>>>>>>> staging
   llm_resp = llm_api.detect_with_geminipro(query, [], ctr)
   if llm_resp.get('UNSAFE') == True:
     return False
   return True
 
 
+<<<<<<< HEAD
 def detect(query: str,
            prev_utterance: utterance.Utterance,
            index_type: str,
@@ -115,6 +128,11 @@ def detect(query: str,
            ctr: counters.Counters,
            reranker: str = '',
            allow_triples: bool = False) -> Detection:
+=======
+def detect(query: str, prev_utterance: utterance.Utterance,
+           query_detection_debug_logs: Dict, counters: Counters,
+           dargs: DetectionArgs) -> Detection:
+>>>>>>> staging
   # History
   history = []
   u = prev_utterance
@@ -122,7 +140,11 @@ def detect(query: str,
     history.append((u.query, u.llm_resp))
     u = u.prev_utterance
 
+<<<<<<< HEAD
   llm_resp = llm_api.detect_with_geminipro(query, history, ctr)
+=======
+  llm_resp = llm_api.detect_with_geminipro(query, history, counters)
+>>>>>>> staging
   if llm_resp.get('UNSAFE') == True:
     return None
 
@@ -143,28 +165,28 @@ def detect(query: str,
         break
 
   if not places_str_found:
-    ctr.err('failed_place_detection', llm_resp)
+    counters.err('failed_place_detection', llm_resp)
 
   place_detection = place.detect_from_names(
       place_names=places_str_found,
       query_without_places=' ; '.join(sv_list),
       orig_query=query,
       query_detection_debug_logs=query_detection_debug_logs,
-      allow_triples=allow_triples)
+      allow_triples=dargs.allow_triples)
 
   query_detection_debug_logs["llm_response"] = llm_resp
   query_detection_debug_logs["query_transformations"] = {
-      "sv_detection_query_index_type": index_type
+      "sv_detection_query_index_types": dargs.embeddings_index_types
   }
 
   # SV Detection.
   var_detection_results: List[dvars.VarDetectionResult] = []
   dummy_dict = {}
-  skip_topics = mode == params.QueryMode.TOOLFORMER
   for sv in sv_list:
     try:
       # TODO: Consider if we should apply threshold bump
       var_detection_results.append(
+<<<<<<< HEAD
           variable.detect_vars(sv,
                                index_type,
                                ctr,
@@ -177,6 +199,17 @@ def detect(query: str,
   sv_detection = dutils.create_sv_detection(query,
                                             merged_var_detection,
                                             allow_triples=allow_triples)
+=======
+          variable.detect_vars(orig_query=sv,
+                               debug_logs=dummy_dict,
+                               dargs=dargs))
+    except Exception as e:
+      counters.err('llm_detect_vars_value_error', {'q': sv, 'err': str(e)})
+  merged_var_detection = _merge_sv_dicts(sv_list, var_detection_results)
+  sv_detection = dutils.create_sv_detection(query,
+                                            merged_var_detection,
+                                            allow_triples=dargs.allow_triples)
+>>>>>>> staging
 
   classifications = _build_classifications(llm_resp, filter_type)
 
@@ -296,7 +329,7 @@ def _handle_quantity(filter: Dict, ctype: str) -> types.NLClassifier:
       qop = _LLM_OP_TO_QUANTITY_OP.get(op, None)
       if qop:
         qty = types.Quantity(cmp=qop, val=val)
-    except ValueError:
+    except Exception:
       pass
   if not qty:
     return None

@@ -18,8 +18,12 @@
  * Component for rendering a line type tile.
  */
 
+<<<<<<< HEAD
 import { ISO_CODE_ATTRIBUTE } from "@datacommonsorg/client";
 import { isDateInRange } from "@datacommonsorg/client";
+=======
+import { isDateInRange, ISO_CODE_ATTRIBUTE } from "@datacommonsorg/client";
+>>>>>>> staging
 import _ from "lodash";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
@@ -29,14 +33,21 @@ import { drawLineChart } from "../../chart/draw_line";
 import { TimeScaleOption } from "../../chart/types";
 import { URL_PATH } from "../../constants/app/visualization_constants";
 import { CSV_FIELD_DELIMITER } from "../../constants/tile_constants";
+<<<<<<< HEAD
+=======
+import { useLazyLoad } from "../../shared/hooks";
+>>>>>>> staging
 import { SeriesApiResponse } from "../../shared/stat_types";
 import { NamedTypedPlace, StatVarSpec } from "../../shared/types";
-import { loadSpinner, removeSpinner } from "../../shared/util";
 import { computeRatio } from "../../tools/shared_util";
 import {
   getContextStatVar,
   getHash,
 } from "../../utils/app/visualization_utils";
+<<<<<<< HEAD
+=======
+import { getDataCommonsClient } from "../../utils/data_commons_client";
+>>>>>>> staging
 import {
   getBestUnit,
   getSeries,
@@ -46,11 +57,15 @@ import { datacommonsClient } from "../../utils/datacommons_client";
 import { getPlaceNames } from "../../utils/place_utils";
 import { getUnit } from "../../utils/stat_metadata_utils";
 import {
+  clearContainer,
   getNoDataErrorMsg,
   getStatFormat,
   getStatVarNames,
   ReplacementStrings,
+<<<<<<< HEAD
   showError,
+=======
+>>>>>>> staging
   transformCsvHeader,
 } from "../../utils/tile_utils";
 import { ChartTileContainer } from "./chart_tile";
@@ -83,8 +98,6 @@ export interface LineTilePropType {
   svgChartWidth?: number;
   // Whether or not to show the explore more button.
   showExploreMore?: boolean;
-  // Whether or not to show a loading spinner when fetching data.
-  showLoadingSpinner?: boolean;
   // Whether to show tooltip on hover
   showTooltipOnHover?: boolean;
   // Function used to get processed stat var names.
@@ -103,6 +116,13 @@ export interface LineTilePropType {
   highlightDate?: string;
   // Optional: Override sources for this tile
   sources?: string[];
+  // Optional: only load this component when it's near the viewport
+  lazyLoad?: boolean;
+  /**
+   * Optional: If lazy loading is enabled, load the component when it is within
+   * this margin of the viewport. Default: "0px"
+   */
+  lazyLoadMargin?: string;
 }
 
 export interface LineChartData {
@@ -117,55 +137,68 @@ export interface LineChartData {
 export function LineTile(props: LineTilePropType): JSX.Element {
   const svgContainer = useRef(null);
   const [chartData, setChartData] = useState<LineChartData | undefined>(null);
-
+  const [isLoading, setIsLoading] = useState(true);
+  const { shouldLoad, containerRef } = useLazyLoad(props.lazyLoadMargin);
   useEffect(() => {
+    if (props.lazyLoad && !shouldLoad) {
+      return;
+    }
     if (!chartData || !_.isEqual(chartData.props, props)) {
-      loadSpinner(props.id);
       (async () => {
-        const data = await fetchData(props);
-        if (props && _.isEqual(data.props, props)) {
-          setChartData(data);
+        try {
+          setIsLoading(true);
+          const data = await fetchData(props);
+          if (props && _.isEqual(data.props, props)) {
+            setChartData(data);
+          }
+        } finally {
+          setIsLoading(false);
         }
       })();
     }
-  }, [props, chartData]);
+  }, [props, chartData, shouldLoad]);
 
   const drawFn = useCallback(() => {
     if (_.isEmpty(chartData)) {
       return;
     }
     draw(props, chartData, svgContainer.current);
-    removeSpinner(props.id);
   }, [props, chartData]);
 
   useDrawOnResize(drawFn, svgContainer.current);
   return (
     <ChartTileContainer
-      id={props.id}
-      title={props.title}
-      subtitle={props.subtitle}
-      sources={props.sources || (chartData && chartData.sources)}
-      replacementStrings={getReplacementStrings(props)}
-      className={`${props.className} line-chart`}
       allowEmbed={true}
+<<<<<<< HEAD
       getDataCsv={getDataCsvCallback(props)}
       isInitialLoading={_.isNull(chartData)}
+=======
+      apiRoot={props.apiRoot}
+      className={`${props.className} line-chart`}
+>>>>>>> staging
       exploreLink={props.showExploreMore ? getExploreLink(props) : null}
-      hasErrorMsg={chartData && !!chartData.errorMsg}
       footnote={props.footnote}
+      getDataCsv={getDataCsvCallback(props)}
+      errorMsg={chartData && chartData.errorMsg}
+      id={props.id}
+      isInitialLoading={_.isNull(chartData)}
+      isLoading={isLoading}
+      replacementStrings={getReplacementStrings(props)}
+      sources={props.sources || (chartData && chartData.sources)}
+      subtitle={props.subtitle}
+      title={props.title}
+      statVarSpecs={props.statVarSpec}
+      forwardRef={containerRef}
     >
       <div
         id={props.id}
         className="svg-container"
         ref={svgContainer}
-        style={{ minHeight: props.svgChartHeight }}
-      >
-        {props.showLoadingSpinner && (
-          <div className="screen">
-            <div id="spinner"></div>
-          </div>
-        )}
-      </div>
+        style={{
+          minHeight: props.svgChartHeight,
+          display: chartData && chartData.errorMsg ? "none" : "block",
+        }}
+      ></div>
     </ChartTileContainer>
   );
 }
@@ -176,6 +209,10 @@ export function LineTile(props: LineTilePropType): JSX.Element {
  * @returns Async function for fetching chart CSV
  */
 function getDataCsvCallback(props: LineTilePropType): () => Promise<string> {
+<<<<<<< HEAD
+=======
+  const dataCommonsClient = getDataCommonsClient(props.apiRoot);
+>>>>>>> staging
   return () => {
     const perCapitaVariables = props.statVarSpec
       .filter((v) => v.denom)
@@ -184,7 +221,11 @@ function getDataCsvCallback(props: LineTilePropType): () => Promise<string> {
       ? [props.placeNameProp, ISO_CODE_ATTRIBUTE]
       : undefined;
     if (props.enclosedPlaceType) {
+<<<<<<< HEAD
       return datacommonsClient.getCsvSeries({
+=======
+      return dataCommonsClient.getCsvSeries({
+>>>>>>> staging
         childType: props.enclosedPlaceType,
         endDate: props.endDate,
         entityProps,
@@ -197,7 +238,11 @@ function getDataCsvCallback(props: LineTilePropType): () => Promise<string> {
       });
     } else {
       const entities = getPlaceDcids(props);
+<<<<<<< HEAD
       return datacommonsClient.getCsvSeries({
+=======
+      return dataCommonsClient.getCsvSeries({
+>>>>>>> staging
         endDate: props.endDate,
         entities,
         entityProps,
@@ -316,7 +361,7 @@ export function draw(
   // TODO: Remove all cases of setting innerHTML directly.
   svgContainer.innerHTML = "";
   if (chartData.errorMsg) {
-    showError(chartData.errorMsg, svgContainer);
+    clearContainer(svgContainer);
     return;
   }
   const isCompleteLine = drawLineChart(

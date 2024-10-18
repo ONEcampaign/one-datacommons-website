@@ -78,6 +78,35 @@
                       "geoId/12"
                     ],
                     "statVarKey": [
+<<<<<<< HEAD
+=======
+                      "Count_CriminalActivities_MurderAndNonNegligentManslaughter_multiple_place_bar_block"
+                    ],
+                    "title": "Murder and Non Negligent Manslaughter Cases (${date})",
+                    "type": "BAR"
+                  }
+                ]
+              }
+            ],
+            "denom": "Count_Person",
+            "title": "Murder and Non Negligent Manslaughter Cases"
+          },
+          {
+            "columns": [
+              {
+                "tiles": [
+                  {
+                    "barTileSpec": {
+                      "maxPlaces": 15,
+                      "maxVariables": 15,
+                      "sort": "DESCENDING"
+                    },
+                    "comparisonPlaces": [
+                      "geoId/06",
+                      "geoId/12"
+                    ],
+                    "statVarKey": [
+>>>>>>> staging
                       "Count_CriminalIncidents_IsHateCrime_multiple_place_bar_block"
                     ],
                     "title": "Hate Crime Incidents (${date})",
@@ -131,6 +160,7 @@
                       "geoId/12"
                     ],
                     "statVarKey": [
+<<<<<<< HEAD
                       "Count_CriminalActivities_MurderAndNonNegligentManslaughter_multiple_place_bar_block"
                     ],
                     "title": "Murder and Non Negligent Manslaughter Cases (${date})",
@@ -157,6 +187,8 @@
                       "geoId/12"
                     ],
                     "statVarKey": [
+=======
+>>>>>>> staging
                       "dc/jtf63bh66k41g_multiple_place_bar_block"
                     ],
                     "title": "Mortality Events (Measured Based on Jurisdiction): Assault(Homicide), Incarcerated (${date})",

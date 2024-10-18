@@ -302,27 +302,47 @@
                       "showHighest": true
                     },
                     "statVarKey": [
+<<<<<<< HEAD
                       "sdg/NY_GDP_PCAP"
                     ],
                     "title": "Annual Growth Rate of Real GDP Per Capita in Administrative Area 1 Places of India (${date})",
                     "type": "RANKING"
+=======
+                      "Amount_EconomicActivity_GrossDomesticProduction_Nominal_PerCapita"
+                    ],
+                    "title": "Nominal GDP Per Capita in India",
+                    "type": "LINE"
+>>>>>>> staging
                   }
                 ]
               },
               {
                 "tiles": [
                   {
+<<<<<<< HEAD
                     "statVarKey": [
                       "sdg/NY_GDP_PCAP"
                     ],
                     "title": "Annual Growth Rate of Real GDP Per Capita in Administrative Area 1 Places of India (${date})",
                     "type": "MAP"
+=======
+                    "description": "Nominal GDP Per Capita in India",
+                    "statVarKey": [
+                      "Amount_EconomicActivity_GrossDomesticProduction_Nominal_PerCapita"
+                    ],
+                    "title": "Nominal GDP Per Capita in India",
+                    "type": "HIGHLIGHT"
+>>>>>>> staging
                   }
                 ]
               }
             ],
+<<<<<<< HEAD
             "footnote": "Includes data from the following sources: united nations, department of economic and social affairs, statistics division (AMA).",
             "title": "Annual Growth Rate of Real GDP Per Capita in Administrative Area 1 Places of India"
+=======
+            "title": "Nominal GDP Per Capita"
+>>>>>>> staging
           },
           {
             "columns": [
@@ -330,9 +350,15 @@
                 "tiles": [
                   {
                     "statVarKey": [
+<<<<<<< HEAD
                       "sdg/NY_GDP_PCAP"
                     ],
                     "title": "Annual Growth Rate of Real GDP Per Capita in India",
+=======
+                      "Amount_EconomicActivity_GrossNationalIncome_PurchasingPowerParity_PerCapita"
+                    ],
+                    "title": "Gross National Income Based on Purchasing Power Parity Per Capita in India",
+>>>>>>> staging
                     "type": "LINE"
                   }
                 ]
@@ -340,16 +366,25 @@
               {
                 "tiles": [
                   {
+<<<<<<< HEAD
                     "description": "Annual Growth Rate of Real GDP Per Capita in India",
                     "statVarKey": [
                       "sdg/NY_GDP_PCAP"
                     ],
                     "title": "Annual Growth Rate of Real GDP Per Capita in India",
+=======
+                    "description": "Gross National Income Based on Purchasing Power Parity Per Capita in India",
+                    "statVarKey": [
+                      "Amount_EconomicActivity_GrossNationalIncome_PurchasingPowerParity_PerCapita"
+                    ],
+                    "title": "Gross National Income Based on Purchasing Power Parity Per Capita in India",
+>>>>>>> staging
                     "type": "HIGHLIGHT"
                   }
                 ]
               }
             ],
+<<<<<<< HEAD
             "footnote": "Includes data from the following sources: united nations, department of economic and social affairs, statistics division (AMA).",
             "title": "Annual Growth Rate of Real GDP Per Capita"
           },
@@ -436,6 +471,8 @@
                 ]
               }
             ],
+=======
+>>>>>>> staging
             "title": "Gross National Income Based on Purchasing Power Parity Per Capita"
           }
         ],
@@ -499,10 +536,13 @@
           "sdg/SI_POV_DAY1.URBANISATION--U": {
             "name": "Urban Population Below International Poverty Line",
             "statVar": "sdg/SI_POV_DAY1.URBANISATION--U"
+<<<<<<< HEAD
           },
           "sdg/SI_POV_EMP1.AGE--Y_GE15": {
             "name": "Employed Population Aged 15 or Over Below International Poverty Line",
             "statVar": "sdg/SI_POV_EMP1.AGE--Y_GE15"
+=======
+>>>>>>> staging
           }
         }
       }
@@ -755,6 +795,13 @@
           ]
         },
         {
+          "dcid": "wikidataId/Q2893890",
+          "name": "Kamtapur",
+          "types": [
+            "AdministrativeArea1"
+          ]
+        },
+        {
           "dcid": "wikidataId/Q40888",
           "name": "Andaman and Nicobar Islands",
           "types": [
@@ -790,8 +837,22 @@
           ]
         },
         {
+          "dcid": "wikidataId/Q66743",
+          "name": "Puducherry",
+          "types": [
+            "AdministrativeArea1"
+          ]
+        },
+        {
           "dcid": "wikidataId/Q677037",
           "name": "Telangana",
+          "types": [
+            "AdministrativeArea1"
+          ]
+        },
+        {
+          "dcid": "wikidataId/Q77997266",
+          "name": "Dadra and Nagar Haveli and Daman and Diu",
           "types": [
             "AdministrativeArea1"
           ]
@@ -828,12 +889,15 @@
           "sdg/SI_POV_DAY1.URBANISATION--R",
           "sdg/SI_POV_DAY1.URBANISATION--U"
         ]
+<<<<<<< HEAD
       },
       "sdg/SI_POV_EMP1.AGE--Y_GE15": {
         "sdg_sex": [
           "sdg/SI_POV_EMP1.AGE--Y_GE15__SEX--F",
           "sdg/SI_POV_EMP1.AGE--Y_GE15__SEX--M"
         ]
+=======
+>>>>>>> staging
       }
     },
     "mainTopics": [

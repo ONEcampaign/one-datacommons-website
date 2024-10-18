@@ -1016,6 +1016,16 @@
           ]
         },
         {
+<<<<<<< HEAD
+=======
+          "dcid": "wikidataId/Q10752928",
+          "name": "Dadra & Nagar Haveli",
+          "types": [
+            "AdministrativeArea2"
+          ]
+        },
+        {
+>>>>>>> staging
           "dcid": "wikidataId/Q10784153",
           "name": "Lakshadweep District",
           "types": [
@@ -1161,6 +1171,7 @@
           "types": [
             "AdministrativeArea2"
           ]
+<<<<<<< HEAD
         },
         {
           "dcid": "wikidataId/Q110876712",
@@ -1168,6 +1179,8 @@
           "types": [
             "AdministrativeArea2"
           ]
+=======
+>>>>>>> staging
         }
       ]
     },

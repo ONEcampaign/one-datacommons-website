@@ -428,4 +428,24 @@ class Detection:
   svs_detected: SVDetection
   classifications: List[NLClassifier]
   llm_resp: Dict = field(default_factory=dict)
+<<<<<<< HEAD
   detector: ActualDetectorType = ActualDetectorType.HybridHeuristic
+=======
+  detector: ActualDetectorType = ActualDetectorType.HybridHeuristic
+
+
+@dataclass
+class DetectionArgs:
+  # Name of the embeddings index types to override ENV default
+  embeddings_index_types: List[str]
+  # Query mode. e.g., `strict`, `toolformer_rig`, `toolformer_rag`
+  mode: str
+  # Reranker model name
+  reranker: str
+  # Enable entities/triples detection (e.g., for biomed DC)
+  allow_triples: bool
+  # Include stop-words for query detection
+  include_stop_words: bool
+  # variable threshold to use
+  var_threshold: float
+>>>>>>> staging

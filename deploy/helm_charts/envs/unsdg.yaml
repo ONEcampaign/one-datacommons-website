@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# DNS
+domain: unsdg.datacommons.org
+ip: 34.117.91.127
+
 # Helm config
 project: "datcom-recon-autopush"
 cluster_prefix: "datacommons"
@@ -21,7 +25,7 @@ namespace:
 
 website:
   flaskEnv: unsdg
-  replicas: 50
+  replicas: 10
   redis:
     enabled: true
     configFile: |
@@ -37,9 +41,11 @@ serviceAccount:
 
 ingress:
   enabled: true
+  enableMixer: true
 
 nl:
   enabled: true
+<<<<<<< HEAD
   embeddingsSpec:
     defaultIndex: "sdg_ft"
     enabledIndexes: [
@@ -48,17 +54,30 @@ nl:
       "sdg_ft",
       "undata_ft",
     ]
+=======
+  env:
+    default_indexes:
+      - sdg_ft
+    enabled_indexes:
+      - medium_ft
+      - sdg_ft
+      - undata_ft
+>>>>>>> staging
 
 serviceGroups:
   recon: null
   svg:
-    replicas: 5
+    replicas: 3
   node:
-    replicas: 50
+    replicas: 3
   observation:
-    replicas: 50
+    replicas: 3
   default:
-    replicas: 30
+    replicas: 3
+    cacheSVG: true # For REST api support
+    resources:
+      memoryRequest: "8G"
+      memoryLimit: "8G"
 
 svg:
   blocklistFile: ["dc/g/Uncategorized", "oecd/g/OECD"]

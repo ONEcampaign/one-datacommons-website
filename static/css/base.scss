@@ -65,6 +65,7 @@ $headings-font-family: $font-family-sans-serif;
 
 @import "node_modules/bootstrap/scss/bootstrap";
 
+<<<<<<< HEAD
 #main-nav {
   height: fit-content;
   background-color: white;
@@ -82,6 +83,8 @@ $headings-font-family: $font-family-sans-serif;
   align-items: center;
 }
 
+=======
+>>>>>>> staging
 :root.feedingamerica .navbar-brand > a {
   display: inline-block;
   background: url(https://secure.feedingamerica.org/assets/images/sprites2018.png);
@@ -200,8 +203,8 @@ $headings-font-family: $font-family-sans-serif;
 
 #main-footer {
   background: $full-footer-bg;
-  padding-top: 75px;
   /* Trick to get the footer to extend to the bottom of short pages */
+<<<<<<< HEAD
   box-shadow: 0 50vh 0 50vh var(--footer-bg);
   .top-footer {
     padding-bottom: 30px;
@@ -269,6 +272,9 @@ $headings-font-family: $font-family-sans-serif;
       flex-direction: column;
     }
   }
+=======
+  box-shadow: 0 50vh 0 50vh var(--footer-background);
+>>>>>>> staging
 }
 
 .brand-byline {
@@ -290,37 +296,6 @@ $headings-font-family: $font-family-sans-serif;
   }
 }
 
-#sub-footer .sub-footer-links {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  a {
-    color: var(--gm-3-ref-neutral-neutral-40);
-    font-size: 14px;
-    font-style: normal;
-    font-weight: 400;
-    line-height: 20px;
-  }
-}
-
-#sub-footer .btn,
-#sub-footer a {
-  margin-right: 0.75rem;
-}
-
-#sub-footer a:last-of-type {
-  margin-right: 0;
-}
-
-#main-footer section a {
-  display: block;
-}
-
-#main-footer .col-12,
-#main-footer .col-sm-6 {
-  margin-bottom: 2rem;
-}
-
 /* Spinner */
 .screen,
 #screen {
@@ -328,7 +303,7 @@ $headings-font-family: $font-family-sans-serif;
   position: absolute;
   left: 0;
   top: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.02);
   z-index: 100;
   width: 100%;
   height: 100%;
@@ -374,7 +349,7 @@ $headings-font-family: $font-family-sans-serif;
   margin-top: 150px;
   margin-left: 20px;
   font-size: 20px;
-  color: white;
+  color: var(--gm-3-ref-neutral-neutral-40);
   opacity: 0; /* Initially hidden */
   animation: fadeIn 0.5s forwards 3s; /* Animation after 3s delay */
 }

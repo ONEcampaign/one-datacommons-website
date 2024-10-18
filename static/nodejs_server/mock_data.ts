@@ -679,7 +679,10 @@ export const BAR_NL_RESP = {
                       barTileSpec: {
                         maxPlaces: 15,
                         maxVariables: 15,
+<<<<<<< HEAD
                         sort: "DESCENDING",
+=======
+>>>>>>> staging
                       },
                       comparisonPlaces: ["geoId/06085"],
                       statVarKey: [

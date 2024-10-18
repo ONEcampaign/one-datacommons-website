@@ -54,22 +54,41 @@ interface ObservationDatesResponse {
  *
  * Example usage:
  *
- * <!-- Date slider example  -->
- * <datacommons-slider
- *      max="2023"
- *      min="1950"
- *      publish="dc-year"
- *      value="2023"
- * ></datacommons-slider>
- *
  * <!-- Map that subscribes to slider changes -->
  * <datacommons-map
- *      title="Population"
- *      place="country/USA"
- *      childPlaceType="State"
- *      subscribe="dc-map"
- *      variable="Count_Person"
- * ></datacommons-map>
+ *   childPlaceType="State"
+ *   date="HIGHEST_COVERAGE"
+ *   title="Population of US States (${date})"
+ *   place="country/USA"
+ *   subscribe="dc-map"
+ *   variable="Count_Person"
+ * >
+ *   <div slot="footer">
+ *     <datacommons-slider
+ *       parentPlace="country/USA"
+ *       childPlaceType="State"
+ *       publish="dc-map"
+ *       variable="Count_Person"
+ *     ></datacommons-slider>
+ *   </div>
+ * </datacommons-map>
+ *
+ * <!-- Bar chart that subscribes to slider changes -->
+ * <datacommons-bar
+ *   places="geoId/06 geoId/11 geoId/12"
+ *   date="HIGHEST_COVERAGE"
+ *   title="Life expectancy vs Median age in California, the District of Columbia, and Florida (${date})"
+ *   subscribe="dc-bar"
+ *   variables="LifeExpectancy_Person Median_Age_Person"
+ * >
+ *   <div slot="footer">
+ *     <datacommons-slider
+ *       places="geoId/06 geoId/11 geoId/12"
+ *       publish="dc-bar"
+ *       variables="LifeExpectancy_Person Median_Age_Person"
+ *     ></datacommons-slider>
+ *   </div>
+ * </datacommons-bar>
  */
 @customElement("datacommons-slider")
 export class DatacommonsSliderComponent extends LitElement {
@@ -224,6 +243,12 @@ export class DatacommonsSliderComponent extends LitElement {
   parentPlace: string;
 
   /**
+   * DCIDs of places
+   */
+  @property({ type: Array<string>, converter: convertArrayAttribute })
+  places?: string[];
+
+  /**
    * Event name to publish on slider change
    */
   @property()
@@ -246,6 +271,12 @@ export class DatacommonsSliderComponent extends LitElement {
    */
   @property()
   variable: string;
+
+  /**
+   * List of DCIDs of the statistical variable(s) to plot values for
+   */
+  @property({ type: Array<string>, converter: convertArrayAttribute })
+  variables?: string[];
 
   /**
    * Slider date range
@@ -320,7 +351,16 @@ export class DatacommonsSliderComponent extends LitElement {
   }
 
   render(): TemplateResult {
+<<<<<<< HEAD
     if (!this.variable || !this.parentPlace || !this.childPlaceType) {
+=======
+    // Slider requires a variable and either parentPlace + childPlace type or a list of places
+    const isValid =
+      (this.variable || this.variables) &&
+      ((this.parentPlace && this.childPlaceType) || this.places);
+
+    if (!isValid) {
+>>>>>>> staging
       return html`
         <div class="container error" part="container">
           <h4>datacommons-slider</h4>
@@ -352,7 +392,10 @@ export class DatacommonsSliderComponent extends LitElement {
         : (this._value / (this._dates.length - 1)) * 100;
 
     const dateText = this.getDateText();
+<<<<<<< HEAD
     const endDateText = this.getEndDateText();
+=======
+>>>>>>> staging
     const lastDateIndex = this._dates.length - 1;
     const isHighestCoverageDate =
       dateText === this._highestCoverageDate && !this._showTrendsSummaryEnabled;
@@ -491,16 +534,37 @@ export class DatacommonsSliderComponent extends LitElement {
   private async fetchObservationDates() {
     const apiRoot = getApiRoot(this.apiRoot);
     const dataCommonsWebClient = new DataCommonsWebClient({ apiRoot });
+<<<<<<< HEAD
     const apiPath = "api/observation-dates";
     if (!this.parentPlace || !this.childPlaceType || !this.variable) {
+=======
+    if (
+      (!this.places && (!this.parentPlace || !this.childPlaceType)) ||
+      (!this.variable && !this.variables)
+    ) {
+>>>>>>> staging
       console.log("No place found in the slider");
       return;
     }
+    const variables = this.variable ? [this.variable] : this.variables;
+    const firstVariable = variables[0];
+    const apiPath = this.places
+      ? "api/observation-dates/entities"
+      : "api/observation-dates";
     this._isLoading = true;
     const params = new URLSearchParams();
-    params.set("parentEntity", this.parentPlace);
-    params.set("childType", this.childPlaceType);
-    params.set("variable", this.variable);
+    if (this.parentPlace && this.childPlaceType) {
+      params.set("parentEntity", this.parentPlace);
+      params.set("childType", this.childPlaceType);
+    } else {
+      this.places.forEach((place) => params.append("entities", place));
+    }
+
+    if (this.places) {
+      variables.forEach((variable) => params.append("variables", variable));
+    } else {
+      params.set("variable", firstVariable);
+    }
 
     const url = `${apiRoot}/${apiPath}?${params.toString()}`;
     const result = await fetch(url);
@@ -508,6 +572,7 @@ export class DatacommonsSliderComponent extends LitElement {
     this._isLoading = false;
 
     if (this.showTrendsSummary) {
+<<<<<<< HEAD
       const trendsSummaryResult =
         await dataCommonsWebClient.getObservationsPointWithin({
           parentEntity: this.parentPlace,
@@ -515,10 +580,25 @@ export class DatacommonsSliderComponent extends LitElement {
           variables: [this.variable],
           date: DATE_LATEST,
         });
+=======
+      const trendsSummaryResult = this.places
+        ? await dataCommonsWebClient.getObservationsPoint({
+            entities: this.places,
+            variables,
+            date: DATE_LATEST,
+          })
+        : await dataCommonsWebClient.getObservationsPointWithin({
+            parentEntity: this.parentPlace,
+            childType: this.childPlaceType,
+            variables,
+            date: DATE_LATEST,
+          });
+>>>>>>> staging
       const { minDate, maxDate } = getObservationDateRange(trendsSummaryResult);
       this._trendSummaryMinDate = minDate;
       this._trendSummaryMaxDate = maxDate;
     }
+<<<<<<< HEAD
     const highestCoverageResult =
       await dataCommonsWebClient.getObservationsPointWithin({
         parentEntity: this.parentPlace,
@@ -533,6 +613,27 @@ export class DatacommonsSliderComponent extends LitElement {
     if (highestCoveragePlaces.length > 0) {
       this._highestCoverageDate =
         highestCoverageResult.data[this.variable][
+=======
+    const highestCoverageResult = this.places
+      ? await await dataCommonsWebClient.getObservationsPoint({
+          entities: this.places,
+          variables,
+          date: DATE_HIGHEST_COVERAGE,
+        })
+      : await dataCommonsWebClient.getObservationsPointWithin({
+          parentEntity: this.parentPlace,
+          childType: this.childPlaceType,
+          variables,
+          date: DATE_HIGHEST_COVERAGE,
+        });
+    this._highestCoverageDate = "";
+    const highestCoveragePlaces = Object.keys(
+      highestCoverageResult.data[firstVariable]
+    );
+    if (highestCoveragePlaces.length > 0) {
+      this._highestCoverageDate =
+        highestCoverageResult.data[firstVariable][
+>>>>>>> staging
           highestCoveragePlaces[0]
         ].date;
     }
@@ -545,7 +646,7 @@ export class DatacommonsSliderComponent extends LitElement {
         (od) => od.date
       );
     } else {
-      this._errorMessage = `No date range found for (variable: ${this.variable},  parentPlace: ${this.parentPlace}, childPlaceType: ${this.childPlaceType})`;
+      this._errorMessage = `No date range found for (variable: ${firstVariable},  parentPlace: ${this.parentPlace}, childPlaceType: ${this.childPlaceType})`;
     }
 
     if (this._highestCoverageDate) {
@@ -559,5 +660,20 @@ export class DatacommonsSliderComponent extends LitElement {
     } else {
       this._value = this._dates.length - 1;
     }
+<<<<<<< HEAD
+
+    if (this._highestCoverageDate) {
+      // Show HIGHEST_COVERAGE data on initial load
+      const highestCoverageDateIndex = this._dates.indexOf(
+        this._highestCoverageDate
+      );
+      if (highestCoverageDateIndex >= 0) {
+        this._value = highestCoverageDateIndex;
+      }
+    } else {
+      this._value = this._dates.length - 1;
+    }
+=======
+>>>>>>> staging
   }
 }

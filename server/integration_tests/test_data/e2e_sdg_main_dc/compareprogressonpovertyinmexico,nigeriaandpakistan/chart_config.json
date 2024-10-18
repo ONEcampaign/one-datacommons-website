@@ -166,6 +166,7 @@
             ],
             "footnote": "Includes data from the following sources: WHO/UNICEF joint monitoring programme for water supply, sanitation and hygiene (2023).",
             "title": "Population Using Basic Sanitation Services"
+<<<<<<< HEAD
           },
           {
             "columns": [
@@ -220,6 +221,8 @@
               }
             ],
             "title": "Employed Population Below International Poverty Line by Gender"
+=======
+>>>>>>> staging
           }
         ],
         "statVarSpec": {
@@ -255,6 +258,7 @@
             "name": "Population Below International Poverty Line",
             "statVar": "sdg/SI_POV_DAY1"
           },
+<<<<<<< HEAD
           "sdg/SI_POV_EMP1.AGE--Y_GE15__SEX--F_multiple_place_bar_block": {
             "name": "Employed Women Aged 15 or Over Below International Poverty Line",
             "statVar": "sdg/SI_POV_EMP1.AGE--Y_GE15__SEX--F"
@@ -267,6 +271,8 @@
             "name": "Employed Population Aged 15 or Over Below International Poverty Line",
             "statVar": "sdg/SI_POV_EMP1.AGE--Y_GE15"
           },
+=======
+>>>>>>> staging
           "sdg/SP_ACS_BSRVH2O_multiple_place_bar_block": {
             "name": "Population Using Basic Drinking Water Services",
             "statVar": "sdg/SP_ACS_BSRVH2O"
@@ -329,12 +335,6 @@
         "sdg_urbanisation": [
           "sdg/SI_POV_DAY1.URBANISATION--R",
           "sdg/SI_POV_DAY1.URBANISATION--U"
-        ]
-      },
-      "sdg/SI_POV_EMP1.AGE--Y_GE15": {
-        "sdg_sex": [
-          "sdg/SI_POV_EMP1.AGE--Y_GE15__SEX--F",
-          "sdg/SI_POV_EMP1.AGE--Y_GE15__SEX--M"
         ]
       },
       "sdg/SP_ACS_BSRVH2O": {

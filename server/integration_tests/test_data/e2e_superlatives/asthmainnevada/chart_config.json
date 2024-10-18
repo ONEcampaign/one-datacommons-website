@@ -30,7 +30,15 @@
                 ]
               }
             ],
+<<<<<<< HEAD
             "title": "Asthma"
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+            "title": "Count of Mortality Event: 1 Years or Less (As Fraction of Count Birth Event)"
+========
+            "title": "Asthma"
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
           },
           {
             "columns": [
@@ -38,9 +46,107 @@
                 "tiles": [
                   {
                     "statVarKey": [
+<<<<<<< HEAD
                       "Percent_Person_WithAsthma"
                     ],
                     "title": "Asthma in Counties of Nevada (${date})",
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+                      "Count_Death_LessThan1Year_Female_AsAFractionOf_Count_BirthEvent_Female"
+                    ],
+                    "title": "Count of Mortality Event: 1 Years or Less, Female (As Fraction of Count Birth Event Female) in Massachusetts",
+                    "type": "LINE"
+                  }
+                ]
+              },
+              {
+                "tiles": [
+                  {
+                    "description": "Count of Mortality Event: 1 Years or Less, Female (As Fraction of Count Birth Event Female) in Massachusetts",
+                    "statVarKey": [
+                      "Count_Death_LessThan1Year_Female_AsAFractionOf_Count_BirthEvent_Female"
+                    ],
+                    "title": "Count of Mortality Event: 1 Years or Less, Female (As Fraction of Count Birth Event Female) in Massachusetts",
+                    "type": "HIGHLIGHT"
+                  }
+                ]
+              }
+            ],
+            "title": "Count of Mortality Event: 1 Years or Less, Female (As Fraction of Count Birth Event Female)"
+          },
+          {
+            "columns": [
+              {
+                "tiles": [
+                  {
+                    "statVarKey": [
+                      "Count_Death_LessThan1Year_Male_AsAFractionOf_Count_BirthEvent_Male"
+                    ],
+                    "title": "Count of Mortality Event: 1 Years or Less, Male (As Fraction of Count Birth Event Male) in Massachusetts",
+                    "type": "LINE"
+                  }
+                ]
+              },
+              {
+                "tiles": [
+                  {
+                    "description": "Count of Mortality Event: 1 Years or Less, Male (As Fraction of Count Birth Event Male) in Massachusetts",
+                    "statVarKey": [
+                      "Count_Death_LessThan1Year_Male_AsAFractionOf_Count_BirthEvent_Male"
+                    ],
+                    "title": "Count of Mortality Event: 1 Years or Less, Male (As Fraction of Count Birth Event Male) in Massachusetts",
+                    "type": "HIGHLIGHT"
+                  }
+                ]
+              }
+            ],
+            "title": "Count of Mortality Event: 1 Years or Less, Male (As Fraction of Count Birth Event Male)"
+          },
+          {
+            "columns": [
+              {
+                "tiles": [
+                  {
+                    "statVarKey": [
+                      "Count_Death_Upto1Years_CertainConditionsOriginatingInThePerinatalPeriod"
+                    ],
+                    "title": "Mortality Events (1 Years or Less): Certain Conditions Originating in the Perinatal Period) in Massachusetts",
+                    "type": "LINE"
+                  }
+                ]
+              },
+              {
+                "tiles": [
+                  {
+                    "description": "Mortality Events (1 Years or Less): Certain Conditions Originating in the Perinatal Period) in Massachusetts",
+                    "statVarKey": [
+                      "Count_Death_Upto1Years_CertainConditionsOriginatingInThePerinatalPeriod"
+                    ],
+                    "title": "Mortality Events (1 Years or Less): Certain Conditions Originating in the Perinatal Period) in Massachusetts",
+                    "type": "HIGHLIGHT"
+                  }
+                ]
+              }
+            ],
+            "denom": "Count_Person",
+            "startWithDenom": true,
+            "title": "Mortality Events (1 Years or Less): Certain Conditions Originating in the Perinatal Period)"
+          },
+          {
+            "columns": [
+              {
+                "tiles": [
+                  {
+                    "statVarKey": [
+                      "Count_Death_Upto1Years_CertainConditionsOriginatingInThePerinatalPeriod"
+                    ],
+                    "title": "Mortality Events (1 Years or Less): Certain Conditions Originating in the Perinatal Period) in Counties of Massachusetts (${date})",
+========
+                      "Percent_Person_WithAsthma"
+                    ],
+                    "title": "Asthma in Counties of Nevada (${date})",
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
                     "type": "MAP"
                   }
                 ]
@@ -53,15 +159,37 @@
                       "showHighestLowest": true
                     },
                     "statVarKey": [
+<<<<<<< HEAD
                       "Percent_Person_WithAsthma"
                     ],
                     "title": "Asthma in Counties of Nevada (${date})",
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+                      "Count_Death_Upto1Years_CertainConditionsOriginatingInThePerinatalPeriod"
+                    ],
+                    "title": "Mortality Events (1 Years or Less): Certain Conditions Originating in the Perinatal Period) in Counties of Massachusetts (${date})",
+========
+                      "Percent_Person_WithAsthma"
+                    ],
+                    "title": "Asthma in Counties of Nevada (${date})",
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
                     "type": "RANKING"
                   }
                 ]
               }
             ],
+<<<<<<< HEAD
             "title": "Asthma in Counties of Nevada"
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+            "denom": "Count_Person",
+            "startWithDenom": true,
+            "title": "Mortality Events (1 Years or Less): Certain Conditions Originating in the Perinatal Period) in Counties of Massachusetts"
+========
+            "title": "Asthma in Counties of Nevada"
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
           },
           {
             "columns": [
@@ -69,16 +197,40 @@
                 "tiles": [
                   {
                     "statVarKey": [
+<<<<<<< HEAD
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+                      "Count_Death_Upto14Years_AsAFractionOf_Count_Person_Upto14Years"
+                    ],
+                    "title": "Count of Mortality Event: 14 Years or Less (As Fraction of Count Person Upto 14 Years) in Massachusetts",
+                    "type": "LINE"
+========
+>>>>>>> staging
                       "Percent_Person_Children_WithAsthma"
                     ],
                     "title": "Percent of Children That Have Asthma in Counties of Nevada (${date})",
                     "type": "MAP"
+<<<<<<< HEAD
+=======
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
                   }
                 ]
               },
               {
                 "tiles": [
                   {
+<<<<<<< HEAD
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+                    "description": "Count of Mortality Event: 14 Years or Less (As Fraction of Count Person Upto 14 Years) in Massachusetts",
+                    "statVarKey": [
+                      "Count_Death_Upto14Years_AsAFractionOf_Count_Person_Upto14Years"
+                    ],
+                    "title": "Count of Mortality Event: 14 Years or Less (As Fraction of Count Person Upto 14 Years) in Massachusetts",
+                    "type": "HIGHLIGHT"
+========
+>>>>>>> staging
                     "rankingTileSpec": {
                       "rankingCount": 5,
                       "showHighestLowest": true
@@ -88,10 +240,42 @@
                     ],
                     "title": "Percent of Children That Have Asthma in Counties of Nevada (${date})",
                     "type": "RANKING"
+<<<<<<< HEAD
+=======
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
                   }
                 ]
               }
             ],
+<<<<<<< HEAD
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+            "title": "Count of Mortality Event: 14 Years or Less (As Fraction of Count Person Upto 14 Years)"
+          }
+        ],
+        "statVarSpec": {
+          "Count_Death_LessThan1Year_AsAFractionOf_Count_BirthEvent": {
+            "name": "Count of Mortality Event: 1 Years or Less (As Fraction of Count Birth Event)",
+            "statVar": "Count_Death_LessThan1Year_AsAFractionOf_Count_BirthEvent"
+          },
+          "Count_Death_LessThan1Year_Female_AsAFractionOf_Count_BirthEvent_Female": {
+            "name": "Count of Mortality Event: 1 Years or Less, Female (As Fraction of Count Birth Event Female)",
+            "statVar": "Count_Death_LessThan1Year_Female_AsAFractionOf_Count_BirthEvent_Female"
+          },
+          "Count_Death_LessThan1Year_Male_AsAFractionOf_Count_BirthEvent_Male": {
+            "name": "Count of Mortality Event: 1 Years or Less, Male (As Fraction of Count Birth Event Male)",
+            "statVar": "Count_Death_LessThan1Year_Male_AsAFractionOf_Count_BirthEvent_Male"
+          },
+          "Count_Death_Upto14Years_AsAFractionOf_Count_Person_Upto14Years": {
+            "name": "Count of Mortality Event: 14 Years or Less (As Fraction of Count Person Upto 14 Years)",
+            "statVar": "Count_Death_Upto14Years_AsAFractionOf_Count_Person_Upto14Years"
+          },
+          "Count_Death_Upto1Years_CertainConditionsOriginatingInThePerinatalPeriod": {
+            "name": "Mortality Events (1 Years or Less): Certain Conditions Originating in The Perinatal Period)",
+            "statVar": "Count_Death_Upto1Years_CertainConditionsOriginatingInThePerinatalPeriod"
+========
+>>>>>>> staging
             "title": "Percent of Children That Have Asthma in Counties of Nevada"
           }
         ],
@@ -105,6 +289,10 @@
             "name": "Asthma",
             "statVar": "Percent_Person_WithAsthma",
             "unit": "%"
+<<<<<<< HEAD
+=======
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
           }
         }
       }
@@ -140,97 +328,234 @@
     "childPlaces": {
       "County": [
         {
+<<<<<<< HEAD
           "dcid": "geoId/32001",
           "name": "Churchill",
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+          "dcid": "geoId/25001",
+          "name": "Barnstable",
+========
+          "dcid": "geoId/32001",
+          "name": "Churchill",
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
           "types": [
             "County"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "geoId/32003",
           "name": "Clark",
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+          "dcid": "geoId/25003",
+          "name": "Berkshire",
+========
+          "dcid": "geoId/32003",
+          "name": "Clark",
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
           "types": [
             "County"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "geoId/32005",
           "name": "Douglas",
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+          "dcid": "geoId/25005",
+          "name": "Bristol",
+========
+          "dcid": "geoId/32005",
+          "name": "Douglas",
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
           "types": [
             "County"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "geoId/32007",
           "name": "Elko",
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+          "dcid": "geoId/25007",
+          "name": "Dukes",
+========
+          "dcid": "geoId/32007",
+          "name": "Elko",
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
           "types": [
             "County"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "geoId/32009",
           "name": "Esmeralda",
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+          "dcid": "geoId/25009",
+          "name": "Essex",
+========
+          "dcid": "geoId/32009",
+          "name": "Esmeralda",
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
           "types": [
             "County"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "geoId/32011",
           "name": "Eureka",
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+          "dcid": "geoId/25011",
+          "name": "Franklin",
+========
+          "dcid": "geoId/32011",
+          "name": "Eureka",
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
           "types": [
             "County"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "geoId/32013",
           "name": "Humboldt",
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+          "dcid": "geoId/25013",
+          "name": "Hampden",
+========
+          "dcid": "geoId/32013",
+          "name": "Humboldt",
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
           "types": [
             "County"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "geoId/32015",
           "name": "Lander",
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+          "dcid": "geoId/25015",
+          "name": "Hampshire",
+========
+          "dcid": "geoId/32015",
+          "name": "Lander",
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
           "types": [
             "County"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "geoId/32017",
           "name": "Lincoln",
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+          "dcid": "geoId/25017",
+          "name": "Middlesex",
+========
+          "dcid": "geoId/32017",
+          "name": "Lincoln",
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
           "types": [
             "County"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "geoId/32019",
           "name": "Lyon",
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+          "dcid": "geoId/25019",
+          "name": "Nantucket",
+========
+          "dcid": "geoId/32019",
+          "name": "Lyon",
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
           "types": [
             "County"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "geoId/32021",
           "name": "Mineral",
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+          "dcid": "geoId/25021",
+          "name": "Norfolk",
+========
+          "dcid": "geoId/32021",
+          "name": "Mineral",
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
           "types": [
             "County"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "geoId/32023",
           "name": "Nye",
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+          "dcid": "geoId/25023",
+          "name": "Plymouth",
+========
+          "dcid": "geoId/32023",
+          "name": "Nye",
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
           "types": [
             "County"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "geoId/32027",
           "name": "Pershing",
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+          "dcid": "geoId/25025",
+          "name": "Suffolk",
+========
+          "dcid": "geoId/32027",
+          "name": "Pershing",
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
           "types": [
             "County"
           ]
         },
         {
+<<<<<<< HEAD
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+          "dcid": "geoId/25027",
+          "name": "Worcester",
+========
+>>>>>>> staging
           "dcid": "geoId/32029",
           "name": "Storey",
           "types": [
@@ -254,12 +579,17 @@
         {
           "dcid": "geoId/32510",
           "name": "Carson City",
+<<<<<<< HEAD
+=======
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
           "types": [
             "County"
           ]
         }
       ]
     },
+<<<<<<< HEAD
     "childTopics": [
       {
         "dcid": "dc/topic/Arthritis",
@@ -344,6 +674,19 @@
       {
         "dcid": "dc/topic/HealthConditions",
         "name": "Health Conditions",
+=======
+    "childTopics": [],
+    "exploreMore": {},
+    "mainTopics": [
+      {
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+        "dcid": "dc/topic/InfantMortality",
+        "name": "Infant Mortality",
+========
+        "dcid": "dc/topic/Asthma",
+        "name": "Asthma",
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
         "types": [
           "Topic"
         ]
@@ -352,8 +695,18 @@
     "parentPlaces": [],
     "parentTopics": [
       {
+<<<<<<< HEAD
         "dcid": "dc/topic/Health",
         "name": "Health",
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+        "dcid": "dc/topic/Mortality",
+        "name": "Mortality",
+========
+        "dcid": "dc/topic/HealthConditions",
+        "name": "Health Conditions",
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
         "types": [
           "Topic"
         ]
@@ -713,29 +1066,111 @@
     ],
     "peerTopics": [
       {
+<<<<<<< HEAD
         "dcid": "dc/topic/HealthEquity",
         "name": "Health Equity",
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+        "dcid": "dc/topic/LifeExpectancy",
+        "name": "Life Expectancy",
+========
+        "dcid": "dc/topic/Arthritis",
+        "name": "Arthritis",
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
         "types": [
           "Topic"
         ]
       },
       {
+<<<<<<< HEAD
         "dcid": "dc/topic/HealthInsurance",
         "name": "Health Insurance",
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+        "dcid": "dc/topic/CausesOfDeath",
+        "name": "Causes of Death",
+========
+        "dcid": "dc/topic/BloodPressure",
+        "name": "Blood Pressure",
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
         "types": [
           "Topic"
         ]
       },
       {
+<<<<<<< HEAD
         "dcid": "dc/topic/Mortality",
         "name": "Mortality",
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+        "dcid": "dc/topic/FemaleMortality",
+        "name": "Female Mortality",
+========
+        "dcid": "dc/topic/Cancer",
+        "name": "Cancer",
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
         "types": [
           "Topic"
         ]
       },
       {
+<<<<<<< HEAD
         "dcid": "dc/topic/PreventativeHealthAndBehavior",
         "name": "Preventive Health and Behavior",
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+        "dcid": "dc/topic/MortalityAmongIncarcerated",
+        "name": "Mortality Among The Incarcerated",
+========
+        "dcid": "dc/topic/Cholesterol",
+        "name": "Cholesterol",
+        "types": [
+          "Topic"
+        ]
+      },
+      {
+        "dcid": "dc/topic/Diabetes",
+        "name": "Diabetes",
+        "types": [
+          "Topic"
+        ]
+      },
+      {
+        "dcid": "dc/topic/HeartDisease",
+        "name": "Heart Disease",
+        "types": [
+          "Topic"
+        ]
+      },
+      {
+        "dcid": "dc/topic/MentalHealth",
+        "name": "Mental Health",
+        "types": [
+          "Topic"
+        ]
+      },
+      {
+        "dcid": "dc/topic/KidneyDisease",
+        "name": "Kidney Disease",
+        "types": [
+          "Topic"
+        ]
+      },
+      {
+        "dcid": "dc/topic/Stroke",
+        "name": "Stroke",
+        "types": [
+          "Topic"
+        ]
+      },
+      {
+        "dcid": "dc/topic/HeatIllnesses",
+        "name": "Heat Illnesses",
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
         "types": [
           "Topic"
         ]
@@ -743,7 +1178,14 @@
     ]
   },
   "svSource": "CURRENT_QUERY",
+<<<<<<< HEAD
   "test": "unittest",
+=======
+<<<<<<<< HEAD:server/integration_tests/test_data/e2e_toolformer_mode/chart_config.json
+========
+  "test": "unittest",
+>>>>>>>> staging:server/integration_tests/test_data/e2e_superlatives/asthmainnevada/chart_config.json
+>>>>>>> staging
   "userMessage": "",
   "userMessages": []
 }

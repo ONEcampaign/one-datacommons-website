@@ -12,7 +12,7 @@
                     "statVarKey": [
                       "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
                     ],
-                    "title": "GDP (Nominal Value) in Eurostat Nuts 3 Places of United Kingdom (${date})",
+                    "title": "GDP (Nominal Value) in Eurostat Nuts 3 Places of Spain (${date})",
                     "type": "MAP"
                   }
                 ]
@@ -27,14 +27,47 @@
                     "statVarKey": [
                       "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
                     ],
+<<<<<<< HEAD
                     "title": "GDP (Nominal Value) in Eurostat Nuts 3 Places of United Kingdom (${date})",
+=======
+                    "title": "GDP (Nominal Value) in Eurostat Nuts 3 Places of Spain (${date})",
+>>>>>>> staging
                     "type": "RANKING"
                   }
                 ]
               }
             ],
             "denom": "Count_Person",
-            "title": "GDP (Nominal Value) in Eurostat Nuts 3 Places of United Kingdom"
+            "title": "GDP (Nominal Value) in Eurostat Nuts 3 Places of Spain"
+          },
+          {
+            "columns": [
+              {
+                "tiles": [
+                  {
+                    "statVarKey": [
+                      "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+                    ],
+                    "title": "GDP (Nominal Value) in Spain",
+                    "type": "LINE"
+                  }
+                ]
+              },
+              {
+                "tiles": [
+                  {
+                    "description": "GDP (Nominal Value) in Spain",
+                    "statVarKey": [
+                      "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+                    ],
+                    "title": "GDP (Nominal Value) in Spain",
+                    "type": "HIGHLIGHT"
+                  }
+                ]
+              }
+            ],
+            "denom": "Count_Person",
+            "title": "GDP (Nominal Value)"
           },
           {
             "columns": [
@@ -73,7 +106,7 @@
                     "statVarKey": [
                       "Amount_EconomicActivity_GrossDomesticProduction_Nominal_PerCapita"
                     ],
-                    "title": "Nominal GDP Per Capita in United Kingdom",
+                    "title": "Nominal GDP Per Capita in Spain",
                     "type": "LINE"
                   }
                 ]
@@ -81,11 +114,11 @@
               {
                 "tiles": [
                   {
-                    "description": "Nominal GDP Per Capita in United Kingdom",
+                    "description": "Nominal GDP Per Capita in Spain",
                     "statVarKey": [
                       "Amount_EconomicActivity_GrossDomesticProduction_Nominal_PerCapita"
                     ],
-                    "title": "Nominal GDP Per Capita in United Kingdom",
+                    "title": "Nominal GDP Per Capita in Spain",
                     "type": "HIGHLIGHT"
                   }
                 ]
@@ -130,7 +163,7 @@
                     "statVarKey": [
                       "GrowthRate_Amount_EconomicActivity_GrossDomesticProduction"
                     ],
-                    "title": "Growth Rate of GDP in United Kingdom",
+                    "title": "Growth Rate of GDP in Spain",
                     "type": "LINE"
                   }
                 ]
@@ -138,11 +171,11 @@
               {
                 "tiles": [
                   {
-                    "description": "Growth Rate of GDP in United Kingdom",
+                    "description": "Growth Rate of GDP in Spain",
                     "statVarKey": [
                       "GrowthRate_Amount_EconomicActivity_GrossDomesticProduction"
                     ],
-                    "title": "Growth Rate of GDP in United Kingdom",
+                    "title": "Growth Rate of GDP in Spain",
                     "type": "HIGHLIGHT"
                   }
                 ]
@@ -156,9 +189,40 @@
                 "tiles": [
                   {
                     "statVarKey": [
-                      "UnemploymentRate_Person"
+                      "Amount_EconomicActivity_GrossDomesticProduction_Nominal_AsAFractionOf_Count_Person"
                     ],
-                    "title": "Unemployment Rate in United Kingdom",
+                    "title": "Economic Activity: Nominal GDP (Nominal, Per Capita) in Eurostat Nuts 3 Places of Spain (${date})",
+                    "type": "MAP"
+                  }
+                ]
+              },
+              {
+                "tiles": [
+                  {
+                    "rankingTileSpec": {
+                      "rankingCount": 5,
+                      "showHighestLowest": true
+                    },
+                    "statVarKey": [
+                      "Amount_EconomicActivity_GrossDomesticProduction_Nominal_AsAFractionOf_Count_Person"
+                    ],
+                    "title": "Economic Activity: Nominal GDP (Nominal, Per Capita) in Eurostat Nuts 3 Places of Spain (${date})",
+                    "type": "RANKING"
+                  }
+                ]
+              }
+            ],
+            "title": "Economic Activity: Nominal GDP (Nominal, Per Capita) in Eurostat Nuts 3 Places of Spain"
+          },
+          {
+            "columns": [
+              {
+                "tiles": [
+                  {
+                    "statVarKey": [
+                      "Amount_EconomicActivity_GrossDomesticProduction_Nominal_AsAFractionOf_Count_Person"
+                    ],
+                    "title": "Economic Activity: Nominal GDP (Nominal, Per Capita) in Spain",
                     "type": "LINE"
                   }
                 ]
@@ -166,11 +230,39 @@
               {
                 "tiles": [
                   {
-                    "description": "Unemployment Rate in United Kingdom",
+                    "description": "Economic Activity: Nominal GDP (Nominal, Per Capita) in Spain",
+                    "statVarKey": [
+                      "Amount_EconomicActivity_GrossDomesticProduction_Nominal_AsAFractionOf_Count_Person"
+                    ],
+                    "title": "Economic Activity: Nominal GDP (Nominal, Per Capita) in Spain",
+                    "type": "HIGHLIGHT"
+                  }
+                ]
+              }
+            ],
+            "title": "Economic Activity: Nominal GDP (Nominal, Per Capita)"
+          },
+          {
+            "columns": [
+              {
+                "tiles": [
+                  {
                     "statVarKey": [
                       "UnemploymentRate_Person"
                     ],
-                    "title": "Unemployment Rate in United Kingdom",
+                    "title": "Unemployment Rate in Spain",
+                    "type": "LINE"
+                  }
+                ]
+              },
+              {
+                "tiles": [
+                  {
+                    "description": "Unemployment Rate in Spain",
+                    "statVarKey": [
+                      "UnemploymentRate_Person"
+                    ],
+                    "title": "Unemployment Rate in Spain",
                     "type": "HIGHLIGHT"
                   }
                 ]
@@ -184,9 +276,14 @@
                 "tiles": [
                   {
                     "statVarKey": [
+<<<<<<< HEAD
                       "sdg/EN_MAT_DOMCMPG"
                     ],
                     "title": "Domestic Material Consumption Per Unit of GDP in United Kingdom",
+=======
+                      "UnemploymentRate_Person_Female"
+                    ],
+                    "title": "Unemployment Rate of Females in Spain",
                     "type": "LINE"
                   }
                 ]
@@ -194,17 +291,58 @@
               {
                 "tiles": [
                   {
-                    "description": "Domestic Material Consumption Per Unit of GDP in United Kingdom",
+                    "description": "Unemployment Rate of Females in Spain",
                     "statVarKey": [
-                      "sdg/EN_MAT_DOMCMPG"
+                      "UnemploymentRate_Person_Female"
                     ],
-                    "title": "Domestic Material Consumption Per Unit of GDP in United Kingdom",
+                    "title": "Unemployment Rate of Females in Spain",
                     "type": "HIGHLIGHT"
                   }
                 ]
               }
             ],
+            "title": "Unemployment Rate of Females"
+          },
+          {
+            "columns": [
+              {
+                "tiles": [
+                  {
+                    "statVarKey": [
+                      "sdg/EN_MAT_DOMCMPG"
+                    ],
+                    "title": "Domestic Material Consumption Per Unit of GDP in Spain",
+>>>>>>> staging
+                    "type": "LINE"
+                  }
+                ]
+              },
+              {
+                "tiles": [
+                  {
+<<<<<<< HEAD
+                    "description": "Domestic Material Consumption Per Unit of GDP in United Kingdom",
+                    "statVarKey": [
+                      "sdg/EN_MAT_DOMCMPG"
+                    ],
+                    "title": "Domestic Material Consumption Per Unit of GDP in United Kingdom",
+=======
+                    "description": "Domestic Material Consumption Per Unit of GDP in Spain",
+                    "statVarKey": [
+                      "sdg/EN_MAT_DOMCMPG"
+                    ],
+                    "title": "Domestic Material Consumption Per Unit of GDP in Spain",
+>>>>>>> staging
+                    "type": "HIGHLIGHT"
+                  }
+                ]
+              }
+            ],
+<<<<<<< HEAD
             "footnote": "Includes data from the following sources: WESR / global material flows database.",
+=======
+            "footnote": "Includes data from the following sources: eurostat; WESR / global material flows database.",
+>>>>>>> staging
             "title": "Domestic Material Consumption Per Unit of GDP"
           }
         ],
@@ -212,6 +350,10 @@
           "Amount_EconomicActivity_GrossDomesticProduction_Nominal": {
             "name": "GDP (Nominal Value)",
             "statVar": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          },
+          "Amount_EconomicActivity_GrossDomesticProduction_Nominal_AsAFractionOf_Count_Person": {
+            "name": "Economic Activity: Nominal GDP (Nominal, Per Capita)",
+            "statVar": "Amount_EconomicActivity_GrossDomesticProduction_Nominal_AsAFractionOf_Count_Person"
           },
           "Amount_EconomicActivity_GrossDomesticProduction_Nominal_PerCapita": {
             "name": "Nominal GDP Per Capita",
@@ -225,6 +367,7 @@
             "name": "Unemployment Rate",
             "statVar": "UnemploymentRate_Person"
           },
+<<<<<<< HEAD
           "sdg/EN_MAT_DOMCMPG": {
             "name": "Domestic material consumption per unit of GDP",
             "statVar": "sdg/EN_MAT_DOMCMPG"
@@ -232,6 +375,15 @@
           "sdg/NY_GDP_PCAP": {
             "name": "Annual growth rate of real GDP per capita",
             "statVar": "sdg/NY_GDP_PCAP"
+=======
+          "UnemploymentRate_Person_Female": {
+            "name": "Unemployment Rate of Females",
+            "statVar": "UnemploymentRate_Person_Female"
+          },
+          "sdg/EN_MAT_DOMCMPG": {
+            "name": "Domestic material consumption per unit of GDP",
+            "statVar": "sdg/EN_MAT_DOMCMPG"
+>>>>>>> staging
           }
         }
       }
@@ -241,7 +393,7 @@
         "Country": "EurostatNUTS3"
       },
       "placeDcid": [
-        "country/GBR"
+        "country/ESP"
       ]
     }
   },
@@ -250,16 +402,16 @@
   "entities": [],
   "pastSourceContext": "",
   "place": {
-    "dcid": "country/GBR",
-    "name": "United Kingdom",
+    "dcid": "country/ESP",
+    "name": "Spain",
     "place_type": "Country"
   },
   "placeFallback": {},
   "placeSource": "CURRENT_QUERY",
   "places": [
     {
-      "dcid": "country/GBR",
-      "name": "United Kingdom",
+      "dcid": "country/ESP",
+      "name": "Spain",
       "place_type": "Country"
     }
   ],
@@ -267,351 +419,601 @@
     "childPlaces": {
       "EurostatNUTS3": [
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKC11",
           "name": "Hartlepool and Stockton-on-Tees",
+=======
+          "dcid": "nuts/ES111",
+          "name": "A Coru\u00f1a Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKC12",
           "name": "South Teesside",
+=======
+          "dcid": "nuts/ES112",
+          "name": "Lugo Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKC13",
           "name": "Darlington",
+=======
+          "dcid": "nuts/ES113",
+          "name": "Ourense Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKC14",
           "name": "County Durham",
+=======
+          "dcid": "nuts/ES114",
+          "name": "Pontevedra Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKC21",
           "name": "Northumberland",
+=======
+          "dcid": "nuts/ES120",
+          "name": "Asturias",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKC22",
           "name": "Tyneside",
+=======
+          "dcid": "nuts/ES130",
+          "name": "Cantabria",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKC23",
           "name": "City of Sunderland",
+=======
+          "dcid": "nuts/ES211",
+          "name": "Araba / \u00c1lava",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKD11",
           "name": "West Cumbria",
+=======
+          "dcid": "nuts/ES212",
+          "name": "Gipuzkoa",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKD12",
           "name": "East Cumbria",
+=======
+          "dcid": "nuts/ES213",
+          "name": "Biscay",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKD32",
           "name": "Wigan",
+=======
+          "dcid": "nuts/ES220",
+          "name": "Navarra",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKD33",
           "name": "Manchester",
+=======
+          "dcid": "nuts/ES230",
+          "name": "La Rioja",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKD34",
           "name": "Greater Manchester South West",
+=======
+          "dcid": "nuts/ES241",
+          "name": "Huesca Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKD35",
           "name": "Greater Manchester South East",
+=======
+          "dcid": "nuts/ES242",
+          "name": "Teruel Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKD36",
           "name": "Greater Manchester North West",
+=======
+          "dcid": "nuts/ES243",
+          "name": "Zaragoza Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKD37",
           "name": "Greater Manchester North East",
+=======
+          "dcid": "nuts/ES300",
+          "name": "Madrid",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKD41",
           "name": "Blackburn with Darwen",
+=======
+          "dcid": "nuts/ES411",
+          "name": "Province of \u00c1vila",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKD42",
           "name": "Blackpool",
+=======
+          "dcid": "nuts/ES412",
+          "name": "Burgos Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKD44",
           "name": "Lancaster and Wyre",
+=======
+          "dcid": "nuts/ES413",
+          "name": "Le\u00f3n Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKD45",
           "name": "Mid Lancashire",
+=======
+          "dcid": "nuts/ES414",
+          "name": "Palencia Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKD46",
           "name": "East Lancashire",
+=======
+          "dcid": "nuts/ES415",
+          "name": "Salamanca Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKD47",
           "name": "Chorley and West Lancashire",
+=======
+          "dcid": "nuts/ES416",
+          "name": "Segovia Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKD61",
           "name": "Warrington",
+=======
+          "dcid": "nuts/ES417",
+          "name": "Soria",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKD62",
           "name": "Cheshire East",
+=======
+          "dcid": "nuts/ES418",
+          "name": "Valladolid Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKD63",
           "name": "Cheshire West and Chester",
+=======
+          "dcid": "nuts/ES419",
+          "name": "Zamora Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKD71",
           "name": "East Merseyside",
+=======
+          "dcid": "nuts/ES421",
+          "name": "Albacete Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKD72",
           "name": "Liverpool",
+=======
+          "dcid": "nuts/ES422",
+          "name": "Ciudad Real Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKD73",
           "name": "Sefton",
+=======
+          "dcid": "nuts/ES423",
+          "name": "Cuenca Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKD74",
           "name": "Wirral",
+=======
+          "dcid": "nuts/ES424",
+          "name": "Guadalajara Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKE11",
           "name": "Kingston upon Hull",
+=======
+          "dcid": "nuts/ES425",
+          "name": "Toledo Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKE12",
           "name": "East Riding of Yorkshire",
+=======
+          "dcid": "nuts/ES431",
+          "name": "Badajoz Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKE13",
           "name": "North and North East Lincolnshire",
+=======
+          "dcid": "nuts/ES432",
+          "name": "C\u00e1ceres Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKE21",
           "name": "York",
+=======
+          "dcid": "nuts/ES511",
+          "name": "Barcelona Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKE22",
           "name": "North Yorkshire CC",
+=======
+          "dcid": "nuts/ES512",
+          "name": "Girona",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKE31",
           "name": "Barnsley, Doncaster and Rotherham",
+=======
+          "dcid": "nuts/ES513",
+          "name": "Lleida Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKE32",
           "name": "Sheffield",
+=======
+          "dcid": "nuts/ES514",
+          "name": "Tarragona Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKE41",
           "name": "Bradford",
+=======
+          "dcid": "nuts/ES521",
+          "name": "Alicante / Alacant",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKE42",
           "name": "Leeds",
+=======
+          "dcid": "nuts/ES522",
+          "name": "Castell\u00f3n / Castell\u00f3",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKE44",
           "name": "Calderdale and Kirklees",
+=======
+          "dcid": "nuts/ES523",
+          "name": "Valencia / Val\u00e8ncia",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKE45",
           "name": "Wakefield",
+=======
+          "dcid": "nuts/ES531",
+          "name": "Eivissa y Formentera",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKF11",
           "name": "Derby",
+=======
+          "dcid": "nuts/ES532",
+          "name": "Majorca",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKF12",
           "name": "East Derbyshire",
+=======
+          "dcid": "nuts/ES533",
+          "name": "Menorca",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKF13",
           "name": "South and West Derbyshire",
+=======
+          "dcid": "nuts/ES611",
+          "name": "Almer\u00eda Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKF14",
           "name": "Nottingham",
+=======
+          "dcid": "nuts/ES612",
+          "name": "C\u00e1diz Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKF15",
           "name": "North Nottinghamshire",
+=======
+          "dcid": "nuts/ES613",
+          "name": "C\u00f3rdoba Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKF16",
           "name": "South Nottinghamshire",
+=======
+          "dcid": "nuts/ES614",
+          "name": "Granada Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKF21",
           "name": "Leicester",
+=======
+          "dcid": "nuts/ES615",
+          "name": "Huelva Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKF22",
           "name": "Leicestershire CC and Rutland",
+=======
+          "dcid": "nuts/ES616",
+          "name": "Ja\u00e9n Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKF24",
           "name": "West Northamptonshire",
+=======
+          "dcid": "nuts/ES617",
+          "name": "M\u00e1laga Province",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKF25",
           "name": "North Northamptonshire",
+=======
+          "dcid": "nuts/ES618",
+          "name": "Sevilla",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
         },
         {
+<<<<<<< HEAD
           "dcid": "nuts/UKF30",
           "name": "Lincolnshire",
+=======
+          "dcid": "nuts/ES620",
+          "name": "Murcia",
+>>>>>>> staging
           "types": [
             "EurostatNUTS3"
           ]
@@ -620,6 +1022,7 @@
     },
     "childTopics": [],
     "exploreMore": {
+<<<<<<< HEAD
       "sdg/EN_MAT_DOMCMPG": {
         "sdg_product": [
           "sdg/EN_MAT_DOMCMPG.PRODUCT--MF1",
@@ -639,6 +1042,12 @@
           "sdg/EN_MAT_DOMCMPG.PRODUCT--MF422",
           "sdg/EN_MAT_DOMCMPG.PRODUCT--MF_AGG3A",
           "sdg/EN_MAT_DOMCMPG.PRODUCT--MF_AGG3B"
+=======
+      "UnemploymentRate_Person_Female": {
+        "age": [
+          "UnemploymentRate_Person_25To74Years_Female",
+          "UnemploymentRate_Person_Upto25Years_Female"
+>>>>>>> staging
         ]
       }
     },
@@ -754,6 +1163,16 @@
         ]
       },
       {
+<<<<<<< HEAD
+=======
+        "dcid": "country/GBR",
+        "name": "United Kingdom",
+        "types": [
+          "Country"
+        ]
+      },
+      {
+>>>>>>> staging
         "dcid": "country/USA",
         "name": "United States",
         "types": [

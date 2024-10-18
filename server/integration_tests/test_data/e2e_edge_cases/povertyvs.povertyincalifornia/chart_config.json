@@ -618,8 +618,23 @@
     "exploreMore": {
       "Count_Person_BelowPovertyLevelInThePast12Months": {
         "age": [
+<<<<<<< HEAD
           "Count_Person_5OrMoreYears_BelowPovertyLevelInThePast12Months",
           "Count_Person_6To11Years_BelowPovertyLevelInThePast12Months"
+=======
+          "Count_Person_12To17Years_BelowPovertyLevelInThePast12Months",
+          "Count_Person_18To59Years_BelowPovertyLevelInThePast12Months",
+          "Count_Person_5OrMoreYears_BelowPovertyLevelInThePast12Months",
+          "Count_Person_60To74Years_BelowPovertyLevelInThePast12Months",
+          "Count_Person_6To11Years_BelowPovertyLevelInThePast12Months",
+          "Count_Person_75To84Years_BelowPovertyLevelInThePast12Months",
+          "Count_Person_85OrMoreYears_BelowPovertyLevelInThePast12Months",
+          "Count_Person_Upto6Years_BelowPovertyLevelInThePast12Months"
+        ],
+        "gender": [
+          "Count_Person_Female_BelowPovertyLevelInThePast12Months",
+          "Count_Person_Male_BelowPovertyLevelInThePast12Months"
+>>>>>>> staging
         ]
       },
       "Count_Person_Female_BelowPovertyLevelInThePast12Months": {
@@ -648,7 +663,19 @@
           "Count_Person_35To44Years_Male_BelowPovertyLevelInThePast12Months",
           "Count_Person_45To54Years_Male_BelowPovertyLevelInThePast12Months",
           "Count_Person_55To64Years_Male_BelowPovertyLevelInThePast12Months",
+<<<<<<< HEAD
           "Count_Person_75OrMoreYears_Male_BelowPovertyLevelInThePast12Months"
+=======
+          "Count_Person_5Years_Male_BelowPovertyLevelInThePast12Months",
+          "Count_Person_65To74Years_Male_BelowPovertyLevelInThePast12Months",
+          "Count_Person_6To11Years_Male_BelowPovertyLevelInThePast12Months",
+          "Count_Person_75OrMoreYears_Male_BelowPovertyLevelInThePast12Months",
+          "Count_Person_Upto5Years_Male_BelowPovertyLevelInThePast12Months"
+        ],
+        "maritalStatus": [
+          "Count_Person_Male_DivorcedInThePast12Months_BelowPovertyLevelInThePast12Months",
+          "Count_Person_Male_MarriedInThePast12Months_BelowPovertyLevelInThePast12Months"
+>>>>>>> staging
         ]
       }
     },

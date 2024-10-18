@@ -1,4 +1,4 @@
-# Copyright 2023 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,6 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# DNS
+ip: 34.149.114.214
+domain: dev.datacommons.org
 
 # Helm config
 project: "datcom-website-dev"
@@ -28,19 +32,27 @@ website:
 serviceAccount:
   name: website-ksa
 
+ingress:
+  enabled: true
+
 serviceGroups:
   recon: null
   svg:
-    replicas: 2
+    replicas: 1
   observation:
+<<<<<<< HEAD
     replicas: 10
+=======
+    replicas: 3
+>>>>>>> staging
   node:
-    replicas: 10
+    replicas: 3
   default:
-    replicas: 5
+    replicas: 3
 
 nl:
   enabled: true
+<<<<<<< HEAD
   embeddingsSpec:
     defaultIndex: "base_uae_mem"
     enabledIndexes: [
@@ -59,6 +71,21 @@ nl:
         project_id: datcom-website-dev
         location: us-central1
         prediction_endpoint_id: "8518340991868993536"
+=======
+  env:
+    default_indexes:
+      - base_uae_mem
+    enabled_indexes:
+      - base_uae_mem
+      - bio_ft
+      - medium_ft
+      - base_uae_lance
+      - base_mistral_mem
+      - sdg_ft
+      - undata_ft
+      - undata_ilo_ft
+    vertex_ai_models:
+>>>>>>> staging
       uae-large-v1-model:
         project_id: datcom-nl
         location: us-central1
@@ -75,11 +102,15 @@ nl:
         project_id: datcom-website-dev
         location: us-central1
         prediction_endpoint_id: "284894457873039360"
+<<<<<<< HEAD
     enableReranking: true
+=======
+    enable_reranking: true
+>>>>>>> staging
 
 nodejs:
   enabled: true
-  replicas: 5
+  replicas: 2
 
 cronTesting:
   enabled: true

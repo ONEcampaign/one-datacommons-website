@@ -43,7 +43,11 @@
                       "startDate": "2023"
                     },
                     "statVarKey": [
+<<<<<<< HEAD
                       "Count_FireEvent_1861139314"
+=======
+                      "Count_FireEvent_285042123"
+>>>>>>> staging
                     ],
                     "title": "Count of Fire Event in California",
                     "type": "LINE"
@@ -105,7 +109,11 @@
                       "startDate": "2023"
                     },
                     "statVarKey": [
+<<<<<<< HEAD
                       "Count_WildlandFireEvent_3292908771"
+=======
+                      "Count_WildlandFireEvent_2996752054"
+>>>>>>> staging
                     ],
                     "title": "Count of Wildland Fire Event in California",
                     "type": "LINE"
@@ -167,7 +175,7 @@
                       "startDate": "2023"
                     },
                     "statVarKey": [
-                      "Count_WildfireEvent_973116817"
+                      "Count_WildfireEvent_2519150620"
                     ],
                     "title": "Wildfires in California",
                     "type": "LINE"
@@ -260,7 +268,11 @@
                       "startDate": "2023"
                     },
                     "statVarKey": [
+<<<<<<< HEAD
                       "Count_PrescribedFireEvent_3292908771"
+=======
+                      "Count_PrescribedFireEvent_2996752054"
+>>>>>>> staging
                     ],
                     "title": "Count of Prescribed Fire Event in California",
                     "type": "LINE"
@@ -366,8 +378,13 @@
             "name": "Count of Fire Event",
             "statVar": "Count_FireEvent"
           },
+<<<<<<< HEAD
           "Count_FireEvent_1861139314": {
             "facetId": "1861139314",
+=======
+          "Count_FireEvent_285042123": {
+            "facetId": "285042123",
+>>>>>>> staging
             "name": "Count of Fire Event",
             "statVar": "Count_FireEvent"
           },
@@ -375,8 +392,13 @@
             "name": "Count of Prescribed Fire Event",
             "statVar": "Count_PrescribedFireEvent"
           },
+<<<<<<< HEAD
           "Count_PrescribedFireEvent_3292908771": {
             "facetId": "3292908771",
+=======
+          "Count_PrescribedFireEvent_2996752054": {
+            "facetId": "2996752054",
+>>>>>>> staging
             "name": "Count of Prescribed Fire Event",
             "statVar": "Count_PrescribedFireEvent"
           },
@@ -384,8 +406,8 @@
             "name": "Wildfires",
             "statVar": "Count_WildfireEvent"
           },
-          "Count_WildfireEvent_973116817": {
-            "facetId": "973116817",
+          "Count_WildfireEvent_2519150620": {
+            "facetId": "2519150620",
             "name": "Wildfires",
             "statVar": "Count_WildfireEvent"
           },
@@ -393,8 +415,13 @@
             "name": "Count of Wildland Fire Event",
             "statVar": "Count_WildlandFireEvent"
           },
+<<<<<<< HEAD
           "Count_WildlandFireEvent_3292908771": {
             "facetId": "3292908771",
+=======
+          "Count_WildlandFireEvent_2996752054": {
+            "facetId": "2996752054",
+>>>>>>> staging
             "name": "Count of Wildland Fire Event",
             "statVar": "Count_WildlandFireEvent"
           }

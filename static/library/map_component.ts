@@ -170,7 +170,11 @@ export class DatacommonsMapComponent extends LitElement {
   @property({ type: Array<string>, converter: convertArrayAttribute })
   sources?: string[];
 
+<<<<<<< HEAD
   render(): HTMLElement {
+=======
+  render(): HTMLDivElement {
+>>>>>>> staging
     let dataSpecs: ContainedInPlaceSingleVariableDataSpec[] = [];
     if (!_.isEmpty(this.parentPlaces) && !_.isEmpty(this.childPlaceTypes)) {
       this.parentPlaces.forEach((placeDcid, index) => {

@@ -626,6 +626,7 @@
             ],
             "denom": "Count_Person",
             "title": "Annual Amount of Emissions: Enteric Fermentation, Greenhouse Gas in the World"
+<<<<<<< HEAD
           },
           {
             "columns": [
@@ -751,6 +752,8 @@
             ],
             "denom": "Count_Person",
             "title": "Annual Amount of Emissions: Managed Soils, Greenhouse Gas in the World"
+=======
+>>>>>>> staging
           }
         ],
         "statVarSpec": {
@@ -818,6 +821,7 @@
             "name": "Annual Amount of Emissions: Fuel Combustion for Cooking, Greenhouse Gas",
             "statVar": "Annual_Emissions_GreenhouseGas_FuelCombustionForCooking"
           },
+<<<<<<< HEAD
           "Annual_Emissions_GreenhouseGas_ManagedSoils": {
             "name": "Annual Amount of Emissions: Managed Soils, Greenhouse Gas",
             "statVar": "Annual_Emissions_GreenhouseGas_ManagedSoils"
@@ -833,6 +837,15 @@
           "Annual_Emissions_GreenhouseGas_WastewaterTreatmentAndDischarge": {
             "name": "Annual Amount of Emissions: Wastewater Treatment And Discharge, Greenhouse Gas",
             "statVar": "Annual_Emissions_GreenhouseGas_WastewaterTreatmentAndDischarge"
+=======
+          "Annual_Emissions_GreenhouseGas_OilAndGasProduction": {
+            "name": "Annual Amount of Emissions: Oil And Gas Production, Greenhouse Gas",
+            "statVar": "Annual_Emissions_GreenhouseGas_OilAndGasProduction"
+          },
+          "Annual_Emissions_GreenhouseGas_RiceCultivation": {
+            "name": "Annual Amount of Emissions: Rice Cultivation, Greenhouse Gas",
+            "statVar": "Annual_Emissions_GreenhouseGas_RiceCultivation"
+>>>>>>> staging
           },
           "Annual_Emissions_Methane_Agriculture": {
             "name": "Annual Amount of Emissions: Agriculture, Methane",
@@ -846,10 +859,13 @@
             "name": "Annual Amount of Emissions: Open Burning Waste, Methane",
             "statVar": "Annual_Emissions_Methane_OpenBurningWaste"
           },
+<<<<<<< HEAD
           "Annual_Emissions_Methane_RiceCultivation": {
             "name": "Annual Amount of Emissions: Rice Cultivation, Methane",
             "statVar": "Annual_Emissions_Methane_RiceCultivation"
           },
+=======
+>>>>>>> staging
           "Annual_Emissions_Methane_WasteManagement": {
             "name": "Annual Amount of Emissions: Waste Management, Methane",
             "statVar": "Annual_Emissions_Methane_WasteManagement"

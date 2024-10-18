@@ -347,7 +347,11 @@
                 ]
               }
             ],
+<<<<<<< HEAD
             "footnote": "Includes data from the following sources: source = ILO modelled estimates, nov.2022.",
+=======
+            "footnote": "Includes data from the following sources: ILO modelled estimates, nov.2023.",
+>>>>>>> staging
             "title": "Employed Population Aged 15 or Over Below International Poverty Line"
           },
           {
@@ -379,7 +383,11 @@
                 ]
               }
             ],
+<<<<<<< HEAD
             "footnote": "Includes data from the following sources: source = ILO modelled estimates, nov.2022.",
+=======
+            "footnote": "Includes data from the following sources: ILO modelled estimates, nov.2023.",
+>>>>>>> staging
             "title": "Employed Population Aged 15 or Over Below International Poverty Line in Countries of Africa"
           },
           {
@@ -428,7 +436,11 @@
                 ]
               }
             ],
+<<<<<<< HEAD
             "footnote": "Includes data from the following sources: source = ILO modelled estimates, nov.2022.",
+=======
+            "footnote": "Includes data from the following sources: ILO modelled estimates, nov.2023.",
+>>>>>>> staging
             "title": "Employed Women Aged 15 or Over Below International Poverty Line in Countries of Africa"
           },
           {
@@ -460,7 +472,11 @@
                 ]
               }
             ],
+<<<<<<< HEAD
             "footnote": "Includes data from the following sources: source = ILO modelled estimates, nov.2022.",
+=======
+            "footnote": "Includes data from the following sources: ILO modelled estimates, nov.2023.",
+>>>>>>> staging
             "title": "Employed Men Aged 15 or Over Below International Poverty Line in Countries of Africa"
           }
         ],

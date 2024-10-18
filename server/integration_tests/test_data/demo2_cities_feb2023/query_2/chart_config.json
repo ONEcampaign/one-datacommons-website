@@ -37,6 +37,7 @@
               {
                 "tiles": [
                   {
+<<<<<<< HEAD
                     "statVarKey": [
                       "Percent_Person_Obesity"
                     ],
@@ -205,6 +206,8 @@
               {
                 "tiles": [
                   {
+=======
+>>>>>>> staging
                     "barTileSpec": {
                       "maxPlaces": 15,
                       "maxVariables": 15,
@@ -330,11 +333,6 @@
             "statVar": "Percent_Person_WithChronicKidneyDisease",
             "unit": "%"
           },
-          "Percent_Person_WithChronicObstructivePulmonaryDisease": {
-            "name": "Chronic Obstructive Pulmonary Disease",
-            "statVar": "Percent_Person_WithChronicObstructivePulmonaryDisease",
-            "unit": "%"
-          },
           "Percent_Person_WithChronicObstructivePulmonaryDisease_multiple_place_bar_block": {
             "name": "Chronic Obstructive Pulmonary Disease",
             "statVar": "Percent_Person_WithChronicObstructivePulmonaryDisease",
@@ -409,6 +407,7 @@
   ],
   "relatedThings": {
     "childPlaces": {},
+<<<<<<< HEAD
     "childTopics": [
       {
         "dcid": "dc/topic/Arthritis",
@@ -486,6 +485,14 @@
       {
         "dcid": "dc/topic/HealthConditions",
         "name": "Health Conditions",
+=======
+    "childTopics": [],
+    "exploreMore": {},
+    "mainTopics": [
+      {
+        "dcid": "dc/topic/Asthma",
+        "name": "Asthma",
+>>>>>>> staging
         "types": [
           "Topic"
         ]
@@ -494,8 +501,13 @@
     "parentPlaces": [],
     "parentTopics": [
       {
+<<<<<<< HEAD
         "dcid": "dc/topic/Health",
         "name": "Health",
+=======
+        "dcid": "dc/topic/HealthConditions",
+        "name": "Health Conditions",
+>>>>>>> staging
         "types": [
           "Topic"
         ]
@@ -855,22 +867,79 @@
     ],
     "peerTopics": [
       {
+<<<<<<< HEAD
         "dcid": "dc/topic/HealthEquity",
         "name": "Health Equity",
+=======
+        "dcid": "dc/topic/Arthritis",
+        "name": "Arthritis",
+>>>>>>> staging
         "types": [
           "Topic"
         ]
       },
       {
+<<<<<<< HEAD
         "dcid": "dc/topic/HealthInsurance",
         "name": "Health Insurance",
+=======
+        "dcid": "dc/topic/BloodPressure",
+        "name": "Blood Pressure",
+>>>>>>> staging
         "types": [
           "Topic"
         ]
       },
       {
+<<<<<<< HEAD
         "dcid": "dc/topic/PreventativeHealthAndBehavior",
         "name": "Preventive Health and Behavior",
+=======
+        "dcid": "dc/topic/Cancer",
+        "name": "Cancer",
+        "types": [
+          "Topic"
+        ]
+      },
+      {
+        "dcid": "dc/topic/Cholesterol",
+        "name": "Cholesterol",
+        "types": [
+          "Topic"
+        ]
+      },
+      {
+        "dcid": "dc/topic/Diabetes",
+        "name": "Diabetes",
+        "types": [
+          "Topic"
+        ]
+      },
+      {
+        "dcid": "dc/topic/HeartDisease",
+        "name": "Heart Disease",
+        "types": [
+          "Topic"
+        ]
+      },
+      {
+        "dcid": "dc/topic/MentalHealth",
+        "name": "Mental Health",
+        "types": [
+          "Topic"
+        ]
+      },
+      {
+        "dcid": "dc/topic/KidneyDisease",
+        "name": "Kidney Disease",
+        "types": [
+          "Topic"
+        ]
+      },
+      {
+        "dcid": "dc/topic/Stroke",
+        "name": "Stroke",
+>>>>>>> staging
         "types": [
           "Topic"
         ]

@@ -213,8 +213,12 @@
                   {
                     "barTileSpec": {
                       "maxPlaces": 15,
+<<<<<<< HEAD
                       "maxVariables": 15,
                       "sort": "DESCENDING"
+=======
+                      "maxVariables": 15
+>>>>>>> staging
                     },
                     "comparisonPlaces": [
                       "geoId/06"
@@ -940,9 +944,15 @@
                 "tiles": [
                   {
                     "statVarKey": [
+<<<<<<< HEAD
                       "Median_Age_Person_HispanicOrLatino"
                     ],
                     "title": "Median Age of Hispanic or Latino Population in Counties of California (${date})",
+=======
+                      "Median_Age_Person_NoHealthInsurance"
+                    ],
+                    "title": "Median Age of Population With No Health Insurance in Counties of California (${date})",
+>>>>>>> staging
                     "type": "MAP"
                   }
                 ]
@@ -955,15 +965,25 @@
                       "showHighestLowest": true
                     },
                     "statVarKey": [
+<<<<<<< HEAD
                       "Median_Age_Person_HispanicOrLatino"
                     ],
                     "title": "Median Age of Hispanic or Latino Population in Counties of California (${date})",
+=======
+                      "Median_Age_Person_NoHealthInsurance"
+                    ],
+                    "title": "Median Age of Population With No Health Insurance in Counties of California (${date})",
+>>>>>>> staging
                     "type": "RANKING"
                   }
                 ]
               }
             ],
+<<<<<<< HEAD
             "title": "Median Age of Hispanic or Latino Population in Counties of California"
+=======
+            "title": "Median Age of Population With No Health Insurance in Counties of California"
+>>>>>>> staging
           },
           {
             "columns": [
@@ -971,9 +991,15 @@
                 "tiles": [
                   {
                     "statVarKey": [
+<<<<<<< HEAD
                       "Median_Age_Person_HispanicOrLatino"
                     ],
                     "title": "Median Age of Hispanic or Latino Population in California",
+=======
+                      "Median_Age_Person_NoHealthInsurance"
+                    ],
+                    "title": "Median Age of Population With No Health Insurance in California",
+>>>>>>> staging
                     "type": "LINE"
                   }
                 ]
@@ -981,17 +1007,29 @@
               {
                 "tiles": [
                   {
+<<<<<<< HEAD
                     "description": "Median Age of Hispanic or Latino Population in California",
                     "statVarKey": [
                       "Median_Age_Person_HispanicOrLatino"
                     ],
                     "title": "Median Age of Hispanic or Latino Population in California",
+=======
+                    "description": "Median Age of Population With No Health Insurance in California",
+                    "statVarKey": [
+                      "Median_Age_Person_NoHealthInsurance"
+                    ],
+                    "title": "Median Age of Population With No Health Insurance in California",
+>>>>>>> staging
                     "type": "HIGHLIGHT"
                   }
                 ]
               }
             ],
+<<<<<<< HEAD
             "title": "Median Age of Hispanic or Latino Population"
+=======
+            "title": "Median Age of Population With No Health Insurance"
+>>>>>>> staging
           }
         ],
         "statVarSpec": {
@@ -1079,10 +1117,13 @@
             "name": "Median Age: Foreign Born",
             "statVar": "Median_Age_Person_ForeignBorn"
           },
+<<<<<<< HEAD
           "Median_Age_Person_HispanicOrLatino": {
             "name": "Median Age of Hispanic or Latino Population",
             "statVar": "Median_Age_Person_HispanicOrLatino"
           },
+=======
+>>>>>>> staging
           "Median_Age_Person_Male": {
             "name": "Men's Median Age",
             "statVar": "Median_Age_Person_Male"
@@ -1099,6 +1140,13 @@
             "name": "Median Age: Native",
             "statVar": "Median_Age_Person_Native"
           },
+<<<<<<< HEAD
+=======
+          "Median_Age_Person_NoHealthInsurance": {
+            "name": "Median Age of Population With No Health Insurance",
+            "statVar": "Median_Age_Person_NoHealthInsurance"
+          },
+>>>>>>> staging
           "Median_Age_Person_TwoOrMoreRaces": {
             "name": "Median Age of Multiracial Population",
             "statVar": "Median_Age_Person_TwoOrMoreRaces"
@@ -1494,6 +1542,61 @@
     },
     "childTopics": [],
     "exploreMore": {
+<<<<<<< HEAD
+=======
+      "Count_Person_0To4Years_Female": {
+        "race": [
+          "Count_Person_0To4Years_Female_AmericanIndianAndAlaskaNativeAlone",
+          "Count_Person_0To4Years_Female_AsianAlone",
+          "Count_Person_0To4Years_Female_BlackOrAfricanAmericanAlone",
+          "Count_Person_0To4Years_Female_HispanicOrLatino",
+          "Count_Person_0To4Years_Female_HispanicOrLatino_AmericanIndianAndAlaskaNativeAlone",
+          "Count_Person_0To4Years_Female_HispanicOrLatino_AsianAlone",
+          "Count_Person_0To4Years_Female_HispanicOrLatino_AsianOrPacificIslander",
+          "Count_Person_0To4Years_Female_HispanicOrLatino_BlackOrAfricanAmericanAlone",
+          "Count_Person_0To4Years_Female_HispanicOrLatino_NativeHawaiianAndOtherPacificIslanderAlone",
+          "Count_Person_0To4Years_Female_HispanicOrLatino_TwoOrMoreRaces",
+          "Count_Person_0To4Years_Female_HispanicOrLatino_WhiteAlone",
+          "Count_Person_0To4Years_Female_NativeHawaiianAndOtherPacificIslanderAlone",
+          "Count_Person_0To4Years_Female_NotHispanicOrLatino",
+          "Count_Person_0To4Years_Female_NotHispanicOrLatino_AmericanIndianAndAlaskaNativeAlone",
+          "Count_Person_0To4Years_Female_NotHispanicOrLatino_AsianAlone",
+          "Count_Person_0To4Years_Female_NotHispanicOrLatino_AsianOrPacificIslander",
+          "Count_Person_0To4Years_Female_NotHispanicOrLatino_BlackOrAfricanAmericanAlone",
+          "Count_Person_0To4Years_Female_NotHispanicOrLatino_NativeHawaiianAndOtherPacificIslanderAlone",
+          "Count_Person_0To4Years_Female_NotHispanicOrLatino_TwoOrMoreRaces",
+          "Count_Person_0To4Years_Female_TwoOrMoreRaces",
+          "Count_Person_0To4Years_Female_WhiteAlone",
+          "Count_Person_0To4Years_Female_WhiteAloneNotHispanicOrLatino"
+        ]
+      },
+      "Count_Person_0To4Years_Male": {
+        "race": [
+          "Count_Person_0To4Years_Male_AmericanIndianAndAlaskaNativeAlone",
+          "Count_Person_0To4Years_Male_AsianAlone",
+          "Count_Person_0To4Years_Male_BlackOrAfricanAmericanAlone",
+          "Count_Person_0To4Years_Male_HispanicOrLatino",
+          "Count_Person_0To4Years_Male_HispanicOrLatino_AmericanIndianAndAlaskaNativeAlone",
+          "Count_Person_0To4Years_Male_HispanicOrLatino_AsianAlone",
+          "Count_Person_0To4Years_Male_HispanicOrLatino_AsianOrPacificIslander",
+          "Count_Person_0To4Years_Male_HispanicOrLatino_BlackOrAfricanAmericanAlone",
+          "Count_Person_0To4Years_Male_HispanicOrLatino_NativeHawaiianAndOtherPacificIslanderAlone",
+          "Count_Person_0To4Years_Male_HispanicOrLatino_TwoOrMoreRaces",
+          "Count_Person_0To4Years_Male_HispanicOrLatino_WhiteAlone",
+          "Count_Person_0To4Years_Male_NativeHawaiianAndOtherPacificIslanderAlone",
+          "Count_Person_0To4Years_Male_NotHispanicOrLatino",
+          "Count_Person_0To4Years_Male_NotHispanicOrLatino_AmericanIndianAndAlaskaNativeAlone",
+          "Count_Person_0To4Years_Male_NotHispanicOrLatino_AsianAlone",
+          "Count_Person_0To4Years_Male_NotHispanicOrLatino_AsianOrPacificIslander",
+          "Count_Person_0To4Years_Male_NotHispanicOrLatino_BlackOrAfricanAmericanAlone",
+          "Count_Person_0To4Years_Male_NotHispanicOrLatino_NativeHawaiianAndOtherPacificIslanderAlone",
+          "Count_Person_0To4Years_Male_NotHispanicOrLatino_TwoOrMoreRaces",
+          "Count_Person_0To4Years_Male_TwoOrMoreRaces",
+          "Count_Person_0To4Years_Male_WhiteAlone",
+          "Count_Person_0To4Years_Male_WhiteAloneNotHispanicOrLatino"
+        ]
+      },
+>>>>>>> staging
       "Median_Age_Person": {
         "gender": [
           "Median_Age_Person_Female",
@@ -1506,7 +1609,10 @@
         "race": [
           "Median_Age_Person_AsianAlone",
           "Median_Age_Person_BlackOrAfricanAmericanAlone",
+<<<<<<< HEAD
           "Median_Age_Person_HispanicOrLatino",
+=======
+>>>>>>> staging
           "Median_Age_Person_TwoOrMoreRaces",
           "Median_Age_Person_WhiteAlone"
         ]

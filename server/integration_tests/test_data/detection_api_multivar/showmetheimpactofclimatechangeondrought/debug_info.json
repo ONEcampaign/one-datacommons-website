@@ -8,6 +8,7 @@
   "query_with_places_removed": "show me the impact of climate change on drought",
   "sv_matching": {
     "CosineScore": [
+<<<<<<< HEAD
       0.8393681645393372,
       0.79311203956604,
       0.7699974775314331,
@@ -32,6 +33,32 @@
       0.6139707565307617,
       0.6138609647750854,
       0.6123877167701721
+=======
+      0.8393685817718506,
+      0.7931121587753296,
+      0.7699977159500122,
+      0.7208102941513062,
+      0.7175307869911194,
+      0.6995436549186707,
+      0.6863453984260559,
+      0.674246072769165,
+      0.673050582408905,
+      0.6703541874885559,
+      0.6652891635894775,
+      0.6644605398178101,
+      0.6353793740272522,
+      0.6349935531616211,
+      0.6347004175186157,
+      0.6308181285858154,
+      0.6290862560272217,
+      0.6256593465805054,
+      0.6180377006530762,
+      0.6162121891975403,
+      0.6141721606254578,
+      0.6139706969261169,
+      0.6138609051704407,
+      0.6123875379562378
+>>>>>>> staging
     ],
     "MultiSV": {
       "Candidates": [
@@ -41,7 +68,11 @@
           "Parts": [
             {
               "CosineScore": [
+<<<<<<< HEAD
                 0.8787486553192139
+=======
+                0.8787480592727661
+>>>>>>> staging
               ],
               "QueryPart": "show climate change",
               "SV": [
@@ -50,7 +81,11 @@
             },
             {
               "CosineScore": [
+<<<<<<< HEAD
                 1.0
+=======
+                1.000000238418579
+>>>>>>> staging
               ],
               "QueryPart": "drought",
               "SV": [
@@ -65,22 +100,35 @@
           "Parts": [
             {
               "CosineScore": [
+<<<<<<< HEAD
                 0.794236958026886,
                 0.7929013967514038,
                 0.7586168050765991,
                 0.758395791053772
+=======
+                0.7942371964454651,
+                0.7929015159606934
+>>>>>>> staging
               ],
               "QueryPart": "show climate",
               "SV": [
                 "dc/topic/ProjectedClimateExtremes",
+<<<<<<< HEAD
                 "dc/topic/ClimateChange",
                 "dc/topic/Temperatures",
                 "Temperature"
+=======
+                "dc/topic/ClimateChange"
+>>>>>>> staging
               ]
             },
             {
               "CosineScore": [
+<<<<<<< HEAD
                 0.866512656211853
+=======
+                0.866513192653656
+>>>>>>> staging
               ],
               "QueryPart": "change drought",
               "SV": [
@@ -133,7 +181,13 @@
     "query_transformations": {
       "place_detection_input": "show me the impact of climate change on drought",
       "place_detection_with_places_removed": "show me the impact of climate change on drought",
+<<<<<<< HEAD
       "sv_detection_query_index_type": "base_uae_mem",
+=======
+      "sv_detection_query_index_types": [
+        "base_uae_mem"
+      ],
+>>>>>>> staging
       "sv_detection_query_input": "show me the impact of climate change on drought",
       "sv_detection_query_stop_words_removal": "show climate change drought"
     }

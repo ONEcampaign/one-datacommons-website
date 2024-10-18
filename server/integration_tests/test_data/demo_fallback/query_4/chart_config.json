@@ -191,9 +191,43 @@
                 "tiles": [
                   {
                     "statVarKey": [
+<<<<<<< HEAD
                       "Percent_Person_Children_WithAsthma"
                     ],
                     "title": "Percent of Children That Have Asthma in Counties of California (${date})",
+=======
+                      "Percent_Person_WithAsthma"
+                    ],
+                    "title": "Asthma in California",
+                    "type": "LINE"
+                  }
+                ]
+              },
+              {
+                "tiles": [
+                  {
+                    "description": "Asthma in California",
+                    "statVarKey": [
+                      "Percent_Person_WithAsthma"
+                    ],
+                    "title": "Asthma in California",
+                    "type": "HIGHLIGHT"
+                  }
+                ]
+              }
+            ],
+            "title": "Asthma"
+          },
+          {
+            "columns": [
+              {
+                "tiles": [
+                  {
+                    "statVarKey": [
+                      "Percent_Person_WithAsthma"
+                    ],
+                    "title": "Asthma in Counties of California (${date})",
+>>>>>>> staging
                     "type": "MAP"
                   }
                 ]
@@ -206,15 +240,25 @@
                       "showHighestLowest": true
                     },
                     "statVarKey": [
+<<<<<<< HEAD
                       "Percent_Person_Children_WithAsthma"
                     ],
                     "title": "Percent of Children That Have Asthma in Counties of California (${date})",
+=======
+                      "Percent_Person_WithAsthma"
+                    ],
+                    "title": "Asthma in Counties of California (${date})",
+>>>>>>> staging
                     "type": "RANKING"
                   }
                 ]
               }
             ],
+<<<<<<< HEAD
             "title": "Percent of Children That Have Asthma in Counties of California"
+=======
+            "title": "Asthma in Counties of California"
+>>>>>>> staging
           },
           {
             "columns": [
@@ -257,6 +301,7 @@
                 "tiles": [
                   {
                     "statVarKey": [
+<<<<<<< HEAD
                       "Percent_Person_WithAsthma"
                     ],
                     "title": "Asthma in Counties of California (${date})",
@@ -288,6 +333,8 @@
                 "tiles": [
                   {
                     "statVarKey": [
+=======
+>>>>>>> staging
                       "Count_Person_WithDisability_Female",
                       "Count_Person_WithDisability_Male"
                     ],
@@ -404,7 +451,11 @@
                     "statVarKey": [
                       "Count_Person_WithDisability_AmericanIndianOrAlaskaNativeAlone"
                     ],
+<<<<<<< HEAD
                     "title": "American Indian/Alaska Natives With Disabilities in Counties of California (${date})",
+=======
+                    "title": "Number of American Indian/Alaska Natives With Disabilities in Counties of California (${date})",
+>>>>>>> staging
                     "type": "MAP"
                   }
                 ]
@@ -419,14 +470,22 @@
                     "statVarKey": [
                       "Count_Person_WithDisability_AmericanIndianOrAlaskaNativeAlone"
                     ],
+<<<<<<< HEAD
                     "title": "American Indian/Alaska Natives With Disabilities in Counties of California (${date})",
+=======
+                    "title": "Number of American Indian/Alaska Natives With Disabilities in Counties of California (${date})",
+>>>>>>> staging
                     "type": "RANKING"
                   }
                 ]
               }
             ],
             "denom": "Count_Person",
+<<<<<<< HEAD
             "title": "American Indian/Alaska Natives With Disabilities in Counties of California"
+=======
+            "title": "Number of American Indian/Alaska Natives With Disabilities in Counties of California"
+>>>>>>> staging
           },
           {
             "columns": [
@@ -436,7 +495,11 @@
                     "statVarKey": [
                       "Count_Person_WithDisability_BlackOrAfricanAmericanAlone"
                     ],
+<<<<<<< HEAD
                     "title": "Black/African Americans With Disabilities in Counties of California (${date})",
+=======
+                    "title": "Number of Black/African Americans With Disabilities in Counties of California (${date})",
+>>>>>>> staging
                     "type": "MAP"
                   }
                 ]
@@ -451,14 +514,22 @@
                     "statVarKey": [
                       "Count_Person_WithDisability_BlackOrAfricanAmericanAlone"
                     ],
+<<<<<<< HEAD
                     "title": "Black/African Americans With Disabilities in Counties of California (${date})",
+=======
+                    "title": "Number of Black/African Americans With Disabilities in Counties of California (${date})",
+>>>>>>> staging
                     "type": "RANKING"
                   }
                 ]
               }
             ],
             "denom": "Count_Person",
+<<<<<<< HEAD
             "title": "Black/African Americans With Disabilities in Counties of California"
+=======
+            "title": "Number of Black/African Americans With Disabilities in Counties of California"
+>>>>>>> staging
           },
           {
             "columns": [
@@ -838,7 +909,11 @@
                     "statVarKey": [
                       "Count_Death"
                     ],
+<<<<<<< HEAD
                     "title": "Deaths in Counties of California (${date})",
+=======
+                    "title": "Number of Deaths in Counties of California (${date})",
+>>>>>>> staging
                     "type": "MAP"
                   }
                 ]
@@ -853,14 +928,22 @@
                     "statVarKey": [
                       "Count_Death"
                     ],
+<<<<<<< HEAD
                     "title": "Deaths in Counties of California (${date})",
+=======
+                    "title": "Number of Deaths in Counties of California (${date})",
+>>>>>>> staging
                     "type": "RANKING"
                   }
                 ]
               }
             ],
             "denom": "Count_Person",
+<<<<<<< HEAD
             "title": "Deaths in Counties of California"
+=======
+            "title": "Number of Deaths in Counties of California"
+>>>>>>> staging
           },
           {
             "columns": [
@@ -1020,7 +1103,11 @@
         ],
         "statVarSpec": {
           "Count_Death": {
+<<<<<<< HEAD
             "name": "Deaths",
+=======
+            "name": "Number of Deaths",
+>>>>>>> staging
             "statVar": "Count_Death"
           },
           "Count_Person_Female_NoHealthInsurance": {
@@ -1044,6 +1131,7 @@
             "statVar": "Count_Person_NoHealthInsurance"
           },
           "Count_Person_WithDisability_AmericanIndianOrAlaskaNativeAlone": {
+<<<<<<< HEAD
             "name": "American Indian/Alaska Natives With Disabilities",
             "statVar": "Count_Person_WithDisability_AmericanIndianOrAlaskaNativeAlone"
           },
@@ -1057,6 +1145,21 @@
           },
           "Count_Person_WithDisability_BlackOrAfricanAmericanAlone_multiple_place_bar_block": {
             "name": "Black/African Americans With Disabilities",
+=======
+            "name": "Number of American Indian/Alaska Natives With Disabilities",
+            "statVar": "Count_Person_WithDisability_AmericanIndianOrAlaskaNativeAlone"
+          },
+          "Count_Person_WithDisability_AmericanIndianOrAlaskaNativeAlone_multiple_place_bar_block": {
+            "name": "Number of American Indian/Alaska Natives With Disabilities",
+            "statVar": "Count_Person_WithDisability_AmericanIndianOrAlaskaNativeAlone"
+          },
+          "Count_Person_WithDisability_BlackOrAfricanAmericanAlone": {
+            "name": "Number of Black/African Americans With Disabilities",
+            "statVar": "Count_Person_WithDisability_BlackOrAfricanAmericanAlone"
+          },
+          "Count_Person_WithDisability_BlackOrAfricanAmericanAlone_multiple_place_bar_block": {
+            "name": "Number of Black/African Americans With Disabilities",
+>>>>>>> staging
             "statVar": "Count_Person_WithDisability_BlackOrAfricanAmericanAlone"
           },
           "Count_Person_WithDisability_Female": {
@@ -1064,7 +1167,11 @@
             "statVar": "Count_Person_WithDisability_Female"
           },
           "Count_Person_WithDisability_HispanicOrLatino_multiple_place_bar_block": {
+<<<<<<< HEAD
             "name": "Hispanic/Latinos With Disabilities",
+=======
+            "name": "Number of Hispanic/Latinos With Disabilities",
+>>>>>>> staging
             "statVar": "Count_Person_WithDisability_HispanicOrLatino"
           },
           "Count_Person_WithDisability_Male": {

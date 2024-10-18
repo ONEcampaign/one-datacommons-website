@@ -45,7 +45,11 @@
 
 #explore.main-content {
   flex-grow: 1;
+<<<<<<< HEAD
   padding-top: 64px;
+=======
+  // padding-top: 100px;
+>>>>>>> staging
 }
 
 #insight-lhs {
@@ -323,6 +327,14 @@
   width: 100%;
 }
 
+<<<<<<< HEAD
+=======
+.nl-query-result-debug-info .highlight {
+  color: blue;
+  font-weight: bold;
+}
+
+>>>>>>> staging
 #ranking-table-container {
   margin-left: 24px;
 }
