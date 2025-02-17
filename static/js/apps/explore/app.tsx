@@ -18,13 +18,14 @@
  * Main component for DC Explore.
  */
 
-import { ThemeProvider, useTheme } from "@emotion/react";
+import { ThemeProvider } from "@emotion/react";
 import axios from "axios";
 import _ from "lodash";
 import queryString from "query-string";
 import React, { ReactElement, useEffect, useRef, useState } from "react";
 import { RawIntlProvider } from "react-intl";
 import { Container } from "reactstrap";
+import theme from "theme";
 
 import { Spinner } from "../../components/spinner";
 import {
@@ -45,7 +46,6 @@ import {
   triggerGAEvent,
 } from "../../shared/ga_events";
 import { useQueryStore } from "../../shared/stores/query_store_hook";
-import theme from "../../theme/theme";
 import { QueryResult, UserMessageInfo } from "../../types/app/explore_types";
 import { SubjectPageMetadata } from "../../types/subject_page_types";
 import { shouldSkipPlaceOverview } from "../../utils/explore_utils";
