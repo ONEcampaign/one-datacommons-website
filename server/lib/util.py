@@ -308,15 +308,18 @@ def get_place_summaries():
 
 # Returns topic pages loaded as SubjectPageConfig protos:
 # { topic_id: [SubjectPageConfig,...] }
-def get_topic_page_config():
+def get_topic_page_config(override_configs=None):
   topic_configs = {}
-  for topic_id, filenames in TOPIC_PAGE_CONFIGS.items():
+  configs_source = override_configs if override_configs is not None else TOPIC_PAGE_CONFIGS
+
+  for topic_id, filenames in configs_source.items():
     configs = []
     for filename in filenames:
       filepath = os.path.join(get_repo_root(), 'config', 'topic_page', topic_id,
                               filename + '.textproto')
       configs.append(get_subject_page_config(filepath))
     topic_configs[topic_id] = configs
+
   return topic_configs
 
 

@@ -350,8 +350,10 @@ def create_app(nl_root=DEFAULT_NL_ROOT):
   if _enable_datagemma():
     register_routes_datagemma(app, cfg)
 
-  # Load topic page config
-  topic_page_configs = libutil.get_topic_page_config()
+  # Load topic page config, passing in cfg.TOPIC_PAGE_CONFIGS if it exists
+  topic_page_configs = libutil.get_topic_page_config(
+      cfg.TOPIC_PAGE_CONFIGS if hasattr(cfg, "TOPIC_PAGE_CONFIGS") else None)
+
   app.config['TOPIC_PAGE_CONFIG'] = topic_page_configs
   app.config['TOPIC_PAGE_SUMMARY'] = libutil.get_topics_summary(
       topic_page_configs)
@@ -491,6 +493,8 @@ def create_app(nl_root=DEFAULT_NL_ROOT):
         'HEADER_MENU_V2':
             json.dumps(libutil.get_json("config/base/header_v2.json")),
     }
+    if hasattr(cfg, "APP_VARS"):
+      common_variables.update(cfg.APP_VARS)
     locale_variable = dict(locale=get_locale())
     return {**common_variables, **locale_variable}
 
