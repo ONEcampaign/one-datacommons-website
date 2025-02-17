@@ -1,0 +1,46 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from server.app_env import _base
+from server.app_env import local
+
+
+class Config(_base.Config):
+  GA_ACCOUNT = 'GTM-W6DJJVL'
+  CUSTOM = True
+  NAME = "ONE Data Commons"
+  SHOW_DISASTER = False
+  USE_MEMCACHE = True
+  APP_VARS = {"PRIMARY_SITE_WEB_ROOT": "https://data.one.org"}
+  TOPIC_PAGE_CONFIGS = {
+      'economy': ['africa'],
+      'health': ['africa'],
+      'people': ['africa']
+  }
+
+
+class LocalConfig(local.Config):
+  CUSTOM = True
+  API_ROOT = 'https://api.datacommons.org'
+  NAME = "ONE Data Commons"
+  SECRET_PROJECT = ''
+  # Do not use memcache so content is fresh after new data is loaded
+  USE_MEMCACHE = True
+  APP_VARS = {"PRIMARY_SITE_WEB_ROOT": "http://localhost:3000"}
+  TOPIC_PAGE_CONFIGS = {
+      'economy': ['africa'],
+      'health': ['africa'],
+      'people': ['africa']
+  }
+  pass
