@@ -25,7 +25,10 @@ const HeaderLogo = (): ReactElement => {
     <div className="navbar-brand">
       <div className="main-header-logo">
         <a href={"/"} aria-label={"Back to Data Commons Homepage"}>
-          <img src={"custom_dc/one/images/one-logo.svg"} alt={`one.org logo`} />
+          <img
+            src={"/custom_dc/one/images/one-logo.svg"}
+            alt={`one.org logo`}
+          />
         </a>
       </div>
       <a href={"/"} className="main-header-name">
