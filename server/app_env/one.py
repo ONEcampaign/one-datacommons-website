@@ -20,6 +20,7 @@ class Config(_base.Config):
   GA_ACCOUNT = 'GTM-W6DJJVL'
   CUSTOM = True
   NAME = "ONE Data Commons"
+  OVERRIDE_CSS_PATH = '/custom_dc/one/overrides.css'
   SHOW_DISASTER = False
   USE_MEMCACHE = True
   APP_VARS = {"PRIMARY_SITE_WEB_ROOT": "https://data.one.org"}
@@ -34,6 +35,7 @@ class LocalConfig(local.Config):
   CUSTOM = True
   API_ROOT = 'https://api.datacommons.org'
   NAME = "ONE Data Commons"
+  OVERRIDE_CSS_PATH = '/custom_dc/one/overrides.css'
   SECRET_PROJECT = ''
   # Do not use memcache so content is fresh after new data is loaded
   USE_MEMCACHE = True
