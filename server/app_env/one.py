@@ -46,3 +46,9 @@ class LocalConfig(local.Config):
       'people': ['africa']
   }
   pass
+
+
+class ComposeConfig(Config, local.Config):
+  # Do not use memcache so content is fresh after new data is loaded
+  USE_MEMCACHE = True
+  pass
