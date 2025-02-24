@@ -25,6 +25,7 @@ import { SocialFacebook } from "../../components/elements/icons/social_facebook"
 import { SocialInstagram } from "../../components/elements/icons/social_instagram";
 import { SocialX } from "../../components/elements/icons/social_x";
 import { SocialYouTube } from "../../components/elements/icons/social_youtube";
+import { ArrowOutward } from "../../../../../components/elements/icons/arrow_outward";
 
 interface FooterProps {
   //the root of the primary data.one.org site
@@ -32,6 +33,17 @@ interface FooterProps {
 }
 
 export const Footer = ({ primarySiteWebRoot }: FooterProps): ReactElement => {
+  const handleCookieSettings = (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
+    e.preventDefault();
+    // @ts-ignore
+    if (typeof window !== 'undefined' && window.UC_UI && typeof window.UC_UI.showSecondLayer === 'function') {
+      // @ts-ignore
+      window.UC_UI.showSecondLayer();
+    } else {
+      console.warn('UC_UI.showSecondLayer is not available.');
+    }
+  };
+
   return (
     <section id="footer">
       <footer className="footer">
@@ -45,7 +57,18 @@ export const Footer = ({ primarySiteWebRoot }: FooterProps): ReactElement => {
               <p className="footer-description">
                 ONE Data provides insights on global challenges through data,
                 analysis, and tools to drive action toward a more just world.
-                Powered by Data Commons.
+              </p>
+              <p className="footer-description">
+                Powered by{" "}
+                <a
+                  className="inline-flex items-center type-reg-sm font-medium text-white hover:underline"
+                  target="_blank"
+                  href="https://datacommons.org"
+                  rel="noopener noreferrer"
+                >
+                  Google&#39;s Data Commons
+                </a>
+                <ArrowOutward />.
               </p>
             </div>
 
@@ -82,22 +105,38 @@ export const Footer = ({ primarySiteWebRoot }: FooterProps): ReactElement => {
                 <h2>Connect with Us</h2>
                 <ul className="social-links">
                   <li>
-                    <a href="https://www.facebook.com/ONE">
+                    <a
+                      href="https://www.facebook.com/ONE"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <SocialFacebook />
                     </a>
                   </li>
                   <li>
-                    <a href="https://instagram.com/one">
+                    <a
+                      href="https://instagram.com/one"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <SocialInstagram />
                     </a>
                   </li>
                   <li>
-                    <a href="https://x.com/ONEAftershocks">
+                    <a
+                      href="https://x.com/ONEAftershocks"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <SocialX />
                     </a>
                   </li>
                   <li>
-                    <a href="https://youtube.com/">
+                    <a
+                      href="https://www.youtube.com/TheONECampaign"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <SocialYouTube />
                     </a>
                   </li>
@@ -111,8 +150,27 @@ export const Footer = ({ primarySiteWebRoot }: FooterProps): ReactElement => {
               <strong>© 2025 ONE Campaign.</strong> All rights reserved.
             </p>
             <ul className="footer-bottom-links">
+              <li className="footer-bottom-link footer-bottom-link-separator">
+                <a
+                  href="https://act.one.org/unsubscribe/unsubscribe_intl/"
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  Unsubscribe
+                </a>
+                <ArrowOutward />
+              </li>
               <li>
                 <a href={`${primarySiteWebRoot}/sitemap`}>Sitemap</a>
+              </li>
+              <li>
+                <a
+                  href="#"
+                  onClick={(e) => handleCookieSettings(e)}
+                  className="footer__cookie-consent"
+                >
+                  Cookies
+                </a>
               </li>
             </ul>
           </div>
