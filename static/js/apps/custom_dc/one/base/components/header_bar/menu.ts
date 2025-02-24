@@ -8,6 +8,35 @@ export interface MenuSource {
 
 export const MenuItems: MenuSource[] = [
   {
+    id: "data",
+    title: "Data",
+    url: "{primaryWebRoot}/places",
+    description:
+      "Use our **interactive tools**, powered by Google Data Commons, to explore and analyse millions of development data points seamlessly.",
+    childContent: [
+      {
+        title: "Place explorer",
+        url: "{primaryWebRoot}/places",
+      },
+      {
+        title: "Scatter plots",
+        url: "/tools/scatter",
+      },
+      {
+        title: "Timelines",
+        url: "/tools/timeline",
+      },
+      {
+        title: "Map explorer",
+        url: "/tools/map",
+      },
+      {
+        title: "Data downloads",
+        url: "/tools/downloads",
+      },
+    ],
+  },
+  {
     id: "analysis",
     title: "Analysis",
     url: "{primaryWebRoot}/analysis",
@@ -36,35 +65,6 @@ export const MenuItems: MenuSource[] = [
         title: "All our analysis",
         url: "{primaryWebRoot}/analysis",
         description: "Browse all our articles.",
-      },
-    ],
-  },
-  {
-    id: "data",
-    title: "Data",
-    url: "{primaryWebRoot}/places",
-    description:
-      "Use our **interactive tools**, powered by Google Data Commons, to explore and analyse millions of development data points seamlessly.",
-    childContent: [
-      {
-        title: "Place explorer",
-        url: "{primaryWebRoot}/places",
-      },
-      {
-        title: "Scatter plots",
-        url: "/tools/scatter",
-      },
-      {
-        title: "Timelines",
-        url: "/tools/timeline",
-      },
-      {
-        title: "Map explorer",
-        url: "/tools/map",
-      },
-      {
-        title: "Data downloads",
-        url: "/tools/downloads",
       },
     ],
   },
