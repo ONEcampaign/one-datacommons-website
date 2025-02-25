@@ -20,15 +20,15 @@ export const MenuItems: MenuSource[] = [
       },
       {
         title: "Scatter plots",
-        url: "/tools/scatter",
+        url: "/tools/visualization#visType=scatter",
       },
       {
         title: "Timelines",
-        url: "/tools/timeline",
+        url: "/tools/visualization#visType=timeline",
       },
       {
         title: "Map explorer",
-        url: "/tools/map",
+        url: "/tools/visualization#visType=map",
       },
       {
         title: "Data downloads",
