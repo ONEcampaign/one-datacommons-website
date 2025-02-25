@@ -42,7 +42,7 @@ export const HomeHero = (): ReactElement => {
             margin-bottom: 24px;
           `}
         >
-          One Data Commons
+          ONE Data Commons
         </h1>
         <p
           css={css`
@@ -55,7 +55,7 @@ export const HomeHero = (): ReactElement => {
           `}
         >
           This is a powerful tool combining the data and research from
-          data.one.org and hundreds of billions of data points on economics,
+          ONE Data and hundreds of billions of data points on economics,
           climate, health, demographics and more from Google&rsquo;s Data
           Commons.
         </p>
