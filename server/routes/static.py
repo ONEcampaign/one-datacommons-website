@@ -116,8 +116,7 @@ def version():
       featureFlags=current_app.config.get('FEATURE_FLAGS', []),
       remote_mixer_domain=mixer_version.get('remoteMixerDomain', ''))
 
-# TODO: replace this with the final destination redirect path
 # TODO (Nick): Rework this so that it doesn't break the fork.
 @bp.route('/climate-finance-files')
 def climate_finance():
-    return redirect("https://data.one.org", code=302)
+    return redirect("https://cff.one.org", code=302)
