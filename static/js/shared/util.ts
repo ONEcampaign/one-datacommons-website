@@ -15,6 +15,7 @@
  */
 
 import _ from "lodash";
+import { Theme } from "theme/types";
 
 import { MAX_DATE, MAX_YEAR, SOURCE_DISPLAY_NAME } from "./constants";
 
@@ -61,6 +62,14 @@ export function randDomId(): string {
     .toString(36)
     .replace(/[^a-z]+/g, "")
     .substr(2, 10);
+}
+
+/** Determines if the width corresponds to mobile based on themes. */
+export function isMobileByWidth(theme: Theme | null): boolean {
+  if (theme === null) {
+    return false;
+  }
+  return window.innerWidth <= (theme?.breakpoints?.sm ?? 768);
 }
 
 /**

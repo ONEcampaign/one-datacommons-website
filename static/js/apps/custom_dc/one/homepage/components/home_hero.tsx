@@ -54,10 +54,9 @@ export const HomeHero = (): ReactElement => {
             line-height: 140%;
           `}
         >
-          This is a powerful tool combining the data and research from
-          ONE Data and hundreds of billions of data points on economics,
-          climate, health, demographics and more from Google&rsquo;s Data
-          Commons.
+          This is a powerful tool combining the data and research from ONE Data
+          and hundreds of billions of data points on economics, climate, health,
+          demographics and more from Google&rsquo;s Data Commons.
         </p>
       </HeroColumns.Left>
     </HeroColumns>

@@ -20,12 +20,20 @@
 
 import React, { ReactElement } from "react";
 
+import { ArrowOutward } from "../../../../../components/elements/icons/arrow_outward";
 import { One } from "../../components/elements/icons/one";
 import { SocialFacebook } from "../../components/elements/icons/social_facebook";
 import { SocialInstagram } from "../../components/elements/icons/social_instagram";
 import { SocialX } from "../../components/elements/icons/social_x";
 import { SocialYouTube } from "../../components/elements/icons/social_youtube";
-import { ArrowOutward } from "../../../../../components/elements/icons/arrow_outward";
+
+declare global {
+  interface Window {
+    UC_UI?: {
+      showSecondLayer?: () => void;
+    };
+  }
+}
 
 interface FooterProps {
   //the root of the primary data.one.org site
@@ -33,14 +41,18 @@ interface FooterProps {
 }
 
 export const Footer = ({ primarySiteWebRoot }: FooterProps): ReactElement => {
-  const handleCookieSettings = (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
+  const handleCookieSettings = (
+    e: React.MouseEvent<HTMLAnchorElement, MouseEvent>
+  ) => {
     e.preventDefault();
-    // @ts-ignore
-    if (typeof window !== 'undefined' && window.UC_UI && typeof window.UC_UI.showSecondLayer === 'function') {
-      // @ts-ignore
+    if (
+      typeof window !== "undefined" &&
+      window.UC_UI &&
+      typeof window.UC_UI.showSecondLayer === "function"
+    ) {
       window.UC_UI.showSecondLayer();
     } else {
-      console.warn('UC_UI.showSecondLayer is not available.');
+      console.warn("UC_UI.showSecondLayer is not available.");
     }
   };
 
