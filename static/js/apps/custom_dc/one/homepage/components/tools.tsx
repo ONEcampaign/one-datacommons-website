@@ -69,7 +69,7 @@ export const Tools = ({ primarySiteWebRoot }: ToolsProps): ReactElement => {
           <p className="tool-title">Map Explorer</p>
         </a>
 
-        <a className="tool-card" href={`${primarySiteWebRoot}/place`}>
+        <a className="tool-card" href={`${primarySiteWebRoot}/places`}>
           <div className="icon-wrapper">
             <figure>
               <LocationOn />
