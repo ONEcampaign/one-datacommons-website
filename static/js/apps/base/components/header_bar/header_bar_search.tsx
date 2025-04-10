@@ -17,8 +17,7 @@
 /* A wrapping component to render the header bar version of the search */
 
 import { useTheme } from "@emotion/react";
-import React, { ReactElement } from "react";
-import { Theme } from "theme/types";
+import React, { ReactElement, useEffect } from "react";
 
 import { NlSearchBar } from "../../../../components/nl_search_bar";
 import {
@@ -33,6 +32,7 @@ import {
 } from "../../../../shared/feature_flags/util";
 import {
   GA_EVENT_NL_SEARCH,
+  GA_EVENT_RENDER_NL_SEARCH_BAR,
   GA_PARAM_DYNAMIC_PLACEHOLDER,
   GA_PARAM_QUERY,
   GA_PARAM_SOURCE,
@@ -41,6 +41,7 @@ import {
 } from "../../../../shared/ga_events";
 import { useQueryStore } from "../../../../shared/stores/query_store_hook";
 import { isMobileByWidth } from "../../../../shared/util";
+import { Theme } from "theme/types";
 import { updateHash } from "../../../../utils/url_utils";
 import { DebugInfo } from "../../../explore/debug_info";
 
@@ -80,16 +81,22 @@ const HeaderBarSearch = ({
   const showDynamicPlaceholders =
     showDynamicPlaceholdersBase && !isMobileByWidth(theme);
 
+  useEffect(() => {
+    triggerGAEvent(GA_EVENT_RENDER_NL_SEARCH_BAR, {});
+  }, []);
+
   return (
     <div className="header-search">
       <NlSearchBar
         variant="header-inline"
         inputId={inputId}
-        onSearch={(q): void => {
+        onSearch={(q, dynamicPlaceholdersEnabled): void => {
           if (searchBarHashMode) {
             triggerGAEvent(GA_EVENT_NL_SEARCH, {
               [GA_PARAM_QUERY]: q,
-              [GA_PARAM_DYNAMIC_PLACEHOLDER]: String(showDynamicPlaceholders),
+              [GA_PARAM_DYNAMIC_PLACEHOLDER]: String(
+                dynamicPlaceholdersEnabled
+              ),
               [GA_PARAM_SOURCE]:
                 gaValueSearchSource ?? GA_VALUE_SEARCH_SOURCE_HOMEPAGE,
             });
@@ -102,7 +109,9 @@ const HeaderBarSearch = ({
           } else {
             triggerGAEvent(GA_EVENT_NL_SEARCH, {
               [GA_PARAM_QUERY]: q,
-              [GA_PARAM_DYNAMIC_PLACEHOLDER]: String(showDynamicPlaceholders),
+              [GA_PARAM_DYNAMIC_PLACEHOLDER]: String(
+                dynamicPlaceholdersEnabled
+              ),
               [GA_PARAM_SOURCE]:
                 gaValueSearchSource ?? GA_VALUE_SEARCH_SOURCE_HOMEPAGE,
             });

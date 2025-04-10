@@ -19,27 +19,34 @@ import {
   Category,
   PlaceChartsApiResponse,
   PlaceOverviewTableApiResponse,
-  RelatedPlacesApiResponse,
 } from "@datacommonsorg/client/dist/data_commons_web_client_types";
 import { ThemeProvider } from "@emotion/react";
+import styled from "@emotion/styled";
+import _ from "lodash";
 import React, { useEffect, useState } from "react";
 import { RawIntlProvider } from "react-intl";
-import theme from "theme";
 
+import { Loading } from "../components/elements/loading";
 import { ScrollToTopButton } from "../components/elements/scroll_to_top_button";
 import { SubjectPageMainPane } from "../components/subject_page/main_pane";
 import { intl, LocalizedLink } from "../i18n/i18n";
 import { pageMessages } from "../i18n/i18n_place_messages";
 import { useQueryStore } from "../shared/stores/query_store_hook";
 import { NamedTypedPlace } from "../shared/types";
+import theme from "theme";
 import { SubjectPageConfig } from "../types/subject_page_proto_types";
 import { defaultDataCommonsWebClient } from "../utils/data_commons_client";
 import { PlaceOverview } from "./dev_place_overview";
-import { displayNameForPlaceType } from "./util";
 import {
   createPlacePageCategoryHref,
+  displayNameForPlaceType,
   placeChartsApiResponsesToPageConfig,
 } from "./util";
+
+const PlaceWarning = styled.div`
+  padding: 24px;
+  font-size: ${(p) => p.theme.typography.text.md};
+`;
 
 /**
  * Component that renders the header section of a place page.
@@ -48,49 +55,69 @@ import {
  *
  * @param props.category The current category being viewed
  * @param props.place The place object containing name and DCID
- * @param props.placeSubheader HTML string with additional place context
+ * @param props.parentPlaces Array of parent places
  * @returns Header component for the place page
  */
 const PlaceHeader = (props: {
-  category: string;
+  selectedCategory: Category;
   place: NamedTypedPlace;
   parentPlaces: NamedTypedPlace[];
+  forceDevPlaces: boolean;
+  isLoading: boolean;
 }): React.JSX.Element => {
-  const { category, place, parentPlaces } = props;
-  const parentPlacesLinks = parentPlaces.map((parent, index) => (
-    <span key={parent.dcid}>
-      <a className="place-info-link" href={`/place/${parent.dcid}`}>
-        {parent.name}
-      </a>
-      {index < parentPlaces.length - 1 ? ", " : ""}
-    </span>
-  ));
+  const { selectedCategory, place, parentPlaces, forceDevPlaces, isLoading } =
+    props;
+  const parentPlacesLinks = parentPlaces.map((parent, index) => {
+    return (
+      <span key={parent.dcid}>
+        <LocalizedLink
+          className="place-info-link"
+          href={`/place/${parent.dcid}`}
+          text={parent.name}
+        />
+        {index < parentPlaces.length - 1 ? ", " : ""}
+      </span>
+    );
+  });
+
+  const placeHref = createPlacePageCategoryHref(
+    "Overview",
+    forceDevPlaces,
+    place
+  );
 
   return (
     <div className="title-section">
       <div className="place-info">
         <h1>
-          <span>
-            {category === "Overview" ? (
+          <span data-testid="place-name">
+            {selectedCategory.name === "Overview" ? (
               place.name
             ) : (
-              <a className="place-info-link" href={`/place/${place.dcid}`}>
+              <a className="place-info-link" href={placeHref}>
                 {place.name}
               </a>
             )}
-            {category != "Overview" ? ` • ${category}` : ""}{" "}
+            {selectedCategory.name != "Overview"
+              ? ` • ${selectedCategory.translatedName}`
+              : ""}{" "}
           </span>
           <div className="dcid-and-knowledge-graph">
             {intl.formatMessage(pageMessages.KnowledgeGraph)} •{" "}
-            <a href={`/browser/${place.dcid}`}>{place.dcid}</a>
+            <LocalizedLink href={`/browser/${place.dcid}`} text={place.dcid} />
           </div>
         </h1>
+        {isLoading && (
+          <div>
+            <Loading />
+          </div>
+        )}
         {place.types?.length > 0 && parentPlacesLinks.length > 0 && (
           <p className="subheader">
             {intl.formatMessage(pageMessages.placeTypeInPlaces, {
               placeType: displayNameForPlaceType(place.types[0]),
-            })}{" "}
-            {parentPlacesLinks}
+              parentPlaces: parentPlacesLinks,
+            })}
           </p>
         )}
       </div>
@@ -110,18 +137,18 @@ const PlaceHeader = (props: {
  */
 const CategoryItem = (props: {
   category: Category;
-  selectedCategory: string;
+  selectedCategoryName: string;
   forceDevPlaces: boolean;
   place: NamedTypedPlace;
 }): React.JSX.Element => {
-  const { category, selectedCategory, forceDevPlaces, place } = props;
+  const { category, selectedCategoryName, forceDevPlaces, place } = props;
 
   return (
     <div className="item-list-item">
       <LocalizedLink
         href={createPlacePageCategoryHref(category.name, forceDevPlaces, place)}
         className={`item-list-text ${
-          selectedCategory === category.name ? " selected" : ""
+          selectedCategoryName === category.name ? " selected" : ""
         }`}
         text={category.translatedName}
       />
@@ -146,7 +173,7 @@ const PlaceCategoryTabs = ({
 }: {
   categories: Category[];
   forceDevPlaces: boolean;
-  selectedCategory: string;
+  selectedCategory: Category;
   place: NamedTypedPlace;
 }): React.JSX.Element => {
   if (!categories || categories.length == 0) {
@@ -164,7 +191,7 @@ const PlaceCategoryTabs = ({
             <CategoryItem
               key={category.name}
               category={category}
-              selectedCategory={selectedCategory}
+              selectedCategoryName={selectedCategory.name}
               forceDevPlaces={forceDevPlaces}
               place={place}
             />
@@ -271,7 +298,6 @@ export const DevPlaceMain = (): React.JSX.Element => {
   // Core place data
   const [place, setPlace] = useState<NamedTypedPlace>();
   const [placeSummary, setPlaceSummary] = useState<string>();
-  const [placeSubheader, setPlaceSubheader] = useState<string>();
 
   // API response data
   const [receivedApiResponse, setReceivedApiResponse] = useState(false);
@@ -286,8 +312,13 @@ export const DevPlaceMain = (): React.JSX.Element => {
   const [parentPlaces, setParentPlaces] = useState<NamedTypedPlace[]>([]);
   const [pageConfig, setPageConfig] = useState<SubjectPageConfig>();
   const [hasError, setHasError] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<Category>({
+    name: "Overview",
+    translatedName: "",
+    hasMoreCharts: false,
+  });
 
   // Get locale
   const metadataContainer = document.getElementById("metadata-base");
@@ -314,37 +345,20 @@ export const DevPlaceMain = (): React.JSX.Element => {
       console.error("Error loading place page metadata element");
       return;
     }
-    if (
-      pageMetadata.dataset.placeDcid != "" &&
-      pageMetadata.dataset.placeName === ""
-    ) {
+    if (_.isEmpty(pageMetadata.dataset.placeDcid)) {
+      console.error("Error loading place page metadata element");
       setHasError(true);
     }
+    // Get place name from page metadata. Use placeDcid if placeName is not set.
+    const placeName =
+      pageMetadata.dataset.placeName || pageMetadata.dataset.placeDcid;
     setPlace({
-      name: pageMetadata.dataset.placeName,
+      name: placeName,
       dcid: pageMetadata.dataset.placeDcid,
       types: [],
     });
     setPlaceSummary(pageMetadata.dataset.placeSummary);
-    if (isOverview) {
-      setStorePlaceholderString(pageMetadata.dataset.placeName);
-    } else {
-      setStorePlaceholderString(
-        intl.formatMessage(pageMessages.categoryInPlace, {
-          placeName: pageMetadata.dataset.placeName,
-          category,
-        })
-      );
-    }
   }, []);
-
-  /**
-   * Set the visibility on the loading indicator on loading changes.
-   */
-  useEffect(() => {
-    const loadingElem = document.getElementById("page-loading");
-    loadingElem.style.display = isLoading ? "" : "none";
-  }, [isLoading, setIsLoading]);
 
   /**
    * Once we have place data, fetch chart and related places data from the API.
@@ -354,74 +368,111 @@ export const DevPlaceMain = (): React.JSX.Element => {
     if (!place || receivedApiResponse) {
       return;
     }
-    setIsLoading(true);
-    (async (): Promise<void> => {
-      const [
-        placeChartsApiResponse,
-        relatedPlacesApiResponse,
-        placeOverviewTableApiResponse,
-      ] = await Promise.all([
-        defaultDataCommonsWebClient.getPlaceCharts({
-          category,
-          locale,
-          placeDcid: place.dcid,
-        }),
-        defaultDataCommonsWebClient.getRelatedPLaces({
-          locale,
-          placeDcid: place.dcid,
-        }),
-        defaultDataCommonsWebClient.getPlaceOverviewTable({
-          locale,
-          placeDcid: place.dcid,
-        }),
-      ]);
-
-      setReceivedApiResponse(true);
-      setPlaceChartsApiResponse(placeChartsApiResponse);
-      setPlaceOverviewTableApiResponse(placeOverviewTableApiResponse);
-
-      setChildPlaceType(relatedPlacesApiResponse.childPlaceType);
-      setChildPlaces(relatedPlacesApiResponse.childPlaces);
-      setParentPlaces(relatedPlacesApiResponse.parentPlaces);
-      setIsLoading(false);
-      setPlace(relatedPlacesApiResponse.place);
-
-      const config = placeChartsApiResponsesToPageConfig(
-        placeChartsApiResponse,
-        relatedPlacesApiResponse.parentPlaces,
-        relatedPlacesApiResponse.peersWithinParent,
-        relatedPlacesApiResponse.place,
-        isOverview,
-        forceDevPlaces,
-        theme
-      );
-      setPageConfig(config);
-    })();
-  }, [place, category]);
-
-  useEffect(() => {
-    if (placeChartsApiResponse && placeChartsApiResponse.blocks) {
-      setCategories(placeChartsApiResponse.categories);
+    const pageMetadata = document.getElementById("page-metadata");
+    if (!pageMetadata) {
+      console.error("Error loading place page metadata element");
+      setHasError(true);
+      return;
     }
-  }, [placeChartsApiResponse, setPlaceChartsApiResponse]);
+    (async (): Promise<void> => {
+      try {
+        const [
+          placeChartsApiResponse,
+          relatedPlacesApiResponse,
+          placeOverviewTableApiResponse,
+        ] = await Promise.all([
+          defaultDataCommonsWebClient.getPlaceCharts({
+            category,
+            locale,
+            placeDcid: place.dcid,
+          }),
+          defaultDataCommonsWebClient.getRelatedPLaces({
+            locale,
+            placeDcid: place.dcid,
+          }),
+          defaultDataCommonsWebClient.getPlaceOverviewTable({
+            locale,
+            placeDcid: place.dcid,
+          }),
+        ]);
+        setReceivedApiResponse(true);
+        setPlaceChartsApiResponse(placeChartsApiResponse);
+        setPlaceOverviewTableApiResponse(placeOverviewTableApiResponse);
+
+        setChildPlaceType(relatedPlacesApiResponse.childPlaceType);
+        setChildPlaces(relatedPlacesApiResponse.childPlaces);
+        setParentPlaces(relatedPlacesApiResponse.parentPlaces);
+        setIsLoading(false);
+        setPlace(relatedPlacesApiResponse.place);
+        setCategories(placeChartsApiResponse.categories);
+        const newSelectedCategory = placeChartsApiResponse.categories.find(
+          (c) => c.name === category
+        );
+        // If selected category is not found, keep it set to the default "Overview" value
+        if (newSelectedCategory) {
+          setSelectedCategory(newSelectedCategory);
+        }
+
+        // Set the navbar search query placeholder string.
+        if (isOverview) {
+          setStorePlaceholderString(pageMetadata.dataset.placeName);
+        } else {
+          setStorePlaceholderString(
+            intl.formatMessage(pageMessages.categoryInPlace, {
+              placeName: pageMetadata.dataset.placeName,
+              category: selectedCategory.translatedName,
+            })
+          );
+        }
+
+        const config = placeChartsApiResponsesToPageConfig(
+          placeChartsApiResponse,
+          relatedPlacesApiResponse.parentPlaces,
+          relatedPlacesApiResponse.peersWithinParent,
+          relatedPlacesApiResponse.place,
+          isOverview,
+          forceDevPlaces,
+          theme
+        );
+        setPageConfig(config);
+      } catch (error) {
+        console.error("Error fetching place data:", error);
+        setHasError(true);
+        return;
+      }
+    })();
+  }, [place, category, selectedCategory]);
+
+  if (hasError) {
+    return (
+      <div>
+        {intl.formatMessage(pageMessages.placeNotFound, {
+          placeDcid: place.dcid,
+        })}
+      </div>
+    );
+  }
 
   if (!place) {
-    return <div>Loading...</div>;
-  }
-  if (hasError) {
-    return <div>Place &quot;{place.dcid}&quot; not found.</div>;
+    return (
+      <div>
+        <Loading />
+      </div>
+    );
   }
   return (
     <ThemeProvider theme={theme}>
       <RawIntlProvider value={intl}>
         <PlaceHeader
-          category={category}
+          selectedCategory={selectedCategory}
           place={place}
           parentPlaces={parentPlaces}
+          forceDevPlaces={forceDevPlaces}
+          isLoading={isLoading}
         />
         <PlaceCategoryTabs
           categories={categories}
-          selectedCategory={category}
+          selectedCategory={selectedCategory}
           place={place}
           forceDevPlaces={forceDevPlaces}
         />
@@ -443,10 +494,12 @@ export const DevPlaceMain = (): React.JSX.Element => {
           />
         )}
         {hasNoCharts && (
-          <div>
-            No {category === overviewString ? "" : category} data found for{" "}
-            {place.name}.
-          </div>
+          <PlaceWarning>
+            {intl.formatMessage(pageMessages.noCharts, {
+              category: selectedCategory.translatedName,
+              place: place.name,
+            })}
+          </PlaceWarning>
         )}
         {isOverview && childPlaces.length > 0 && (
           <RelatedPlaces place={place} childPlaces={childPlaces} />

@@ -19,9 +19,11 @@ set -e
 function setup_python {
   python3 -m venv .env
   source .env/bin/activate
-  pip3 install -r server/requirements.txt
+  echo "installing server/requirements.txt"
+  pip3 install -r server/requirements.txt -q
   pip3 install torch==2.2.2 --extra-index-url https://download.pytorch.org/whl/cpu
-  pip3 install -r nl_server/requirements.txt
+  echo "installing nl_server/requirements.txt"
+  pip3 install -r nl_server/requirements.txt -q
   deactivate
 }
 
@@ -39,7 +41,7 @@ function start_servers() {
   }
 # On exit, assign status code to a variable and call cleanup.
   trap 'exit_with=$?; cleanup' EXIT
-  ./run_servers.sh &
+  ./run_servers.sh --verbose &
   # Store the ID of the subprocess that is running website and NL servers.
   SERVERS_PID=$!
   # Wait a few seconds and make sure the server script subprocess hasn't failed.

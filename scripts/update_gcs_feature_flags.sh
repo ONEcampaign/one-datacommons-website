@@ -106,15 +106,42 @@ compare_staging_production() {
         return 1
     fi
 
-    echo "Comparing staging and production feature flags..."
-    if ! diff --color "${temp_file}" "${staging_file}" &> /dev/null; then
-      echo "Error: Production feature flags differ from staging."
-      echo "Please ensure the flags are identical before deploying to production."
-      echo "Diffs:"
-      diff -C 2 --color "${temp_file}" "${staging_file}"
-      rm "${staging_file}"
-      rm "staging_from_github.json"
-      return 1
+    local python_executable=$(find_python)
+
+    # Python script to identify if flags enabled in production are disabled in staging.
+    if "$python_executable" -c "
+import json
+import sys
+
+try:
+    with open('$staging_file', 'r') as f1, open('$temp_file', 'r') as f2:
+        staging_data = json.load(f1)
+        production_data = json.load(f2)
+
+    staging_enabled = {f['name'] for f in staging_data if f.get('enabled')}
+    production_enabled = {f['name'] for f in production_data if f.get('enabled')}
+
+    production_only_enabled = production_enabled - staging_enabled
+
+    if production_only_enabled:
+        print('Error: Production feature flags have enabled flags that are disabled or missing in staging.')
+        print('Please ensure that all enabled flags in production are also enabled in staging.')
+        print('See the following flags that must first be enabled in staging:', sorted(list(production_only_enabled)))
+        sys.exit(1)
+    else:
+        print('Success comparing production and staging flags.')
+        sys.exit(0)
+
+except FileNotFoundError:
+    print('Error: File not found.', file=sys.stderr)
+    sys.exit(1)
+except json.JSONDecodeError:
+    print('Error: Invalid JSON.', file=sys.stderr)
+    sys.exit(1)
+" ; then
+        rm "${staging_file}"
+        rm "staging_from_github.json"
+        return 1
     fi
     rm "${staging_file}"
     rm "staging_from_github.json"
@@ -134,11 +161,13 @@ restart_kubernetes_deployment() {
 
   if [[ "$environment" == "prod" ]]; then
     gcloud container clusters get-credentials website-us-west1 --region us-west1 --project "datcom-website-${environment}"
+    kubectl rollout restart deployment website-app -n website
+    echo "Kubernetes deployment restarted in environment: ${environment}, region: us-west1."
   fi
 
   gcloud container clusters get-credentials website-us-central1 --region us-central1 --project "datcom-website-${environment}"
   kubectl rollout restart deployment website-app -n website
-  echo "Kubernetes deployment restarted in environment: ${environment}."
+  echo "Kubernetes deployment restarted in environment: ${environment}, region: us-central1."
 }
 
 # Main script
@@ -169,6 +198,7 @@ if ! download_from_github "$file" "$temp_file"; then
 fi
 
 if ! validate_json "$temp_file"; then
+  echo "EXITING!"
   exit 1
 fi
 
@@ -184,7 +214,7 @@ if [[ "$environment" == "production" ]]; then
         fi
     fi
 
-    if ! compare_staging_production "$temp_file"; then
+    if compare_staging_production "$temp_file"; then
         exit 1
     fi
 fi
