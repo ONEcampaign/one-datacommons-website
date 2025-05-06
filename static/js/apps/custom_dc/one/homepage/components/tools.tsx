@@ -89,11 +89,8 @@ export const Tools = ({ primarySiteWebRoot }: ToolsProps): ReactElement => {
       </div>
 
       <p className="footer-text">
-        All data is pulled from{" "}
-        <a href="https://data.one.org" rel="noopener noreferrer">
-          official and credible sources
-        </a>{" "}
-        and updates regularly, so what you see will always be the latest.
+        Our regularly updated data comes from official and credible sources to
+        ensure you have access to the most current information available.
       </p>
     </div>
   );
