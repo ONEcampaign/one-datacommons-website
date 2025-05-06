@@ -32,17 +32,17 @@ class Info extends Component {
         </p>
         {!_.isEmpty(window.infoConfig["timeline"]) && (
           <p>
-            Or you can start your exploration from these interesting points ...
+            {/*Or you can start your exploration from these interesting points ...*/}
           </p>
         )}
 
-        <MemoizedInfoExamples configKey="timeline" />
+        {/*<MemoizedInfoExamples configKey="timeline" />*/}
 
-        <p>Take the data and use it on your site!</p>
-        <p>
-          <a href="mailto:collaborations@datacommons.org">Send</a> us your
-          discoveries!
-        </p>
+        {/*<p>Take the data and use it on your site!</p>*/}
+        {/*<p>*/}
+        {/*  <a href="mailto:collaborations@datacommons.org">Send</a> us your*/}
+        {/*  discoveries!*/}
+        {/*</p>*/}
       </div>
     );
   }

@@ -42,7 +42,7 @@ export const Tools = ({ primarySiteWebRoot }: ToolsProps): ReactElement => {
       </div>
 
       <div className="grid">
-        <a className="tool-card" href="tools/visualization#visType=scatter">
+        <a className="tool-card" href="tools/scatter">
           <div className="icon-wrapper">
             <figure>
               <ScatterPlot />
@@ -51,7 +51,7 @@ export const Tools = ({ primarySiteWebRoot }: ToolsProps): ReactElement => {
           <p className="tool-title">Scatter Plots</p>
         </a>
 
-        <a className="tool-card" href="tools/visualization#visType=timeline">
+        <a className="tool-card" href="tools/timeline">
           <div className="icon-wrapper">
             <figure>
               <Timeline />
@@ -60,7 +60,7 @@ export const Tools = ({ primarySiteWebRoot }: ToolsProps): ReactElement => {
           <p className="tool-title">Timelines</p>
         </a>
 
-        <a className="tool-card" href="tools/visualization#visType=map">
+        <a className="tool-card" href="tools/map">
           <div className="icon-wrapper">
             <figure>
               <TravelExplore />

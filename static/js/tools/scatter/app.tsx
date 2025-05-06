@@ -63,7 +63,7 @@ function App(): JSX.Element {
             <Row>
               <div className="app-header">
                 <h1 className="mb-4">Scatter Plot Explorer</h1>
-                <a href="/tools/visualization#visType%3Dscatter">
+                <a href="/tools/visualization#visType%3Dscatter" style={{ display: "none" }}>
                   Go back to the new Data Commons
                 </a>
               </div>

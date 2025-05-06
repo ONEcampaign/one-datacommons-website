@@ -176,7 +176,7 @@ class Page extends Component<unknown, PageStateType> {
             {numPlaces === 0 && (
               <div className="app-header">
                 <h1 className="mb-4">Timelines Explorer</h1>
-                <a href="/tools/visualization#visType%3Dtimeline">
+                <a href="/tools/visualization#visType%3Dtimeline" style={{ display: "none"}}>
                   Go back to the new Data Commons
                 </a>
               </div>
