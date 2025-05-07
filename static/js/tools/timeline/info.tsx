@@ -17,7 +17,7 @@
 // import _ from "lodash";
 import React, { Component } from "react";
 
-import { MemoizedInfoExamples } from "../shared/info_examples";
+// import { MemoizedInfoExamples } from "../shared/info_examples";
 
 class Info extends Component {
   render(): JSX.Element {

@@ -21,7 +21,7 @@
 // import _ from "lodash";
 import React from "react";
 
-import { MemoizedInfoExamples } from "../shared/info_examples";
+// import { MemoizedInfoExamples } from "../shared/info_examples";
 
 function Info(): JSX.Element {
   return (

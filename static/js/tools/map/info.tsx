@@ -21,7 +21,7 @@
 // import _ from "lodash";
 import React, { useContext } from "react";
 
-import { MemoizedInfoExamples } from "../shared/info_examples";
+// import { MemoizedInfoExamples } from "../shared/info_examples";
 import { Context } from "./context";
 import { ifShowChart } from "./util";
 
