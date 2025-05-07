@@ -18,7 +18,7 @@
  * Info page before a chart is shown.
  */
 
-import _ from "lodash";
+// import _ from "lodash";
 import React, { useContext } from "react";
 
 import { MemoizedInfoExamples } from "../shared/info_examples";
@@ -48,12 +48,12 @@ export function Info(): JSX.Element {
               hierarchy.
             </li>
           </ol>
-          {!_.isEmpty(window.infoConfig["map"]) && (
-            <p>
-              {/*Or you can start your exploration from these interesting points*/}
-              {/*...*/}
-            </p>
-          )}
+          {/*{!_.isEmpty(window.infoConfig["map"]) && (*/}
+          {/*  <p>*/}
+          {/*    Or you can start your exploration from these interesting points*/}
+          {/*    ...*/}
+          {/*  </p>*/}
+          {/*)}*/}
 
           {/*<MemoizedInfoExamples configKey="map" />*/}
 
