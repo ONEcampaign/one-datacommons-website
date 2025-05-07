@@ -31,9 +31,9 @@ export function Title(): JSX.Element {
       {!ifShowChart(statVar.value, placeInfo.value) && (
         <div className="app-header">
           <h1 className="mb-4">Map Explorer</h1>
-          <a href="/tools/visualization#visType%3Dmap">
-            Go back to the new Data Commons
-          </a>
+          {/*<a href="/tools/visualization#visType%3Dmap">*/}
+          {/*  Go back to the new Data Commons*/}
+          {/*</a>*/}
         </div>
       )}
     </>
