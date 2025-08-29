@@ -111,3 +111,4 @@ deploy/terraform-custom-datacommons/modules/backend.tf
 # NL tools ignores
 tools/nl/nl_metadata/.env
 /custom_dc/one_input
+/custom_dc/one_output
