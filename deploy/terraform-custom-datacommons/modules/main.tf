@@ -69,6 +69,19 @@ resource "google_sql_database_instance" "mysql_instance" {
     disk_type = "PD_SSD"
   }
 
+  lifecycle {
+    ignore_changes = [
+      settings[0].disk_size,
+      settings[0].ip_configuration[0].authorized_networks,
+      settings[0].database_flags,
+      settings[0].maintenance_window,
+      settings[0].location_preference,
+      settings[0].insights_config,
+      settings[0].data_cache_config,
+    ]
+    prevent_destroy = true
+  }
+
   deletion_protection = var.mysql_deletion_protection
 }
 
