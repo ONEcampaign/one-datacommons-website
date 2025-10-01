@@ -20,7 +20,14 @@
 
 import { isDateInRange, ISO_CODE_ATTRIBUTE } from "@datacommonsorg/client";
 import _ from "lodash";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  ReactElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { VisType } from "../../apps/visualization/vis_type_configs";
 import { DataGroup, DataPoint, expandDataPoints } from "../../chart/base";
@@ -31,9 +38,19 @@ import { CSV_FIELD_DELIMITER } from "../../constants/tile_constants";
 import { intl } from "../../i18n/i18n";
 import { messages } from "../../i18n/i18n_messages";
 import { useLazyLoad } from "../../shared/hooks";
-import { SeriesApiResponse } from "../../shared/stat_types";
-import { NamedTypedPlace, StatVarSpec } from "../../shared/types";
+import {
+  buildObservationSpecs,
+  ObservationSpec,
+  ObservationSpecOptions,
+} from "../../shared/observation_specs";
+import { SeriesApiResponse, StatMetadata } from "../../shared/stat_types";
+import {
+  NamedTypedPlace,
+  StatVarFacetMap,
+  StatVarSpec,
+} from "../../shared/types";
 import { computeRatio } from "../../tools/shared_util";
+import { FacetMetadata } from "../../types/facet_metadata";
 import {
   getContextStatVar,
   getHash,
@@ -109,18 +126,25 @@ export interface LineTilePropType {
    * this margin of the viewport. Default: "0px"
    */
   lazyLoadMargin?: string;
+  // Metadata for the facet to highlight.
+  highlightFacet?: FacetMetadata;
 }
 
 export interface LineChartData {
   dataGroup: DataGroup[];
+  // A set of string sources (URLs)
   sources: Set<string>;
+  // A full set of the facets used within the chart
+  facets: Record<string, StatMetadata>;
+  // A mapping of which stat var used which facets
+  statVarToFacets: StatVarFacetMap;
   unit: string;
   // props used when fetching this data
   props: LineTilePropType;
   errorMsg: string;
 }
 
-export function LineTile(props: LineTilePropType): JSX.Element {
+export function LineTile(props: LineTilePropType): ReactElement {
   const svgContainer = useRef(null);
   const [chartData, setChartData] = useState<LineChartData | undefined>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -152,6 +176,43 @@ export function LineTile(props: LineTilePropType): JSX.Element {
   }, [props, chartData]);
 
   useDrawOnResize(drawFn, svgContainer.current);
+
+  /**
+   * Callback function for building observation specifications.
+   * This is used by the API dialog to generate API calls (e.g., cURL
+   * commands) for the user.
+   *
+   * @returns A function that builds an array of `ObservationSpec`
+   * objects, or `undefined` if chart data is not yet available.
+   */
+  const getObservationSpecs = useMemo(() => {
+    if (!chartData) {
+      return undefined;
+    }
+    return (): ObservationSpec[] => {
+      const options: ObservationSpecOptions = {
+        statVarSpecs: props.statVarSpec,
+        statVarToFacets: chartData.statVarToFacets,
+      };
+      if (props.enclosedPlaceType) {
+        options.entityExpression = `${props.place.dcid}<-containedInPlace+{typeOf:${props.enclosedPlaceType}}`;
+      } else {
+        options.placeDcids =
+          props.comparisonPlaces && props.comparisonPlaces.length > 0
+            ? props.comparisonPlaces
+            : [props.place.dcid];
+      }
+
+      return buildObservationSpecs(options);
+    };
+  }, [
+    chartData,
+    props.statVarSpec,
+    props.enclosedPlaceType,
+    props.place,
+    props.comparisonPlaces,
+  ]);
+
   return (
     <ChartTileContainer
       allowEmbed={true}
@@ -160,12 +221,15 @@ export function LineTile(props: LineTilePropType): JSX.Element {
       exploreLink={props.showExploreMore ? getExploreLink(props) : null}
       footnote={props.footnote}
       getDataCsv={getDataCsvCallback(props)}
+      getObservationSpecs={getObservationSpecs}
       errorMsg={chartData && chartData.errorMsg}
       id={props.id}
       isInitialLoading={_.isNull(chartData)}
       isLoading={isLoading}
       replacementStrings={getReplacementStrings(props, chartData)}
       sources={props.sources || (chartData && chartData.sources)}
+      facets={chartData?.facets}
+      statVarToFacets={chartData?.statVarToFacets}
       subtitle={props.subtitle}
       title={props.title}
       statVarSpecs={props.statVarSpec}
@@ -313,8 +377,15 @@ export const fetchData = async (
       );
     } else {
       const placeDcids = getPlaceDcids(props);
+      // Note that for now there are two ways to select the facet, via facetIds or highlightFacet. At most only one should be provided.
       dataPromises.push(
-        getSeries(props.apiRoot, placeDcids, facetToVariable[facetId], facetIds)
+        getSeries(
+          props.apiRoot,
+          placeDcids,
+          facetToVariable[facetId],
+          facetIds,
+          props.highlightFacet
+        )
       );
     }
   }
@@ -399,6 +470,8 @@ function rawToChart(
   const raw = _.cloneDeep(rawData);
   const dataGroups: DataGroup[] = [];
   const sources = new Set<string>();
+  const facets: Record<string, StatMetadata> = {};
+  const statVarToFacets: StatVarFacetMap = {};
   const allDates = new Set<string>();
   // TODO: make a new wrapper to fetch series data & do the processing there.
   const unit2count = {};
@@ -435,6 +508,14 @@ function rawToChart(
       if (spec.denom) {
         const denomSeries = raw.data[spec.denom][placeDcid];
         obsList = computeRatio(obsList, denomSeries.series);
+        if (denomSeries?.facet) {
+          sources.add(raw.facets[denomSeries.facet].provenanceUrl);
+          facets[denomSeries.facet] = raw.facets[denomSeries.facet];
+          if (!statVarToFacets[spec.denom]) {
+            statVarToFacets[spec.denom] = new Set<string>();
+          }
+          statVarToFacets[spec.denom].add(denomSeries.facet);
+        }
       }
       if (obsList.length > 0) {
         const dataPoints: DataPoint[] = [];
@@ -458,6 +539,11 @@ function rawToChart(
           : statVarDcidToName[spec.statVar];
         dataGroups.push(new DataGroup(label, dataPoints));
         sources.add(raw.facets[series.facet].provenanceUrl);
+        facets[series.facet] = raw.facets[series.facet];
+        if (!statVarToFacets[spec.statVar]) {
+          statVarToFacets[spec.statVar] = new Set<string>();
+        }
+        statVarToFacets[spec.statVar].add(series.facet);
       }
     }
   }
@@ -470,6 +556,8 @@ function rawToChart(
   return {
     dataGroup: dataGroups,
     sources,
+    facets,
+    statVarToFacets,
     unit,
     props,
     errorMsg,

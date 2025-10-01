@@ -24,7 +24,7 @@ import {
 } from "../../constants/app/explore_constants";
 import { DATE_HIGHEST_COVERAGE, DATE_LATEST } from "../../shared/constants";
 import { SubjectPageMetadata } from "../../types/subject_page_types";
-import { defaultDataCommonsWebClient } from "../data_commons_client";
+import { getPointWithin } from "../data_fetch_utils";
 import { getUpdatedHash } from "../url_utils";
 
 /**
@@ -58,6 +58,11 @@ export function getTopics(
           [URL_HASH_PARAMS.PLACE]: placeUrlVal,
           [URL_HASH_PARAMS.QUERY]: "",
           [URL_HASH_PARAMS.CLIENT]: CLIENT_TYPES.RELATED_TOPIC,
+          [URL_HASH_PARAMS.STAT_VAR]: "",
+          [URL_HASH_PARAMS.CHART_TYPE]: "",
+          [URL_HASH_PARAMS.IMPORT_NAME]: "",
+          [URL_HASH_PARAMS.MEASUREMENT_METHOD]: "",
+          [URL_HASH_PARAMS.UNIT]: "",
         })}`,
       });
     }
@@ -76,24 +81,31 @@ export function getTopics(
  * @returns boolean
  */
 export async function highestCoverageDatesEqualLatestDates(
+  apiRoot: string,
   parentEntity: string,
   childType: string,
-  variables: string[]
+  variables: string[],
+  facetIds?: string[]
 ): Promise<boolean> {
-  const highestCoverageObservations =
-    await defaultDataCommonsWebClient.getObservationsPointWithin({
-      parentEntity,
-      childType,
-      variables,
-      date: DATE_HIGHEST_COVERAGE,
-    });
-  const latestObservations =
-    await defaultDataCommonsWebClient.getObservationsPointWithin({
-      parentEntity,
-      childType,
-      variables,
-      date: DATE_LATEST,
-    });
+  const highestCoverageObservations = await getPointWithin(
+    apiRoot,
+    childType,
+    parentEntity,
+    variables,
+    DATE_HIGHEST_COVERAGE,
+    undefined,
+    facetIds
+  );
+
+  const latestObservations = await getPointWithin(
+    apiRoot,
+    childType,
+    parentEntity,
+    variables,
+    DATE_LATEST,
+    undefined,
+    facetIds
+  );
 
   // Return false if we find any "latest observation dates" that differ from the
   // "highest coverage date"
@@ -101,7 +113,7 @@ export async function highestCoverageDatesEqualLatestDates(
     highestCoverageObservations.data
   );
   for (const variableDcid of highestCoverageVariableDcids) {
-    // Get the date of highest coverage for this variable. all entites are
+    // Get the date of highest coverage for this variable. All entities are
     // guaranteed to have the same date, so just check the first entity for its
     // date
     const entityDcid = Object.keys(

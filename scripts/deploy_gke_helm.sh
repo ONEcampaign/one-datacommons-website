@@ -86,6 +86,7 @@ function get_gke_credentials() {
 function deploy_mixer() {
   cd $ROOT
   helm upgrade --install dc-mixer mixer/deploy/helm_charts/mixer \
+  --namespace website \
   --atomic \
   --timeout 10m \
   --force  \
@@ -98,7 +99,8 @@ function deploy_mixer() {
   --set-file mixer.schemaConfigs."base\.mcf"=mixer/deploy/mapping/base.mcf \
   --set-file mixer.schemaConfigs."encode\.mcf"=mixer/deploy/mapping/encode.mcf \
   --set-file kgStoreConfig.bigqueryVersion=mixer/deploy/storage/bigquery.version \
-  --set-file kgStoreConfig.baseBigtableInfo=mixer/deploy/storage/base_bigtable_info.yaml
+  --set-file kgStoreConfig.baseBigtableInfo=mixer/deploy/storage/base_bigtable_info.yaml \
+  --set-file kgStoreConfig.spannerGraphInfo=mixer/deploy/storage/spanner_graph_info.yaml
 }
 
 # Deploy Cloud Endpoints
@@ -136,6 +138,7 @@ function deploy_website() {
     fi
   done
   helm upgrade --install dc-website deploy/helm_charts/dc_website \
+  --namespace website \
   -f "deploy/helm_charts/envs/$ENV.yaml" \
   --debug \
   --atomic \

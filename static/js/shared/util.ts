@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Google LLC
+ * Copyright 2025 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,9 @@
 import _ from "lodash";
 import { URLSearchParams } from "url";
 
-import { Theme } from "theme/types";
+import { AutoCompleteResult } from "../components/nl_search_bar/auto_complete_input";
+import { Theme } from "../theme/types";
+
 import { MAX_DATE, MAX_YEAR, SOURCE_DISPLAY_NAME } from "./constants";
 
 // This has to be in sync with server/__init__.py
@@ -38,7 +40,11 @@ export const placeExplorerCategories = [
   "economics_new",
 ];
 
-const SEARCH_PARAMS_TO_PROPAGATE = new Set(["hl"]);
+const SEARCH_PARAMS_TO_PROPAGATE = new Set([
+  "hl",
+  "enable_feature",
+  "disable_feature",
+]);
 
 const NO_DATE_CAP_RCP_STATVARS = [
   // This stat var only has data for 2100. while other stat vars along the same
@@ -64,7 +70,7 @@ export function randDomId(): string {
   return Math.random()
     .toString(36)
     .replace(/[^a-z]+/g, "")
-    .substr(2, 10);
+    .slice(2, 12);
 }
 
 /** Determines if the width corresponds to mobile based on themes. */
@@ -77,7 +83,7 @@ export function isMobileByWidth(theme: Theme | null): boolean {
 
 /**
  * Downloads a file under a given filename.
- * @param filename name to download the file to
+ * @param fileName name to download the file to
  * @param file the file to download
  */
 export function downloadFile(fileName: string, file: Blob | File): void {
@@ -94,8 +100,8 @@ export function downloadFile(fileName: string, file: Blob | File): void {
 
 /**
  * Saves csv to filename.
- * @param {filename} string
- * @param {contents} string
+ * @param filename
+ * @param contents
  * @return void
  */
 export function saveToFile(filename: string, contents: string): void {
@@ -125,6 +131,62 @@ export function urlToDisplayText(url: string): string {
     .replace("https://", "")
     .replace("www.", "")
     .split(/[/?#]/)[0];
+}
+
+/**
+ * This function removes the protocol from a url.
+ *
+ * Example:
+ *
+ * stripProtocol("https://datacommons.org")
+ *  -> "datacommons.org"
+ */
+export function stripProtocol(url: string): string {
+  if (!url) {
+    return "";
+  }
+  return url.replace(/^https?:\/\//i, "");
+}
+
+/**
+ * This function truncates a string to `maxLength`, replacing
+ * the excised fragment with `omission`.
+ *
+ * If maxLength is less omission.length or str is already
+ * short enough, the function returns str unchanged.
+ *
+ * Example:
+ *
+ * truncateText(
+ *  "datacatalog.worldbank.org/dataset/world-development-indicators",'
+ *   50, "middle")
+ *  -> "datacatalog.worldbank.org…d-development-indicators"
+ *
+ */
+export function truncateText(
+  str: string,
+  maxLength: number,
+  position: "start" | "middle" | "end" = "end",
+  omission = "…"
+): string {
+  if (maxLength <= omission.length || str.length <= maxLength) {
+    return str;
+  }
+
+  const charactersToKeep = maxLength - omission.length;
+
+  switch (position) {
+    case "start":
+      return omission + str.slice(str.length - charactersToKeep);
+    case "middle": {
+      const front = Math.ceil(charactersToKeep / 2);
+      const back = Math.floor(charactersToKeep / 2);
+      return str.slice(0, front) + omission + str.slice(str.length - back);
+    }
+    case "end":
+    default:
+      return str.slice(0, charactersToKeep) + omission;
+  }
 }
 
 export function isDateTooFar(date: string): boolean {
@@ -203,12 +265,12 @@ export function removeSpinner(containerId: string): void {
  * @returns the query with the pattern removed if it was found.
  */
 export function stripPatternFromQuery(query: string, pattern: string): string {
-  const regex = new RegExp("(?:.(?!" + pattern + "))+([,;\\s])?$", "i");
-
-  // Returns the query without the pattern parameter.
-  // E.g.: query: "population of Calif", pattern: "Calif",
-  // returns "population of "
-  return query.replace(regex, "");
+  // If the query ends with the pattern (case-insensitive), remove it.
+  if (query.toLowerCase().endsWith(pattern.toLowerCase())) {
+    return query.substring(0, query.length - pattern.length);
+  }
+  // Otherwise, return the original query.
+  return query;
 }
 
 /**
@@ -256,4 +318,42 @@ export function redirect(
   }
 
   window.open(finalUrl, "_self");
+}
+
+export function escapeRegExp(string: string): string {
+  return string.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&");
+}
+
+export function replaceQueryWithSelection(
+  query: string,
+  result: AutoCompleteResult,
+  hasLocation: boolean
+): string {
+  if (
+    result.matchType === "stat_var_search" ||
+    result.matchType === "location_search"
+  ) {
+    // For stat vars and locations, do a case-insensitive replacement of the last
+    // occurrence of the matched concept.
+    const lowerCaseQuery = query.toLowerCase();
+    const lowerCaseMatchedQuery = result.matchedQuery.toLowerCase();
+    const lastIndex = lowerCaseQuery.lastIndexOf(lowerCaseMatchedQuery);
+    if (lastIndex !== -1) {
+      const prefix = query.substring(0, lastIndex);
+      if (
+        !hasLocation &&
+        result.matchType === "stat_var_search" &&
+        !result.hasPlace
+      ) {
+        console.log(
+          "Adding ' on Earth' to SV selection because hasLocation is " +
+            hasLocation
+        );
+        return prefix + result.name + " on Earth";
+      }
+      return prefix + result.name;
+    }
+  }
+  // Fallback for any other case.
+  return stripPatternFromQuery(query, result.matchedQuery) + result.name;
 }

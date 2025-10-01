@@ -23,7 +23,9 @@ import { VisType } from "../../apps/visualization/vis_type_configs";
 import { URL_PATH } from "../../constants/app/visualization_constants";
 import { intl } from "../../i18n/i18n";
 import { messages } from "../../i18n/i18n_messages";
+import { ObservationSpec } from "../../shared/observation_specs";
 import { StatVarSpec } from "../../shared/types";
+import { TileSources } from "../../tools/shared/metadata/tile_sources";
 import {
   RankingData,
   RankingGroup,
@@ -31,7 +33,7 @@ import {
 } from "../../types/ranking_unit_types";
 import { RankingTileSpec } from "../../types/subject_page_proto_types";
 import { getHash } from "../../utils/app/visualization_utils";
-import { formatString, TileSources } from "../../utils/tile_utils";
+import { formatString } from "../../utils/tile_utils";
 import { RankingUnit } from "../ranking_unit";
 import { ChartFooter } from "./chart_footer";
 
@@ -47,6 +49,7 @@ interface SvRankingUnitsProps {
     chartTitle: string,
     sources: string[]
   ) => void;
+  getObservationSpecs?: () => ObservationSpec[];
   statVar: string;
   entityType: string;
   tileId: string;
@@ -131,6 +134,8 @@ export function SvRankingUnits(props: SvRankingUnitsProps): JSX.Element {
                   : null
               }
               footnote={props.footnote}
+              containerRef={props.containerRef}
+              getObservationSpecs={props.getObservationSpecs}
             ></ChartFooter>
           )}
         </div>
@@ -161,6 +166,8 @@ export function SvRankingUnits(props: SvRankingUnitsProps): JSX.Element {
                     props.showExploreMore ? getExploreLink(props, true) : null
                   }
                   footnote={props.footnote}
+                  containerRef={props.containerRef}
+                  getObservationSpecs={props.getObservationSpecs}
                 ></ChartFooter>
               )}
             </div>
@@ -190,6 +197,8 @@ export function SvRankingUnits(props: SvRankingUnitsProps): JSX.Element {
                     props.showExploreMore ? getExploreLink(props, false) : null
                   }
                   footnote={props.footnote}
+                  containerRef={props.containerRef}
+                  getObservationSpecs={props.getObservationSpecs}
                 ></ChartFooter>
               )}
             </div>
@@ -338,6 +347,7 @@ export function getRankingUnit(
       svNames={
         rankingMetadata.showMultiColumn ? rankingGroup.svName : undefined
       }
+      statVar={statVar}
       onHoverToggled={onHoverToggled}
       headerChild={
         errorMsg ? null : (
@@ -345,6 +355,8 @@ export function getRankingUnit(
             apiRoot={apiRoot}
             containerRef={containerRef}
             sources={sources || rankingGroup.sources}
+            facets={rankingGroup.facets}
+            statVarToFacets={rankingGroup.statVarToFacets}
             statVarSpecs={statVarSpecs}
           />
         )
