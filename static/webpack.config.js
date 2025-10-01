@@ -15,12 +15,23 @@
  */
 
 const path = require("path");
+
 const readline = require("readline");
 const webpack = require("webpack");
+
+const fs = require("fs");
 const CopyPlugin = require("copy-webpack-plugin");
 const FixStyleOnlyEntriesPlugin = require("webpack-remove-empty-scripts");
 const SpeedMeasurePlugin = require("speed-measure-webpack-plugin");
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
+
+const customThemeDir = path.resolve(__dirname, 'js/theme/dc_custom_theme');
+const defaultThemeDir = path.resolve(__dirname, 'js/theme/base_theme');
+const customThemeFile = path.join(customThemeDir, 'theme.ts');
+
+const themeDir = fs.existsSync(customThemeFile)
+  ? customThemeDir
+  : defaultThemeDir;
 
 const smp = new SpeedMeasurePlugin();
 
@@ -178,6 +189,10 @@ const config = {
     filename: "[name].js",
   },
   resolve: {
+    modules: [path.resolve(__dirname), 'node_modules'],
+    alias: {
+      'theme': themeDir,
+    },
     extensions: [".js", ".ts", ".tsx"],
   },
   module: {
@@ -217,7 +232,7 @@ const config = {
       patterns: [
         { from: "css/**/*.css" },
         { from: "images/**/*" },
-        { from: "fonts/*" },
+        { from: "fonts/**/*" },
         { from: "data/**/*" },
         { from: "sitemap/*.txt" },
         { from: "custom_dc/**/*" },
@@ -246,6 +261,30 @@ const interactiveProgressHandler = (percentage, message, ...args) => {
 };
 
 // Supported modes are "development" and "production".
+let customConfig;
+try {
+  customConfig = require("./webpack.custom_dc.js");
+} catch (e) {
+  customConfig = {};
+}
+
+if (customConfig.entry) {
+  for (const [key, value] of Object.entries(customConfig.entry)) {
+    if (value == null) {
+      delete config.entry[key];
+    } else {
+      config.entry[key] = value;
+    }
+  }
+}
+
+if (customConfig.resolve) {
+  config.resolve = {
+    ...config.resolve,
+    ...customConfig.resolve,
+  };
+}
+
 module.exports = (env, argv) => {
   console.log(`#### Building webpack in ${argv.mode} mode`);
 

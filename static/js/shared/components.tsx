@@ -16,6 +16,10 @@
 
 import styled from "@emotion/styled";
 import React from "react";
+import React, { useState } from "react";
+
+import theme from "theme";
+import { Theme } from "theme/types";
 
 /**
  * Chip component to display a selected item with the ability to remove the item

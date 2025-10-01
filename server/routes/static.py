@@ -131,3 +131,9 @@ def robots_config():
       robots_content = f.read()
 
   return Response(robots_content, mimetype="text/plain")
+
+
+# TODO (Nick): Rework this so that it doesn't break the fork.
+@bp.route('/climate-finance-files')
+def climate_finance():
+  return redirect("https://cff.one.org", code=302)

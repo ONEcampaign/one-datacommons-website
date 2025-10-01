@@ -1,3 +1,7 @@
+User-agent: *
+Disallow: /api/
+Disallow: /browser/
+
 Sitemap: https://datacommons.org/sitemap/AdministrativeArea3.0.txt
 Sitemap: https://datacommons.org/sitemap/AdministrativeArea3.1.txt
 Sitemap: https://datacommons.org/sitemap/AdministrativeArea3.2.txt

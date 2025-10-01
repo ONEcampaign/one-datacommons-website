@@ -18,21 +18,10 @@
  * Main app component for scatter.
  */
 
-import { css, ThemeProvider, useTheme } from "@emotion/react";
-import React, { ReactElement, useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { Container, Row } from "reactstrap";
 
 import { Spinner } from "../../components/spinner";
-import { intl } from "../../i18n/i18n";
-import { toolMessages } from "../../i18n/i18n_tool_messages";
-import {
-  isFeatureEnabled,
-  STANDARDIZED_VIS_TOOL_FEATURE_FLAG,
-} from "../../shared/feature_flags/util";
-import theme from "../../theme/theme";
-import { ToolHeader } from "../shared/tool_header";
-import { ChartLinkChips } from "../shared/vis_tools/chart_link_chips";
-import { VisToolInstructionsBox } from "../shared/vis_tools/vis_tool_instructions_box";
 import { ChartLoader } from "./chart_loader";
 import {
   Axis,
@@ -51,7 +40,7 @@ import {
   updateHash,
 } from "./util";
 
-function App(): ReactElement {
+function App(): JSX.Element {
   const { x, y, place, isLoading } = useContext(Context);
   const showChart = shouldShowChart(x.value, y.value, place.value);
   const showChooseStatVarMessage = shouldShowChooseStatVarMessage(
@@ -62,10 +51,6 @@ function App(): ReactElement {
   const showInfo = !showChart && !showChooseStatVarMessage;
   const [isSvModalOpen, updateSvModalOpen] = useState(false);
   const toggleSvModalCallback = (): void => updateSvModalOpen(!isSvModalOpen);
-  const useStandardizedUi = isFeatureEnabled(
-    STANDARDIZED_VIS_TOOL_FEATURE_FLAG
-  );
-  const theme = useTheme();
   return (
     <>
       <StatVarChooser
@@ -76,33 +61,16 @@ function App(): ReactElement {
         <Container fluid={true}>
           {!showChart && (
             <Row>
-              {useStandardizedUi ? (
-                <ToolHeader
-                  title={intl.formatMessage(toolMessages.scatterToolTitle)}
-                  subtitle={intl.formatMessage(
-                    toolMessages.scatterToolSubtitle
-                  )}
-                  switchToolsUrl="/tools/visualization#visType%3Dscatter"
-                />
-              ) : (
-                <div className="app-header">
-                  <h1 className="mb-4">Scatter Plot Explorer</h1>
-                  <a href="/tools/visualization#visType%3Dscatter">
-                    Go back to the new Scatter Plot Explorer
-                  </a>
-                </div>
-              )}
+              <div className="app-header">
+                <h1 className="mb-4">Scatter Plot Explorer</h1>
+                {/*<a href="/tools/visualization#visType%3Dscatter">*/}
+                {/*  Go back to the new Data Commons*/}
+                {/*</a>*/}
+              </div>
             </Row>
           )}
           <Row>
-            <div
-              css={css`
-                margin-bottom: ${theme.spacing.md}px;
-                width: 100%;
-              `}
-            >
-              <PlaceOptions toggleSvHierarchyModal={toggleSvModalCallback} />
-            </div>
+            <PlaceOptions toggleSvHierarchyModal={toggleSvModalCallback} />
           </Row>
           {showChooseStatVarMessage && (
             <Row className="info-message">
@@ -110,26 +78,9 @@ function App(): ReactElement {
             </Row>
           )}
           {showInfo && (
-            <>
-              {useStandardizedUi ? (
-                <>
-                  <Row>
-                    <VisToolInstructionsBox toolType="scatter" />
-                  </Row>
-                  <Row
-                    css={css`
-                      margin-top: ${theme.spacing.xl}px;
-                    `}
-                  >
-                    <ChartLinkChips toolType="scatter" />
-                  </Row>
-                </>
-              ) : (
-                <Row>
-                  <MemoizedInfo />
-                </Row>
-              )}
-            </>
+            <Row>
+              <MemoizedInfo />
+            </Row>
           )}
           {showChart && (
             <Row id="chart-row">
@@ -143,7 +94,7 @@ function App(): ReactElement {
   );
 }
 
-function AppWithContext(): ReactElement {
+function AppWithContext(): JSX.Element {
   const store = useContextStore();
 
   useEffect(() => applyHash(store), []);
@@ -151,11 +102,9 @@ function AppWithContext(): ReactElement {
   window.onhashchange = (): void => applyHash(store);
 
   return (
-    <ThemeProvider theme={theme}>
-      <Context.Provider value={store}>
-        <App />
-      </Context.Provider>
-    </ThemeProvider>
+    <Context.Provider value={store}>
+      <App />
+    </Context.Provider>
   );
 }
 

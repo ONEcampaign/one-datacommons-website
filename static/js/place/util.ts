@@ -32,7 +32,7 @@ import {
 import { USA_PLACE_DCID } from "../shared/constants";
 import { NamedTypedPlace, StatVarSpec } from "../shared/types";
 import { isMobileByWidth } from "../shared/util";
-import { Theme } from "../theme/types";
+import { Theme } from "theme/types";
 import {
   BlockConfig as SubjectPageBlockConfig,
   CategoryConfig,

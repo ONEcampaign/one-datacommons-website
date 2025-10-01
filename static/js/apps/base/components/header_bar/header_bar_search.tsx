@@ -36,7 +36,7 @@ import {
 } from "../../../../shared/ga_events";
 import { useQueryStore } from "../../../../shared/stores/query_store_hook";
 import { isMobileByWidth } from "../../../../shared/util";
-import { Theme } from "../../../../theme/types";
+import { Theme } from "theme/types";
 import { updateHash } from "../../../../utils/url_utils";
 import { DebugInfo } from "../../../explore/debug_info";
 

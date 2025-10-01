@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
     "plugins": [
       {
         "name": "typescript-tslint-plugin"
@@ -17,7 +18,11 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "moduleResolution": "node",
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+    "paths": {
+      "theme": ["js/theme/dc_custom_theme", "js/theme/base_theme"],
+      "theme/*": ["js/theme/dc_custom_theme/*", "js/theme/base_theme/*"]
+    }
   },
   "exclude": [
     "node_modules",
