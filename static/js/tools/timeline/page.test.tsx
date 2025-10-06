@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import theme from "../../theme/theme";
+import theme from "theme";
 
 jest.mock("axios");
 jest.mock("../../chart/draw_bar");

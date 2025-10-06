@@ -30,7 +30,7 @@ import { SubjectPageMainPane } from "../../components/subject_page/main_pane";
 import { intl } from "../../i18n/i18n";
 import { PropertyValues } from "../../shared/api_response_types";
 import { NamedTypedPlace } from "../../shared/types";
-import theme from "../../theme/theme";
+import theme from "theme";
 import { SubjectPageConfig } from "../../types/subject_page_proto_types";
 import {
   findProperty,

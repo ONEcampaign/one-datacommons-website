@@ -48,7 +48,7 @@ import {
 import { StatMetadata } from "../shared/stat_types";
 import { StatVarFacetMap, StatVarSpec } from "../shared/types";
 import { saveToFile, urlToDisplayText } from "../shared/util";
-import { Theme } from "../theme/types";
+import { Theme } from "theme/types";
 import {
   buildCitationNodes,
   buildCitationParts,

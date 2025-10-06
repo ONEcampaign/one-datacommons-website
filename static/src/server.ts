@@ -20,7 +20,7 @@ import _ from "lodash";
 import sharp from "sharp";
 
 import { NamedTypedPlace, StatVarSpec } from "../js/shared/types";
-import type {} from "../js/theme/emotion";
+import type {} from "theme/emotion";
 import {
   EventTypeSpec,
   TileConfig,

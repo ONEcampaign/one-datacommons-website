@@ -15,7 +15,7 @@
  */
 
 /* eslint-disable camelcase */
-import theme from "../../theme/theme";
+import theme from "theme";
 
 jest.mock("axios");
 jest.setTimeout(100000);

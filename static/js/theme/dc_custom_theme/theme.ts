@@ -138,6 +138,11 @@ const theme: Theme = {
         tag: DC_GRAY_PILL_TEXT,
         pill: DC_GRAY_PILL_BCKG,
       },
+      tooltip: {
+        text: DC_WHITE,
+        tag: DC_BLACK,
+        pill: DC_BLACK,
+      },
     },
     link: {
       primary: {
@@ -163,12 +168,10 @@ const theme: Theme = {
     family: {
       text: {
         fontFamily: "colfax-web, Arial, sans-serif",
-        fontDisplay: "swap",
         fontStyle: "normal",
       },
       heading: {
         fontFamily: "colfax-web, Arial, sans-serif",
-        fontDisplay: "swap",
         fontStyle: "normal",
       },
     },
@@ -292,6 +295,68 @@ const theme: Theme = {
     secondary: {
       borderRadius: "20px",
     },
+    tertiary: {
+      borderRadius: "12px",
+    },
+    quaternary: {
+      borderRadius: "8px",
+    },
+  },
+  button: {
+    variant: {
+      standard: {
+        backgroundColor: DC_BLUE,
+        color: DC_WHITE,
+        border: `1px solid ${DC_BLUE}`,
+        borderRadius: `1000px`,
+        ["&:hover:not(:disabled):not([aria-disabled])"]: {
+          backgroundColor: DC_BLUE_DARK,
+          color: DC_WHITE,
+          border: `1px solid ${DC_BLUE_DARK}`,
+        },
+      },
+      inverted: {
+        backgroundColor: DC_WHITE,
+        color: DC_BLUE,
+        border: `1px solid ${DC_BLUE}`,
+        borderRadius: `1000px`,
+        ["&:hover:not(:disabled):not([aria-disabled])"]: {
+          backgroundColor: DC_BLUE_LIGHTER,
+          color: DC_BLUE,
+          border: `1px solid ${DC_BLUE}`,
+        },
+      },
+    },
+    size: {
+      sm: {
+        padding: "8px 16px",
+      },
+      md: {
+        padding: "12px 24px",
+      },
+      lg: {
+        padding: "16px 32px",
+      },
+    },
+  },
+  infoBox: {
+    backgroundColor: DC_BLUE_WHITE,
+    heading: {
+      fontSize: "1.375rem",
+      lineHeight: "1.75rem",
+      fontWeight: 700,
+    },
+    icon: {
+      fontSize: "1.5rem",
+      lineHeight: "1.5rem",
+    },
+  },
+  zIndex: {
+    tooltip: 1070,
+    dialog: 1050,
+  },
+  tooltip: {
+    width: "200px",
   },
 };
 

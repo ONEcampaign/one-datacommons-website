@@ -18,7 +18,7 @@ import _ from "lodash";
 import { URLSearchParams } from "url";
 
 import { AutoCompleteResult } from "../components/nl_search_bar/auto_complete_input";
-import { Theme } from "../theme/types";
+import { Theme } from "theme/types";
 
 import { MAX_DATE, MAX_YEAR, SOURCE_DISPLAY_NAME } from "./constants";
 

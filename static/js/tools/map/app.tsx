@@ -29,7 +29,7 @@ import {
   isFeatureEnabled,
   STANDARDIZED_VIS_TOOL_FEATURE_FLAG,
 } from "../../shared/feature_flags/util";
-import theme from "../../theme/theme";
+import theme from "theme";
 import { ToolHeader } from "../shared/tool_header";
 import { ChartLinkChips } from "../shared/vis_tools/chart_link_chips";
 import { VisToolInstructionsBox } from "../shared/vis_tools/vis_tool_instructions_box";

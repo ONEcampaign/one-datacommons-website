@@ -36,7 +36,7 @@ PROJECT_ID=$1
 
 # Check if region is provided, otherwise default to us-central1
 if [ -z "$2" ]; then
-    REGION="us-central1"
+    REGION="northamerica-northeast1"
 else
     REGION="$2"
 fi

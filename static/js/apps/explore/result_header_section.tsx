@@ -44,7 +44,7 @@ import {
   triggerGAEvent,
 } from "../../shared/ga_events";
 import { NamedTypedPlace } from "../../shared/types";
-import theme from "../../theme/theme";
+import theme from "theme";
 import { SubjectPageMetadata } from "../../types/subject_page_types";
 import { getTopics } from "../../utils/app/explore_utils";
 import { defaultDataCommonsWebClient } from "../../utils/data_commons_client";

@@ -30,7 +30,7 @@ import {
   StatVarHierarchyType,
   StatVarSummary,
 } from "../../shared/types";
-import theme from "../../theme/theme";
+import theme from "theme";
 import { stringifyFn } from "../../utils/axios";
 import { getUrlToken, updateHash } from "../../utils/url_utils";
 import { StatVarWidget } from "../shared/stat_var_widget";

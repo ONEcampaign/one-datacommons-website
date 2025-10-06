@@ -26,7 +26,7 @@ import { RawIntlProvider } from "react-intl";
 import { Spinner } from "../../components/spinner";
 import { intl } from "../../i18n/i18n";
 import { RankingUnitUrlFuncContext } from "../../shared/context";
-import theme from "../../theme/theme";
+import theme from "theme";
 import { isSelectionComplete } from "../../utils/app/visualization_utils";
 import { AppContext, AppContextProvider } from "./app_context";
 import { Chart } from "./chart";

@@ -84,6 +84,7 @@ export function AutoCompleteInput(
   const wrapperRef = useRef(null);
   const controller = useRef(new AbortController());
   const [baseInput, setBaseInput] = useState("");
+  const [baseInputLastQuery, setBaseInputLastQuery] = useState("");
   const [inputText, setInputText] = useState("");
   // TODO(gmechali): Implement stat var search.
   const [results, setResults] = useState({ placeResults: [], svResults: [] });
@@ -97,6 +98,7 @@ export function AutoCompleteInput(
   const [lastScrollYOnTrigger, setLastScrollYOnTrigger] = useState(0);
   // Tracks the last scrollY value for current height offsett.
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [hasLocation, setHasLocation] = useState(false);
 
   const isHeaderBar = props.barType == "header";
   let lang = "";
@@ -185,12 +187,14 @@ export function AutoCompleteInput(
       // Reset all suggestion results.
       setResults({ placeResults: [], svResults: [] });
       setLastAutoCompleteSelection("");
+      setHasLocation(false);
       setHoveredIdx(-1);
       return;
     } else if (!currentText.includes(lastAutoCompleteSelection)) {
       // If the user backspaces into the last selection, reset it.
       lastSelection = "";
       setLastAutoCompleteSelection(lastSelection);
+      setHasLocation(false);
       // fall through
     }
 
@@ -228,6 +232,7 @@ export function AutoCompleteInput(
             ),
             svResults: [],
           });
+          setBaseInputLastQuery(query);
         }
       })
       .catch((err) => {
@@ -299,17 +304,18 @@ export function AutoCompleteInput(
       [GA_PARAM_AUTOCOMPLETE_SELECTION_INDEX]: String(idx),
     });
 
-    if (
-      result.matchType == LOCATION_SEARCH &&
-      stripPatternFromQuery(baseInput, result.matchedQuery).trim() === ""
-    ) {
-      // If this is a location result, and the matchedQuery matches the base input
-      // then that means there are no other parts of the query, so it's a place only
-      // redirection.
-      if (result.dcid) {
-        const url = PLACE_EXPLORER_PREFIX + `${result.dcid}`;
-        window.open(url, "_self");
-        return;
+    if (result.matchType == LOCATION_SEARCH) {
+      setHasLocation(true);
+
+      if (stripPatternFromQuery(baseInput, result.matchedQuery).trim() === "") {
+        // If this is a location result, and the matchedQuery matches the base input
+        // then that means there are no other parts of the query, so it's a place only
+        // redirection.
+        if (result.dcid) {
+          const url = PLACE_EXPLORER_PREFIX + `${result.dcid}`;
+          window.open(url, "_self");
+          return;
+        }
       }
     }
 
@@ -352,9 +358,11 @@ export function AutoCompleteInput(
         {props.enableAutoComplete && !_.isEmpty(results.placeResults) && (
           <AutoCompleteSuggestions
             baseInput={baseInput}
+            baseInputLastQuery={baseInputLastQuery}
             allResults={results.placeResults}
             hoveredIdx={hoveredIdx}
             onClick={selectResult}
+            hasLocation={hasLocation}
           />
         )}
       </div>

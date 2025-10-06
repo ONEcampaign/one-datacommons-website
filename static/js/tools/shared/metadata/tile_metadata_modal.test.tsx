@@ -26,7 +26,7 @@ import { ThemeProvider } from "@emotion/react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 
-import theme from "../../../theme/theme";
+import theme from "theme";
 import * as metadataFetcher from "./metadata_fetcher";
 import { TileMetadataModal } from "./tile_metadata_modal";
 

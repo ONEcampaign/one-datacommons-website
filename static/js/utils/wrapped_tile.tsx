@@ -31,7 +31,7 @@ import { RawIntlProvider } from "react-intl";
 import { StyleSheetManager } from "styled-components";
 
 import { intl } from "../i18n/i18n";
-import theme from "../theme/theme";
+import theme from "theme";
 
 export interface WrappedTileProps {
   // Tile jsx

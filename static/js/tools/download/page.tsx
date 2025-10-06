@@ -31,7 +31,7 @@ import {
 import { PointAllApiResponse } from "../../shared/stat_types";
 import { getStatVarInfo, StatVarInfo } from "../../shared/stat_var";
 import { NamedTypedPlace } from "../../shared/types";
-import theme from "../../theme/theme";
+import theme from "theme";
 import { stringifyFn } from "../../utils/axios";
 import { getDataCommonsClient } from "../../utils/data_commons_client";
 import { FacetResponse } from "../../utils/data_fetch_utils";

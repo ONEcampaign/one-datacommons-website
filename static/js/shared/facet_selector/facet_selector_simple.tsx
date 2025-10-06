@@ -27,7 +27,7 @@ import _ from "lodash";
 import React, { ReactElement, useEffect, useMemo, useState } from "react";
 import { FormGroup, Input, Label } from "reactstrap";
 
-import theme from "../../../../static/js/theme/theme";
+import theme from "theme";
 import { Button } from "../../components/elements/button/button";
 import {
   Dialog,
