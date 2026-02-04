@@ -59,12 +59,10 @@ class TimelineTestMixin():
     # Load Timeline Tool page.
     self.driver.get(self.url_ + TIMELINE_URL)
 
-    # Find the group of charts.
-    charts = find_elems(self.driver,
-                        by=By.XPATH,
-                        value='//*[@id="chart-region"]/div[@class="chart"]')
-
     # Assert no card is present since no search has been performed.
+    # Use find_elements to avoid waiting for timeout when asserting non-existence
+    charts = self.driver.find_elements(
+        By.XPATH, '//*[@id="chart-region"]/div[@class="chart"]')
     self.assertEqual(len(charts), 0)
 
   def test_charts_from_url_directly_and_uncheck_statvar(self):
@@ -75,7 +73,8 @@ class TimelineTestMixin():
     self.driver.get(self.url_ + TIMELINE_URL + URL_HASH_1)
 
     # Wait until the group of charts has loaded.
-    WebDriverWait(self.driver, self.TIMEOUT_SEC).until(shared.charts_rendered)
+    shared.wait_for_charts_to_render(self.driver,
+                                     timeout_seconds=self.TIMEOUT_SEC)
 
     # Store a list of all the charts.
     charts = find_elems(self.driver, value='dc-async-element')
@@ -119,10 +118,8 @@ class TimelineTestMixin():
     shared.wait_for_loading(self.driver)
     self.assertIsNotNone(
         wait_elem(self.driver, by=By.ID, value='hierarchy-section'))
-    charts = find_elems(
-        self.driver,
-        by=By.XPATH,
-        value='//*[@id="chart-region"]/div[@class="chart-container"]')
+    charts = self.driver.find_elements(
+        By.XPATH, '//*[@id="chart-region"]/div[@class="chart-container"]')
 
     # Assert there is no chart.
     self.assertEqual(len(charts), 0)
@@ -153,10 +150,8 @@ class TimelineTestMixin():
 
     # Assert there are no charts.
     shared.wait_for_loading(self.driver)
-    charts = find_elems(
-        self.driver,
-        by=By.XPATH,
-        value='//*[@id="chart-region"]/div[@class="chart-container"]')
+    charts = self.driver.find_elements(
+        By.XPATH, '//*[@id="chart-region"]/div[@class="chart-container"]')
     self.assertEqual(len(charts), 0)
 
   def test_place_search_box_and_remove_place(self):
@@ -164,38 +159,21 @@ class TimelineTestMixin():
     # Load Timeline Tool page with Statistical Variables.
     self.driver.get(self.url_ + TIMELINE_URL + STATVAR_URL_1)
 
-    # Wait until search box is present and type California.
-    search_box_input = find_elem(self.driver, by=By.ID, value='ac')
-    search_box_input.send_keys(PLACE_SEARCH_CA)
-
-    # Wait until there is at least one result in autocomplete results.
-    self.assertIsNotNone(find_elem(self.driver, value='pac-item'))
-
-    # Click on the first result.
-    shared.wait_for_loading(self.driver)
-    first_result = find_elem(self.driver,
-                             by=By.CSS_SELECTOR,
-                             value=".pac-item:nth-child(1)")
-    first_result.click()
+    # Search for California
+    shared.search_for_places(self,
+                             self.driver,
+                             PLACE_SEARCH_CA,
+                             is_new_vis_tools=False)
 
     # Wait until the first line element within the card is present.
     shared.wait_for_loading(self.driver)
     self.assertIsNotNone(
         find_elem(self.driver, by=By.CSS_SELECTOR, value='.line:nth-child(1)'))
 
-    # Type USA into the search box.
-    search_box_input.clear()
-    search_box_input.send_keys(PLACE_SEARCH_USA)
-
-    # Wait until there is at least one result in autocomplete results.
-    shared.wait_for_loading(self.driver)
-    self.assertIsNotNone(find_elem(self.driver, value='pac-item'))
-
-    # Click on the first result.
-    first_result = find_elem(self.driver,
-                             by=By.CSS_SELECTOR,
-                             value=".pac-item:nth-child(1)")
-    first_result.click()
+    shared.search_for_places(self,
+                             self.driver,
+                             PLACE_SEARCH_USA,
+                             is_new_vis_tools=False)
 
     # Wait until the second line element within the card is present.
     shared.wait_for_loading(self.driver)
@@ -320,6 +298,10 @@ class StandardizedTimelineTestMixin():
         (By.ID, 'Median_Age_Persondc/g/Demographics-Median_Age_Person'))
 
     shared.wait_for_loading(self.driver)
+
+    # Wait for chart-region and lines within to load
+    shared.wait_for_charts_to_render(self.driver,
+                                     timeout_seconds=self.TIMEOUT_SEC)
 
     # Assert number of charts and lines is correct.
     charts = find_elems(self.driver,

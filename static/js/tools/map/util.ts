@@ -103,7 +103,8 @@ const URL_PARAM_DOMAIN_SEPARATOR = ":";
 export const URL_PARAM_KEYS = {
   SELECTED_PLACE_DCID: "pd",
   ENCLOSED_PLACE_TYPE: "ept",
-  MAP_POINTS_PLACE_TYPE: "ppt",
+  // Map points place type is deprecated, but we keep it to prevent reusing it for something else.
+  DEPRECATED_MAP_POINTS_PLACE_TYPE: "ppt",
   PER_CAPITA: "pc",
   STAT_VAR_DCID: "sv",
   DATE: "dt",
@@ -223,13 +224,11 @@ const CHILD_PLACE_TYPE_MAPPING = {
 
 export const CHART_LOADER_SCREEN = "chart-loader-screen";
 
-export const ALLOW_LEAFLET_URL_ARG = "leaflet";
 export const DEFAULT_DISPLAY_OPTIONS = {
   color: "",
   domain: null,
   showMapPoints: false,
   showTimeSlider: false,
-  allowLeaflet: false,
 };
 
 export const ALL_MAP_PLACE_TYPES = {
@@ -299,7 +298,6 @@ export function applyHashStatVar(params: URLSearchParams): StatVar {
 export function applyHashPlaceInfo(params: URLSearchParams): PlaceInfo {
   const selectedPlaceDcid = params.get(URL_PARAM_KEYS.SELECTED_PLACE_DCID);
   const enclosedPlaceType = params.get(URL_PARAM_KEYS.ENCLOSED_PLACE_TYPE);
-  const mapPointPlaceType = params.get(URL_PARAM_KEYS.MAP_POINTS_PLACE_TYPE);
   return {
     selectedPlace: {
       dcid: selectedPlaceDcid ? selectedPlaceDcid : "",
@@ -312,7 +310,7 @@ export function applyHashPlaceInfo(params: URLSearchParams): PlaceInfo {
     },
     enclosedPlaceType: enclosedPlaceType ? enclosedPlaceType : "",
     parentPlaces: null,
-    mapPointPlaceType: mapPointPlaceType ? mapPointPlaceType : "",
+    mapPointPlaceType: "",
   };
 }
 
@@ -330,16 +328,11 @@ export function applyHashDisplay(params: URLSearchParams): DisplayOptions {
     : [];
   const showMapPoints = params.get(URL_PARAM_KEYS.MAP_POINTS);
   const showTimeSlider = params.get(URL_PARAM_KEYS.TIME_SLIDER);
-  // the allow leaflet param is in the search query instead of the url hash
-  const allowLeaflet = new URLSearchParams(location.search).get(
-    ALLOW_LEAFLET_URL_ARG
-  );
   return {
     color,
     domain: domain.length === 3 ? (domain as [number, number, number]) : null,
     showMapPoints: showMapPoints && showMapPoints === "1" ? true : false,
     showTimeSlider: showTimeSlider && showTimeSlider === "1" ? true : false,
-    allowLeaflet: allowLeaflet && allowLeaflet === "1" ? true : false,
   };
 }
 
@@ -396,9 +389,6 @@ export function updateHashPlaceInfo(
   let params = `&${URL_PARAM_KEYS.SELECTED_PLACE_DCID}=${placeInfo.selectedPlace.dcid}`;
   if (!_.isEmpty(placeInfo.enclosedPlaceType)) {
     params = `${params}&${URL_PARAM_KEYS.ENCLOSED_PLACE_TYPE}=${placeInfo.enclosedPlaceType}`;
-  }
-  if (!_.isEmpty(placeInfo.mapPointPlaceType)) {
-    params = `${params}&${URL_PARAM_KEYS.MAP_POINTS_PLACE_TYPE}=${placeInfo.mapPointPlaceType}`;
   }
   return hash + params;
 }
@@ -461,11 +451,7 @@ export function getRedirectLink(
     parentPlaces: [],
     selectedPlace,
   });
-  let args = "";
-  if (displayOptions.allowLeaflet) {
-    args += `?${ALLOW_LEAFLET_URL_ARG}=1`;
-  }
-  return `${MAP_URL_PATH}${args}#${encodeURIComponent(hash)}`;
+  return `${MAP_URL_PATH}#${encodeURIComponent(hash)}`;
 }
 
 /**
@@ -832,6 +818,20 @@ export function getGeoJsonDataFeatures(
 export function ifShowChart(statVar: StatVar, placeInfo: PlaceInfo): boolean {
   return (
     !_.isNull(statVar.info) &&
+    !_.isEmpty(placeInfo.enclosingPlace.dcid) &&
+    !_.isEmpty(placeInfo.enclosedPlaceType)
+  );
+}
+
+/**
+ * Determine whether instructions specific for selecting stat vars should be shown
+ */
+export function shouldShowStatVarInstructions(
+  statVar: StatVar,
+  placeInfo: PlaceInfo
+): boolean {
+  return (
+    _.isNull(statVar.info) &&
     !_.isEmpty(placeInfo.enclosingPlace.dcid) &&
     !_.isEmpty(placeInfo.enclosedPlaceType)
   );

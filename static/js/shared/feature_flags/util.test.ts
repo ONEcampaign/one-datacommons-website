@@ -120,6 +120,9 @@ describe("isFeatureEnabled", () => {
   test("returns true when rollout percentage is 100", () => {
     window.location.search = "";
     globalThis.FEATURE_FLAGS = {
+      // rollout_percentage is not camelcase because it is defined in the
+      // feature flag config JSON files.
+      // eslint-disable-next-line camelcase
       [featureName]: { enabled: true, rollout_percentage: 100 },
     };
     expect(isFeatureEnabled(featureName)).toBe(true);
@@ -128,6 +131,9 @@ describe("isFeatureEnabled", () => {
   test("returns false when rollout percentage is 0", () => {
     window.location.search = "";
     globalThis.FEATURE_FLAGS = {
+      // rollout_percentage is not camelcase because it is defined in the
+      // feature flag config JSON files.
+      // eslint-disable-next-line camelcase
       [featureName]: { enabled: true, rollout_percentage: 0 },
     };
     expect(isFeatureEnabled(featureName)).toBe(false);

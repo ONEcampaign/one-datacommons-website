@@ -27,7 +27,7 @@ import { SubjectPageSidebar } from "../../components/subject_page/sidebar";
 import { intl } from "../../i18n/i18n";
 import { ChildPlaces } from "../../shared/child_places";
 import { ParentBreadcrumbs } from "../../shared/parent_breadcrumbs";
-import theme from "theme";
+import theme from "../../theme/theme";
 import { SubjectPageMetadata } from "../../types/subject_page_types";
 
 const PAGE_ID = "sustainability";

@@ -45,6 +45,13 @@ from server.routes.place.types import ServerChartConfiguration
 from server.routes.place.types import ServerChartMetadata
 import server.routes.shared_api.place as place_api
 from server.services import datacommons as dc
+from shared.lib.constants import MIXER_RESPONSE_ID_FIELD
+
+# Template for the first sentence in the summary
+_TEMPLATE_STARTING_SENTENCE = "{place_name} is a {place_type} in {parent_places}."
+
+# Template for sharing the value of a stat var
+_TEMPLATE_VALUE_SENTENCE = "The {stat_var_name} in {place_name} was {value} in {year}."
 
 # Template for the first sentence in the summary
 _TEMPLATE_STARTING_SENTENCE = "{place_name} is a {place_type} in {parent_places}."
@@ -974,7 +981,8 @@ def fetch_similar_place_dcids(place: Place, locale=DEFAULT_LOCALE) -> List[str]:
   return place_cohort_member_dcids
 
 
-def fetch_overview_table_data(place_dcid: str) -> List[OverviewTableDataRow]:
+def fetch_overview_table_data(
+    place_dcid: str) -> tuple[List[OverviewTableDataRow], str]:
   """
   Fetches overview table data for the specified place.
   """
@@ -988,6 +996,8 @@ def fetch_overview_table_data(place_dcid: str) -> List[OverviewTableDataRow]:
   # Fetch all observations for each variable
   resp = dc.obs_point([place_dcid], variables, date="LATEST")
   facets = resp.get("facets", {})
+  # This indicates which mixer calls are used when this result is cached
+  mixer_response_ids = resp.get(MIXER_RESPONSE_ID_FIELD, [])
 
   # Iterate over each variable and extract the most recent observation
   for item in place_overview_table_variable_translations:
@@ -1021,7 +1031,77 @@ def fetch_overview_table_data(place_dcid: str) -> List[OverviewTableDataRow]:
             variableDcid=variable_dcid,
         ))
 
-  return data_rows
+  return data_rows, mixer_response_ids
+
+
+def extract_most_recent_facet_observations(
+    place_observations_response: Dict[str, Any], place_dcid: str,
+    variable_dcid: str) -> Dict[str, Any] | None:
+  """
+  Extracts the most recent facet observations from a place observations response for a given place and variable DCIDs.
+
+  Example:
+
+  place_observations_response = {
+    "byVariable": {
+      "Count_Person": {
+        "byEntity": {
+          "country/EXAMPLE": {
+            "orderedFacets": [
+              {
+                "facetId": "facet_id_1",
+                "latestDate": "2024-01-01",
+                "observations": [
+                  {
+                    "date": "2024-01-01",
+                    "value": "500000"
+                  }
+                ]
+              },
+              {
+                "facetId": "facet_id_2",
+                "latestDate": "2023-01-01",
+                "observations": [
+                  {
+                    "date": "2023-01-01",
+                    "value": "400000"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+
+  extract_most_recent_facet_observations(place_observations_response, "country/EXAMPLE", "Count_Person")
+
+  Returns:
+    {
+      "facetId": "facet_id_1",
+      "latestDate": "2024-01-01",
+      "observations": [
+        {
+          "date": "2024-01-01",
+          "value": "500000"
+        }
+      ]
+    }
+  """
+
+  ordered_facet_observations = place_observations_response.get(
+      "byVariable", {}).get(variable_dcid,
+                            {}).get("byEntity",
+                                    {}).get(place_dcid,
+                                            {}).get("orderedFacets", [])
+
+  # Get the most recent observation for each facet
+  most_recent_facet = max(ordered_facet_observations,
+                          key=lambda x: x.get("latestDate", ""),
+                          default=None)
+
+  return most_recent_facet
 
 
 def extract_most_recent_facet_observations(

@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import re
+import time
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support.ui import WebDriverWait
 
 from server.webdriver import shared
@@ -50,18 +52,21 @@ class TestExplorePage(ExplorePageTestMixin, BaseDcWebdriverTest):
     query = "#q=Which countries have the highest college-educated population in the world?"
 
     self.driver.get(self.url_ + EXPLORE_URL + follow_up_flag + query)
+    shared.wait_for_loading(self.driver)
 
-    empty_loading = find_elem(parent=self.driver, value="loading-container")
-    self.assertIsNone(
-        empty_loading,
+    # Use find_elements directly to avoid waiting for the element to appear (since we expect it to be missing)
+    empty_loading = self.driver.find_elements(By.CLASS_NAME,
+                                              "loading-container")
+    self.assertEqual(
+        len(empty_loading), 0,
         "Follow Up Questions component is not empty despite having no related topics."
     )
-    shared.wait_elem(driver=self.driver, value="follow-up-questions-container")
 
-    empty_follow_up = find_elem(parent=self.driver,
-                                value="follow-up-questions-container")
-    self.assertIsNone(
-        empty_follow_up,
+    # Use find_elements directly to avoid waiting for the element to appear (since we expect it to be missing)
+    empty_follow_up = self.driver.find_elements(
+        By.CLASS_NAME, "follow-up-questions-container")
+    self.assertEqual(
+        len(empty_follow_up), 0,
         "Follow Up Questions component is not empty despite having no related topics."
     )
 
@@ -85,23 +90,27 @@ class TestExplorePage(ExplorePageTestMixin, BaseDcWebdriverTest):
 
     shared.wait_for_loading(self.driver)
 
-    # Isolate the "Categories of Jobs" bar chart
-    all_chart_blocks = find_elems(self.driver, By.CLASS_NAME, 'block.subtopic')
-    chart_block = None
-    for block in all_chart_blocks:
-      header = find_elem(block, By.TAG_NAME, 'h3')
-      if header and header.text == "Categories of Jobs":
-        chart_block = block
-        break
-    self.assertIsNotNone(
-        chart_block, "Could not find the 'Categories of Jobs' chart block.")
+    def categories_of_jobs_block_present(driver):
+      """Look for the Categories of Jobs block"""
+      all_chart_blocks = find_elems(driver, By.CLASS_NAME, 'block.subtopic')
+      chart_block = None
+      for block in all_chart_blocks:
+        header = find_elem(block, By.TAG_NAME, 'h3')
+        if header and header.text == "Categories of Jobs":
+          chart_block = block
+          break
+      return chart_block or False
+
+    # Wait for 'Categories of Jobs' block to be present
+    chart_block = WebDriverWait(
+        self.driver, self.TIMEOUT_SEC).until(categories_of_jobs_block_present)
 
     # Check metadata before choosing a facet
     sources_div_before = find_elem(chart_block,
                                    value='sources',
                                    by=By.CLASS_NAME)
     metadata_link_before = sources_div_before.find_element(
-        By.XPATH, ".//a[contains(text(), 'Show metadata')]")
+        By.XPATH, ".//a[contains(text(), 'About this data')]")
     metadata_link_before.click()
 
     # Wait for the dialog to be visible
@@ -155,7 +164,7 @@ class TestExplorePage(ExplorePageTestMixin, BaseDcWebdriverTest):
                                   value='sources',
                                   by=By.CLASS_NAME)
     metadata_link_after = sources_div_after.find_element(
-        By.XPATH, ".//a[contains(text(), 'Show metadata')]")
+        By.XPATH, ".//a[contains(text(), 'About this data')]")
     metadata_link_after.click()
 
     # Wait for the dialog to be visible again
@@ -200,7 +209,7 @@ class TestExplorePage(ExplorePageTestMixin, BaseDcWebdriverTest):
     original_source_text = find_elem(chart_block, By.CLASS_NAME, 'sources').text
     self.assertEqual(
         original_source_text,
-        'Sources: data.census.gov, data.census.gov • Show metadata')
+        'Sources: data.census.gov, data.census.gov • About this data')
 
     # Click on the button to open the facet selector modal
     facet_button = find_elem(chart_block, By.CLASS_NAME,
@@ -226,7 +235,7 @@ class TestExplorePage(ExplorePageTestMixin, BaseDcWebdriverTest):
     modal_footer_button.click()
 
     # Wait for the source text to update.
-    expected_source_text = "Source: wonder.cdc.gov • Show metadata"
+    expected_source_text = "Source: wonder.cdc.gov • About this data"
     wait_for_text(driver=chart_block,
                   text=expected_source_text,
                   by=By.CLASS_NAME,
@@ -336,14 +345,76 @@ class TestExplorePage(ExplorePageTestMixin, BaseDcWebdriverTest):
     self.assertIsNotNone(api_link, "Could not find the API link.")
     api_link.click()
 
-    # Wait for the dialog's textarea to appear and load its content
-    textarea = WebDriverWait(self.driver, self.TIMEOUT_SEC).until(
-        lambda d: d.find_element(By.TAG_NAME, 'textarea'))
-    self.assertIsNotNone(textarea, "API dialog's textarea did not appear.")
+    # Wait until the dialog's Python endpoint has appeared
+    wait_for_text(self.driver,
+                  text="import",
+                  by=By.CSS_SELECTOR,
+                  value='pre[class*="language-python"]')
 
-    # Get the API endpoint (curl) from the textarea
-    actual_text = textarea.get_attribute('value')
+    python_code_block = find_elem(self.driver,
+                                  by=By.CSS_SELECTOR,
+                                  value='pre[class*="language-python"]')
+    self.assertIsNotNone(python_code_block,
+                         "API dialog's Python code block did not appear.")
+
+    # Get the API cURL endpoint from the code area
+    python_actual_text = python_code_block.text
+    self.assertIn("Count_Person", python_actual_text)
+    self.assertIn("country/USA", python_actual_text)
+
+    # Find the language selector in order to change to Python
+    language_selector = find_elem(self.driver,
+                                  by=By.ID,
+                                  value='api-language-selector')
+    self.assertIsNotNone(language_selector,
+                         "API dialog's language selector not found.")
+
+    select = Select(language_selector)
+    select.select_by_value('curl')
+
+    # Wait for the dialog's cURL endpoint has appeared
+    wait_for_text(self.driver,
+                  text="curl",
+                  by=By.CSS_SELECTOR,
+                  value='pre[class*="language-bash"]')
+
+    curl_code_block = find_elem(self.driver,
+                                by=By.CSS_SELECTOR,
+                                value='pre[class*="language-bash"]')
+    self.assertIsNotNone(curl_code_block,
+                         "API dialog's cURL code block did not appear.")
+
+    # Get the API cURL endpoint from the code area
+    curl_actual_text = curl_code_block.text
 
     # Verify that key parts of the API call are present
-    self.assertIn('"variable": {"dcids": ["Count_Person"]},', actual_text)
-    self.assertIn('"entity": {"dcids": ["country/USA"]}', actual_text)
+    self.assertIn('"variable": {"dcids": ["Count_Person"]},', curl_actual_text)
+    self.assertIn('"entity": {"dcids": ["country/USA"]}', curl_actual_text)
+
+  def test_highlight_chart_facet_selector(self):
+    """Test the highlight chart for Population ranking with map of US States."""
+    highlight_params = "?sv=Count_BlizzardEvent&p=country/USA&imp=StormNOAA_Agg&chartType=RANKING_WITH_MAP&obsPer=P1Y"
+    self.driver.get(self.url_ + EXPLORE_URL + highlight_params)
+
+    shared.wait_for_loading(self.driver)
+
+    highlight_div = find_elem(self.driver, By.CLASS_NAME,
+                              'highlight-result-title')
+    block_controls = find_elem(highlight_div, By.CLASS_NAME, 'block-controls')
+    time.sleep(5)  # Wait for the controls to be fully interactive.
+    facet_button = find_elem(block_controls, By.CLASS_NAME,
+                             'source-selector-open-modal-button')
+    self.assertIsNotNone(facet_button, "Facet selector button not found")
+    facet_button.click()
+
+    facet_options = find_elem(self.driver, By.CLASS_NAME,
+                              'source-selector-facet-options-section')
+
+    # Verify that the expected option is selected, in this case it has P1Y ObsPeriod.
+    for option in find_elems(facet_options, By.TAG_NAME, 'label'):
+      is_option_selected = find_elem(option, By.TAG_NAME, 'input').is_selected()
+      if is_option_selected:
+        list_items = find_elems(option, By.TAG_NAME, 'ul')
+        self.assertIn('Observation period • Yearly (P1Y)',
+                      str([item.text for item in list_items]))
+        break

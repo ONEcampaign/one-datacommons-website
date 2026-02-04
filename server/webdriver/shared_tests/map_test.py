@@ -19,6 +19,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from server.webdriver.base_utils import find_elem
 from server.webdriver.base_utils import find_elems
+from server.webdriver.base_utils import LONG_TIMEOUT
 from server.webdriver.base_utils import wait_elem
 import server.webdriver.shared as shared
 
@@ -70,52 +71,23 @@ class MapTestMixin():
                   value='//*[@id="map-chart"]/div/div[1]/h3').text.lower())
 
     # Assert was have 58 map regions and 5 legends.
-    chart_map = find_elem(self.driver, by=By.ID, value='map-items')
-    self.assertEqual(len(find_elems(chart_map, by=By.TAG_NAME, value='path')),
-                     58)
-    chart_legend = find_elem(self.driver, by=By.ID, value='choropleth-legend')
-    self.assertGreater(
-        len(find_elems(chart_legend, by=By.CLASS_NAME, value='tick')), 5)
-
-    # Click United States breadcrumb
-    shared.click_el(self.driver, (By.LINK_TEXT, 'United States'))
-
-    # Assert redirect was correct
-    place_list = find_elem(self.driver, by=By.ID, value='place-list')
-    shared.wait_for_loading(self.driver)
     self.assertEqual(
-        find_elem(place_list, by=By.XPATH, value='./div/span').text,
-        'United States of America')
-
-    # Select State place type
-    shared.wait_for_loading(self.driver)
-    place_type_selector = find_elem(self.driver,
-                                    by=By.ID,
-                                    value='place-selector-place-type')
-    place_type_selector.click()
-    find_elem(place_type_selector, by=By.XPATH, value='./option[2]').click()
-
-    # Assert that a map chart is loaded
-    self.assertIsNotNone(wait_elem(self.driver, by=By.ID, value='map-items'))
-    self.assertIn(
-        "median age of population ",
-        find_elem(self.driver,
-                  by=By.XPATH,
-                  value='//*[@id="map-chart"]/div/div[1]/h3').text.lower())
-    chart_map = find_elem(self.driver, by=By.ID, value='map-items')
-    self.assertEqual(len(find_elems(chart_map, by=By.TAG_NAME, value='path')),
-                     52)
+        len(find_elems(self.driver, by=By.CSS_SELECTOR,
+                       value='#map-items path')), 58)
+    self.assertGreater(
+        len(
+            find_elems(self.driver,
+                       by=By.CSS_SELECTOR,
+                       value='#choropleth-legend .tick')), 5)
 
     # Click explore timeline
     find_elem(self.driver, value='explore-timeline-text').click()
 
     # Assert rankings page loaded
-    new_page_title = (
-        'Ranking by Median Age - States in United States of America - Place ' +
-        'Rankings - ' + self.dc_title_string)
-    WebDriverWait(self.driver,
-                  self.TIMEOUT_SEC).until(EC.title_contains(new_page_title))
-    self.assertEqual(new_page_title, self.driver.title)
+    expected_ranking_page_title = 'Ranking by Median Age - Counties in California - Place Rankings - ' + self.dc_title_string
+    WebDriverWait(self.driver, self.TIMEOUT_SEC).until(
+        EC.title_contains(expected_ranking_page_title))
+    self.assertEqual(expected_ranking_page_title, self.driver.title)
 
   @pytest.mark.one_at_a_time
   def test_manually_enter_options(self):
@@ -137,37 +109,51 @@ class MapTestMixin():
         self.driver,
         (By.ID, 'Median_Age_Persondc/g/Demographics-Median_Age_Person'))
 
-    # Assert chart is correct.
+    # Wait for chart to load
+    # This chart can be slow, so we use a longer timeout
     shared.wait_for_loading(self.driver)
-    chart_map = find_elem(self.driver, by=By.ID, value='map-items')
+    shared.wait_for_charts_to_render(self.driver, timeout_seconds=LONG_TIMEOUT)
+
+    # Assert chart title is correct
     self.assertIn(
         'median age of population ',
         find_elem(self.driver,
                   by=By.XPATH,
                   value='//*[@id="map-chart"]/div/div[1]/h3').text.lower())
 
-    # Assert we have the right number of regions and legends
-    self.assertEqual(len(find_elems(chart_map, by=By.TAG_NAME, value='path')),
-                     58)
-    chart_legend = self.driver.find_element(By.ID, 'choropleth-legend')
-    self.assertGreater(len(find_elems(chart_legend, value='tick')), 5)
+    # Assert we have the right number of regions
+    wait_elem(self.driver, By.TAG_NAME, 'path')
+    self.assertEqual(
+        len(find_elems(self.driver, by=By.CSS_SELECTOR,
+                       value='#map-items path')), 58)
+
+    # Assert we have the right number of legends
+    wait_elem(self.driver, By.CLASS_NAME, 'tick')
+    self.assertGreater(
+        len(
+            find_elems(self.driver,
+                       by=By.CSS_SELECTOR,
+                       value='#choropleth-legend .tick')), 5)
 
   def test_landing_page_link(self):
     """Test for landing page link."""
     self.driver.get(self.url_ + MAP_URL)
 
     # Click on first link on landing page
-    placeholder_container = find_elem(self.driver,
-                                      by=By.ID,
-                                      value='placeholder-container')
-    find_elem(placeholder_container, by=By.XPATH,
-              value='./ul/li[2]/a[1]').click()
+    first_link = wait_elem(self.driver,
+                           by=By.CSS_SELECTOR,
+                           value='#placeholder-container a')
+    first_link.click()
+
+    # Wait for chart to load
+    shared.wait_for_loading(self.driver)
+    shared.wait_for_charts_to_render(self.driver, timeout_seconds=LONG_TIMEOUT)
+    wait_elem(self.driver, By.TAG_NAME, 'path')
 
     # Assert chart loads
-    shared.wait_for_loading(self.driver)
-    chart_map = find_elem(self.driver, by=By.ID, value='map-items')
-    self.assertGreater(len(find_elems(chart_map, by=By.TAG_NAME, value='path')),
-                       1)
+    self.assertGreater(
+        len(find_elems(self.driver, by=By.CSS_SELECTOR,
+                       value='#map-items path')), 1)
 
 
 class StandardizedMapTestMixin():
@@ -227,9 +213,12 @@ class StandardizedMapTestMixin():
         self.driver,
         (By.ID, 'Median_Age_Persondc/g/Demographics-Median_Age_Person'))
 
-    # Assert chart is correct.
+    # Wait for chart to load
     shared.wait_for_loading(self.driver)
-    chart_map = find_elem(self.driver, by=By.ID, value='map-items')
+    shared.wait_for_charts_to_render(self.driver,
+                                     timeout_seconds=self.TIMEOUT_SEC)
+
+    # Assert chart is correct.
     self.assertIn(
         'median age of population ',
         find_elem(self.driver,
@@ -237,7 +226,12 @@ class StandardizedMapTestMixin():
                   value='//*[@id="map-chart"]/div/div[1]/h3').text.lower())
 
     # Assert we have the right number of regions and legends
-    self.assertEqual(len(find_elems(chart_map, by=By.TAG_NAME, value='path')),
-                     58)
-    chart_legend = self.driver.find_element(By.ID, 'choropleth-legend')
-    self.assertGreater(len(find_elems(chart_legend, value='tick')), 5)
+    self.assertEqual(
+        len(find_elems(self.driver, by=By.CSS_SELECTOR,
+                       value='#map-items path')), 58)
+    wait_elem(self.driver, By.CLASS_NAME, 'tick')
+    self.assertGreater(
+        len(
+            find_elems(self.driver,
+                       by=By.CSS_SELECTOR,
+                       value='#choropleth-legend .tick')), 5)

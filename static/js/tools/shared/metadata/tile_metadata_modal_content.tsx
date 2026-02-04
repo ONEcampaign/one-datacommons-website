@@ -43,6 +43,8 @@ interface TileMetadataModalContentProps {
   // a map of the metadata for this section (a mix of stat var
   // and source metadata), with the key being the stat var dcid.
   metadataMap: Record<string, StatVarMetadata[]>;
+  // A map of stat var dcids to their specific min and max date range from the chart
+  statVarDateRanges?: Record<string, { minDate: string; maxDate: string }>;
   // a set of stat var dcids that are used as denominators
   denomStatVarDcids?: Set<string>;
   // root URL used to generate stat var explorer and license links
@@ -52,14 +54,15 @@ interface TileMetadataModalContentProps {
 export const TileMetadataModalContent = ({
   statVars,
   metadataMap,
+  statVarDateRanges,
   denomStatVarDcids,
   apiRoot,
 }: TileMetadataModalContentProps): ReactElement => {
   const theme = useTheme();
 
   const citationParts = useMemo(
-    () => buildCitationParts(statVars, metadataMap),
-    [statVars, metadataMap]
+    () => buildCitationParts(statVars, metadataMap, statVarDateRanges),
+    [statVars, metadataMap, statVarDateRanges]
   );
 
   if (statVars.length === 0) {
@@ -100,6 +103,9 @@ export const TileMetadataModalContent = ({
           metadataList={metadataMap[statVar.dcid] || []}
           isDenom={denomStatVarDcids && denomStatVarDcids.has(statVar.dcid)}
           apiRoot={apiRoot}
+          chartDataDateRange={
+            statVarDateRanges ? statVarDateRanges[statVar.dcid] : undefined
+          }
         />
       ))}
 
@@ -134,14 +140,8 @@ export const TileMetadataModalContent = ({
           <h3>
             {intl.formatMessage(metadataComponentMessages.SourceAndCitation)}
           </h3>
-          <p>
-            {intl.formatMessage(metadataComponentMessages.DataSources)} •{" "}
-            {buildCitationNodes(citationParts)}
-          </p>
-          <p>
-            {intl.formatMessage(metadataComponentMessages.CitationGuidance)} •{" "}
-            {intl.formatMessage(metadataComponentMessages.PleaseCredit)}
-          </p>
+          <p>{buildCitationNodes(citationParts)}</p>
+          <p>{intl.formatMessage(metadataComponentMessages.PleaseCredit)}</p>
         </div>
       )}
     </div>

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import theme from "theme";
+import theme from "../../theme/theme";
 
 jest.mock("axios");
 jest.mock("../../chart/draw_bar");
@@ -55,8 +55,7 @@ async function waitForComponentUpdates(wrapper: ReactWrapper): Promise<void> {
 
 test("Single place and single stat var", async () => {
   globalAny.window = Object.create(window);
-  document.body.innerHTML =
-    '<button id="download-link"></button><a id="bulk-download-link"></a>';
+  document.body.innerHTML = "";
   // Set url hash
   Object.defineProperty(window, "location", {
     writable: true,

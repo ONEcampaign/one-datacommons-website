@@ -36,14 +36,12 @@ import {
 } from "../../shared/context";
 import {
   EXPLORE_RESULT_HEADER,
-  FOLLOW_UP_QUESTIONS_EXPERIMENT,
   FOLLOW_UP_QUESTIONS_GA,
   isFeatureEnabled,
-  PAGE_OVERVIEW_EXPERIMENT,
   PAGE_OVERVIEW_GA,
 } from "../../shared/feature_flags/util";
 import { QueryResult, UserMessageInfo } from "../../types/app/explore_types";
-import { FacetMetadata } from "../../types/facet_metadata";
+import { FacetSelectionCriteria } from "../../types/facet_selection_criteria";
 import { SubjectPageMetadata } from "../../types/subject_page_types";
 import { getTopics } from "../../utils/app/explore_utils";
 import {
@@ -65,18 +63,9 @@ import { UserMessage } from "./user_message";
 
 const PAGE_ID = "explore";
 
-const EXPERIMENT_FOLLOW_UP_ROLLOUT_RATIO = 0.2;
-const EXPERIMENT_PAGE_OVERVIEW_ROLLOUT_RATIO = 0.2;
+const showFollowUpQuestions = isFeatureEnabled(FOLLOW_UP_QUESTIONS_GA);
 
-const showFollowUpQuestions =
-  isFeatureEnabled(FOLLOW_UP_QUESTIONS_GA) ||
-  (isFeatureEnabled(FOLLOW_UP_QUESTIONS_EXPERIMENT) &&
-    Math.random() < EXPERIMENT_FOLLOW_UP_ROLLOUT_RATIO);
-
-const showPageOverview =
-  isFeatureEnabled(PAGE_OVERVIEW_GA) ||
-  (isFeatureEnabled(PAGE_OVERVIEW_EXPERIMENT) &&
-    Math.random() < EXPERIMENT_PAGE_OVERVIEW_ROLLOUT_RATIO);
+const showPageOverview = isFeatureEnabled(PAGE_OVERVIEW_GA);
 
 const showNewExploreResultHeader = isFeatureEnabled(EXPLORE_RESULT_HEADER);
 
@@ -98,35 +87,13 @@ interface SuccessResultPropType {
   hideHeaderSearchBar: boolean;
   // Object containing the highlight page metadata only.
   highlightPageMetadata?: SubjectPageMetadata;
-  // Facet for highlight
-  highlightFacet?: FacetMetadata;
+  // Criteria for selecting the facet.
+  facetSelector?: FacetSelectionCriteria;
 }
 
 export function SuccessResult(props: SuccessResultPropType): ReactElement {
   const searchSectionRef = useRef<HTMLDivElement>(null);
   const chartSectionRef = useRef<HTMLDivElement>(null);
-  if (!props.pageMetadata) {
-    return null;
-  }
-  const childPlaceType = !_.isEmpty(props.pageMetadata.childPlaces)
-    ? Object.keys(props.pageMetadata.childPlaces)[0]
-    : "";
-  const placeUrlVal = (
-    props.exploreContext?.entities || [props.pageMetadata.place.dcid]
-  ).join(URL_DELIM);
-  const topicUrlVal = (props.exploreContext?.variables || []).join(URL_DELIM);
-  // TODO: Consider if we want to include both topics.
-  const relatedPlaceTopic = _.isEmpty(props.pageMetadata.mainTopics)
-    ? {
-        dcid: topicUrlVal,
-        name: "",
-        types: null,
-      }
-    : props.pageMetadata.mainTopics[0];
-
-  const hashParams = queryString.parse(window.location.hash);
-  const maxBlockParam = hashParams[URL_HASH_PARAMS.MAXIMUM_BLOCK];
-  const maxBlock = parseInt(maxBlockParam as string);
 
   useEffect(() => {
     const searchBoundingBox = searchSectionRef.current?.getBoundingClientRect();
@@ -152,6 +119,29 @@ export function SuccessResult(props: SuccessResultPropType): ReactElement {
       window.removeEventListener("scroll", handleScroll);
     };
   }, []);
+
+  if (!props.pageMetadata) {
+    return null;
+  }
+  const childPlaceType = !_.isEmpty(props.pageMetadata.childPlaces)
+    ? Object.keys(props.pageMetadata.childPlaces)[0]
+    : "";
+  const placeUrlVal = (
+    props.exploreContext?.entities || [props.pageMetadata.place.dcid]
+  ).join(URL_DELIM);
+  const topicUrlVal = (props.exploreContext?.variables || []).join(URL_DELIM);
+  // TODO: Consider if we want to include both topics.
+  const relatedPlaceTopic = _.isEmpty(props.pageMetadata.mainTopics)
+    ? {
+        dcid: topicUrlVal,
+        name: "",
+        types: null,
+      }
+    : props.pageMetadata.mainTopics[0];
+
+  const hashParams = queryString.parse(window.location.hash);
+  const maxBlockParam = hashParams[URL_HASH_PARAMS.MAXIMUM_BLOCK];
+  const maxBlock = parseInt(maxBlockParam as string);
   const placeOverviewOnly = isPlaceOverviewOnly(props.pageMetadata);
   const emptyPlaceOverview = shouldSkipPlaceOverview(props.pageMetadata);
   const relatedTopics = getTopics(props.pageMetadata, "");
@@ -233,7 +223,7 @@ export function SuccessResult(props: SuccessResultPropType): ReactElement {
                 {props.highlightPageMetadata && (
                   <HighlightResult
                     highlightPageMetadata={props.highlightPageMetadata}
-                    highlightFacet={props.highlightFacet}
+                    facetSelector={props.facetSelector}
                     maxBlock={maxBlock}
                     apiRoot={props.exploreContext.apiRoot}
                   />
@@ -245,6 +235,7 @@ export function SuccessResult(props: SuccessResultPropType): ReactElement {
                     props.pageMetadata.pageConfig,
                     maxBlock
                   )}
+                  facetSelector={props.facetSelector}
                   svgChartHeight={SVG_CHART_HEIGHT}
                   showExploreMore={true}
                 />

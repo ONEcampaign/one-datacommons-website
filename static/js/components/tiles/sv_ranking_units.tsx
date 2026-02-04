@@ -23,6 +23,10 @@ import { VisType } from "../../apps/visualization/vis_type_configs";
 import { URL_PATH } from "../../constants/app/visualization_constants";
 import { intl } from "../../i18n/i18n";
 import { messages } from "../../i18n/i18n_messages";
+import {
+  ENABLE_CHART_HYPERLINK,
+  isFeatureEnabled,
+} from "../../shared/feature_flags/util";
 import { ObservationSpec } from "../../shared/observation_specs";
 import { StatVarSpec } from "../../shared/types";
 import { TileSources } from "../../tools/shared/metadata/tile_sources";
@@ -34,6 +38,7 @@ import {
 import { RankingTileSpec } from "../../types/subject_page_proto_types";
 import { getHash } from "../../utils/app/visualization_utils";
 import { formatString } from "../../utils/tile_utils";
+import { buildExploreUrl } from "../../utils/url_utils";
 import { RankingUnit } from "../ranking_unit";
 import { ChartFooter } from "./chart_footer";
 
@@ -65,6 +70,10 @@ interface SvRankingUnitsProps {
   isLoading?: boolean;
   statVarSpecs: StatVarSpec[];
   containerRef: React.RefObject<HTMLElement>;
+  surface: string;
+  enableScroll?: boolean;
+  hyperlink?: string;
+  parentPlace: string;
 }
 
 /**
@@ -115,11 +124,13 @@ export function SvRankingUnits(props: SvRankingUnitsProps): JSX.Element {
             props.apiRoot,
             props.statVarSpecs,
             props.containerRef,
+            props.surface,
             highestRankingUnitRef,
             props.onHoverToggled,
             props.errorMsg,
             props.sources,
-            props.isLoading
+            props.isLoading,
+            props.enableScroll
           )}
           {!props.hideFooter && (
             <ChartFooter
@@ -136,6 +147,12 @@ export function SvRankingUnits(props: SvRankingUnitsProps): JSX.Element {
               footnote={props.footnote}
               containerRef={props.containerRef}
               getObservationSpecs={props.getObservationSpecs}
+              surface={props.surface}
+              hyperlink={
+                isFeatureEnabled(ENABLE_CHART_HYPERLINK)
+                  ? getHyperlinkUrl(props)
+                  : undefined
+              }
             ></ChartFooter>
           )}
         </div>
@@ -153,11 +170,13 @@ export function SvRankingUnits(props: SvRankingUnitsProps): JSX.Element {
                 props.apiRoot,
                 props.statVarSpecs,
                 props.containerRef,
+                props.surface,
                 highestRankingUnitRef,
                 props.onHoverToggled,
                 undefined,
                 props.sources,
-                props.isLoading
+                props.isLoading,
+                props.enableScroll
               )}
               {!props.hideFooter && (
                 <ChartFooter
@@ -168,6 +187,12 @@ export function SvRankingUnits(props: SvRankingUnitsProps): JSX.Element {
                   footnote={props.footnote}
                   containerRef={props.containerRef}
                   getObservationSpecs={props.getObservationSpecs}
+                  surface={props.surface}
+                  hyperlink={
+                    isFeatureEnabled(ENABLE_CHART_HYPERLINK)
+                      ? getHyperlinkUrl(props)
+                      : undefined
+                  }
                 ></ChartFooter>
               )}
             </div>
@@ -184,11 +209,13 @@ export function SvRankingUnits(props: SvRankingUnitsProps): JSX.Element {
                 props.apiRoot,
                 props.statVarSpecs,
                 props.containerRef,
+                props.surface,
                 lowestRankingUnitRef,
                 props.onHoverToggled,
                 undefined,
                 props.sources,
-                props.isLoading
+                props.isLoading,
+                props.enableScroll
               )}
               {!props.hideFooter && (
                 <ChartFooter
@@ -199,6 +226,12 @@ export function SvRankingUnits(props: SvRankingUnitsProps): JSX.Element {
                   footnote={props.footnote}
                   containerRef={props.containerRef}
                   getObservationSpecs={props.getObservationSpecs}
+                  surface={props.surface}
+                  hyperlink={
+                    isFeatureEnabled(ENABLE_CHART_HYPERLINK)
+                      ? getHyperlinkUrl(props)
+                      : undefined
+                  }
                 ></ChartFooter>
               )}
             </div>
@@ -274,14 +307,22 @@ function getChartTitle(
 export function getRankingUnitPoints(
   rankingMetadata: RankingTileSpec,
   isHighest: boolean,
-  rankingGroup: RankingGroup
+  rankingGroup: RankingGroup,
+  enableScroll: boolean
 ): { topPoints: RankingPoint[]; bottomPoints: RankingPoint[] } {
   const rankingCount = rankingMetadata.rankingCount || RANKING_COUNT;
-  const topPoints = isHighest
-    ? rankingGroup.points.slice(-rankingCount).reverse()
-    : rankingGroup.points.slice(0, rankingCount);
+  let topPoints = rankingGroup.points;
+  if (!enableScroll) {
+    topPoints = isHighest
+      ? rankingGroup.points.slice(-rankingCount).reverse()
+      : rankingGroup.points.slice(0, rankingCount);
+  } else {
+    topPoints = isHighest
+      ? [...rankingGroup.points].reverse()
+      : rankingGroup.points;
+  }
   let bottomPoints = null;
-  if (rankingMetadata.showHighestLowest) {
+  if (!enableScroll && rankingMetadata.showHighestLowest) {
     // we want a gap of at least 1 point between the top and bottom points
     const numBottomPoints = Math.min(
       rankingGroup.points.length - rankingCount - 1,
@@ -299,6 +340,7 @@ export function getRankingUnitPoints(
  * @param rankingGroup the RankingGroup information to get the ranking unit for
  * @param rankingMetadata the RankingTileSpec to get the ranking unit for
  * @param isHighest whether or not this ranking unit is showing highest
+ * @param surface value to pass into calls to mixer for usage logs
  * @param rankingUnitRef ref object to attach to the ranking unit
  * @param onHoverToggled callback when user hovers over a row
  * @param errorMsg Erorr message
@@ -314,16 +356,19 @@ export function getRankingUnit(
   apiRoot: string,
   statVarSpecs: StatVarSpec[],
   containerRef: React.RefObject<HTMLElement>,
+  surface: string,
   rankingUnitRef?: RefObject<HTMLDivElement>,
   onHoverToggled?: (placeDcid: string, hover: boolean) => void,
   errorMsg?: string,
   sources?: string[],
-  isLoading?: boolean
+  isLoading?: boolean,
+  enableScroll?: boolean
 ): JSX.Element {
   const { topPoints, bottomPoints } = getRankingUnitPoints(
     rankingMetadata,
     isHighest,
-    rankingGroup
+    rankingGroup,
+    enableScroll
   );
   const title = getRankingUnitTitle(
     tileConfigTitle,
@@ -358,13 +403,34 @@ export function getRankingUnit(
             facets={rankingGroup.facets}
             statVarToFacets={rankingGroup.statVarToFacets}
             statVarSpecs={statVarSpecs}
+            surface={surface}
           />
         )
       }
       errorMsg={errorMsg}
       apiRoot={apiRoot}
       entityType={entityType}
+      enableScroll={enableScroll}
     />
+  );
+}
+
+function getHyperlinkUrl(props: SvRankingUnitsProps): string {
+  const { statVar, statVarSpecs, parentPlace, rankingData } = props;
+  const rankingGroup = rankingData[statVar];
+  let facetMetadata = undefined;
+  if (rankingGroup && rankingGroup.facets && rankingGroup.statVarToFacets) {
+    const facetIds = rankingGroup.statVarToFacets[statVar];
+    if (facetIds && facetIds.size > 0) {
+      const firstFacetId = Array.from(facetIds)[0];
+      facetMetadata = rankingGroup.facets[firstFacetId];
+    }
+  }
+  return buildExploreUrl(
+    "RANKING_WITH_MAP",
+    [parentPlace],
+    statVarSpecs,
+    facetMetadata
   );
 }
 

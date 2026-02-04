@@ -30,7 +30,7 @@ import {
 import { intl } from "../../i18n/i18n";
 import { SdgContext } from "../../shared/context";
 import { NamedTypedPlace } from "../../shared/types";
-import theme from "theme";
+import theme from "../../theme/theme";
 import { TopicsSummary } from "../../types/app/topic_page_types";
 import { SubjectPageConfig } from "../../types/subject_page_proto_types";
 import { PageSelector } from "./page_selector";

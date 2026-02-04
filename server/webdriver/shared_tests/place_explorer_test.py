@@ -243,7 +243,9 @@ class PlaceExplorerTestMixin():
 
     # Assert the subheader contains the parent places.
     self.assertIsNotNone(find_elem(self.driver, value='place-info'))
-    self.assertIsNone(find_elem(self.driver, value='subheader'))
+    # Use find_elements to avoid waiting for timeout when asserting non-existence
+    self.assertEqual(len(self.driver.find_elements(By.CLASS_NAME, 'subheader')),
+                     0)
 
     # Asert the related places box exists
     self.assertEqual(
@@ -294,10 +296,9 @@ class PlaceExplorerTestMixin():
     map_container = scroll_to_elem(self.driver, value='map-chart')
     self.assertIsNotNone(map_container)
 
-    map_geo_regions = find_elem(map_container,
-                                by=By.ID,
-                                value='map-geo-regions',
-                                path_to_elem=['map-items'])
+    map_geo_regions = find_elem(self.driver,
+                                by=By.CSS_SELECTOR,
+                                value='.map-chart #map-items #map-geo-regions')
     self.assertIsNotNone(map_geo_regions)
     self.assertEqual(
         len(find_elems(map_geo_regions, by=By.TAG_NAME, value='path')),
@@ -343,8 +344,9 @@ class PlaceExplorerTestMixin():
     self.assertEqual(
         len(
             find_elems(self.driver,
-                       value='key-demographics-row',
-                       path_to_elem=['key-demographics-table'])), 4)
+                       by=By.CSS_SELECTOR,
+                       value='.key-demographics-table .key-demographics-row')),
+        4)
 
     shared.assert_topics(self,
                          self.driver,
@@ -395,8 +397,9 @@ class PlaceExplorerTestMixin():
     self.assertEqual(
         len(
             find_elems(self.driver,
-                       value='key-demographics-row',
-                       path_to_elem=['key-demographics-table'])), 4)
+                       by=By.CSS_SELECTOR,
+                       value='.key-demographics-table .key-demographics-row')),
+        4)
 
     # And that the categories have data
     topics_in_overview = [
@@ -450,8 +453,9 @@ class PlaceExplorerTestMixin():
     self.assertEqual(
         len(
             find_elems(self.driver,
-                       value='key-demographics-row',
-                       path_to_elem=['key-demographics-table'])), 4)
+                       by=By.CSS_SELECTOR,
+                       value='.key-demographics-table .key-demographics-row')),
+        4)
 
     # And that the categories have data
     topics_in_overview = [
@@ -501,7 +505,10 @@ class PlaceExplorerTestMixin():
     )
 
     # Asert the related places box does not exist
-    self.assertIsNone(find_elem(self.driver, value='related-places-callout'))
+    # Use find_elements to avoid waiting for timeout when asserting non-existence
+    self.assertEqual(
+        len(self.driver.find_elements(By.CLASS_NAME, 'related-places-callout')),
+        0)
 
     # Assert the overview exists, has a map. Zips have no summaries.
     self.assertIsNotNone(find_elem(self.driver, value='map-container'))
@@ -510,8 +517,9 @@ class PlaceExplorerTestMixin():
     self.assertEqual(
         len(
             find_elems(self.driver,
-                       value='key-demographics-row',
-                       path_to_elem=['key-demographics-table'])), 3)
+                       by=By.CSS_SELECTOR,
+                       value='.key-demographics-table .key-demographics-row')),
+        3)
 
     # And that the categories have data
     topics_in_overview = [

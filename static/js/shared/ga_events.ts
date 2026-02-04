@@ -145,9 +145,10 @@ export const GA_EVENT_TOOL_STAT_VAR_SEARCH_NO_RESULT =
  * Event name: tool_chart_option_click
  * Triggered when: a tool chart option is selected or blured (population filter) or updated (sources).
  * Parameters with value: {
- *                         tool_chart_option: "per capita" or "delta" or "log scale" or "show quadrants"
+ *                         tool_chart_option: "per capita" or "log scale" or "show quadrants"
  *                         or "show labels" or "show density" or "edit sources" or "filter by population"
  *                        }
+ * Note: "delta" was a tool_chart_option until January 2026.
  */
 export const GA_EVENT_TOOL_CHART_OPTION_CLICK = "tool_chart_option_click";
 
@@ -334,6 +335,11 @@ export const GA_EVENT_PAGE_OVERVIEW_CLICK = "page_overview_click";
  */
 export const GA_EVENT_TOTAL_ANCHOR_COUNT = "total_anchor_count";
 
+/**
+ * Triggered when a highlight chart is injected into the explore page.
+ */
+export const GA_EVENT_HIGHLIGHT_CHART_INJECTED = "highlight_chart_injected";
+
 // GA event parameters
 export const GA_PARAM_PLACE_CATEGORY_CLICK_SOURCE =
   "place_category_click_source";
@@ -350,12 +356,15 @@ export const GA_PARAM_ID = "id";
 export const GA_PARAM_SOURCE = "source";
 export const GA_PARAM_TOPIC = "topic";
 export const GA_PARAM_PLACE = "place";
+export const GA_PARAM_CHART_TYPE = "chart_type";
 export const GA_PARAM_TIMING_MS = "time_ms";
 export const GA_PARAM_AUTOCOMPLETE_SELECTION_INDEX = "selection_index";
 export const GA_PARAM_SELECTION_TYPE = "selection_type";
 export const GA_PARAM_SELECTION_TEXT = "selection_text";
 export const GA_PARAM_QUERY_AT_SELECTION = "query_at_selection";
 export const GA_PARAM_DYNAMIC_PLACEHOLDER = "dynamic_placeholders_enabled";
+export const GA_EVENT_STATVAR_AUTOCOMPLETE_ENABLED =
+  "statvar_autocomplete_enabled";
 export const GA_PARAM_SEARCH_SELECTION = "search_selection";
 export const GA_PARAM_RELATED_TOPICS_MODE = "related_topics_mode";
 export const GA_PARAM_PAGE_SOURCE = "page_source";
@@ -375,7 +384,6 @@ export const GA_VALUE_PLACE_CATEGORY_CLICK_SOURCE_SIDEBAR = "sidebar";
 export const GA_VALUE_PLACE_CATEGORY_CLICK_SOURCE_CHART_HEADER = "chart header";
 export const GA_VALUE_PLACE_CATEGORY_CLICK_SOURCE_MORE_CHARTS = "more charts";
 export const GA_VALUE_TOOL_CHART_OPTION_PER_CAPITA = "per capita";
-export const GA_VALUE_TOOL_CHART_OPTION_DELTA = "delta";
 export const GA_VALUE_TOOL_CHART_OPTION_LOG_SCALE = "log scale";
 export const GA_VALUE_TOOL_CHART_OPTION_SWAP = "swap x and y axis";
 export const GA_VALUE_TOOL_CHART_OPTION_SHOW_QUADRANTS = "show quadrants";
@@ -388,8 +396,6 @@ export const GA_VALUE_TOOL_CHART_OPTION_SHOW_POPULATION_LINEAR =
 export const GA_VALUE_TOOL_CHART_OPTION_SHOW_POPULATION_LOG =
   "show population log";
 export const GA_VALUE_TOOL_CHART_OPTION_EDIT_SOURCES = "edit sources";
-export const GA_VALUE_TOOL_CHART_OPTION_FILTER_BY_POPULATION =
-  "filter by population";
 export const GA_VALUE_PAGE_EXPLORE = "explore";
 export const GA_VALUE_SEARCH_SOURCE_EXPLORE_LANDING = "explore_landing";
 export const GA_VALUE_SEARCH_SOURCE_HOMEPAGE = "homepage";

@@ -12,6 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<<< HEAD:tools/nl/nl_metadata/.env.sample
+# NL Metadata sample environment file
+#
+# Instructions:
+# - Copy this file to tools/nl/nl_metadata/.env
+# - Replace the environment variables below with actual api key values
+
+DC_API_KEY=YOUR-DC-API-KEY-HERE
+GEMINI_API_KEY=YOUR-GEMINI-API-KEY-HERE
+GEMINI_API_KEYS="YOUR-GEMINI-KEY-1,YOUR-GEMINI-KEY-2,YOUR-GEMINI-KEY-3,..."
+========
 from server.app_env import custom
 from server.app_env import local
 
@@ -26,3 +37,4 @@ class LocalConfig(Config, local.Config):
 
 class ComposeConfig(Config, local.Config):
   pass
+>>>>>>>> upstream/customdc_stable:server/app_env/custom_test.py

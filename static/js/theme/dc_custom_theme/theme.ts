@@ -18,7 +18,7 @@
  * The default Emotion theme for Data Commons
  */
 
-import { Theme } from "theme/types";
+import { Theme } from "./types";
 
 const BREAKPOINTS = {
   xs: 0,
@@ -55,35 +55,49 @@ const WIDTH = {
 
 const DC_BLACK = "hsl(0, 0%, 18.82%)";
 
+const DC_BLACK_30 = "hsl(0, 0.00%, 30%)";
+
+const DC_BLACK_70 = "hsl(0, 0.00%, 70%)";
+const DC_BLACK_80 = "hsl(0, 0.00%, 80%)";
+
 const DC_WHITE = "hsl(255, 100%, 100%)";
 const DC_BONE = "hsl(216, 55%, 98%)";
 
 const DC_BLUE = "hsl(217, 90%, 43%)";
+const DC_BLUE_DARK = "hsl(217, 90%, 15%)";
+const DC_BLUE_LIGHT = "hsl(218, 57%, 63%)";
+const DC_BLUE_LIGHTER = "hsl(204, 100%, 88%)";
+const DC_BLUE_LIGHTEST = "hsl(204, 100%, 88%, 33%)";
+const DC_BLUE_WHITE = "hsl(220, 100%, 98%)";
+const DC_BLUE_WHITE_LIGHT = "hsl(217, 90%, 95%)";
+
 const DC_BLUE_PILL_TEXT = "hsl(217, 90%, 15%)";
 const DC_BLUE_PILL_BCKG = "hsl(218, 92%, 95%)";
 const DC_BLUE_PILL_BCKG_HOVER = "hsl(204, 90%, 80%)";
-
-const DC_BLUE_DARK = "hsl(217.4, 89.6%, 15.1%)";
-const DC_BLUE_LIGHT = "hsl(218, 57.1%, 62.5%)";
-const DC_BLUE_LIGHTER = "hsl(204, 100%, 88%)";
-const DC_BLUE_WHITE = "hsl(220, 100%, 98.2%)";
 
 const DC_GREEN = "hsl(137, 68%, 25%)";
 const DC_GREEN_PILL_TEXT = "hsl(139, 70%, 9%)";
 const DC_GREEN_PILL_BCKG = "hsl(137, 55%, 85%)";
 
-const DC_RED = "hsl(3.2, 71.3%, 41%)";
-const DC_RED_PILL_TEXT = "hsl(3.3, 71.1%, 14.9%)";
-const DC_RED_PILL_BCKG = "hsl(4.1, 70.7%, 92%)";
+const DC_RED = "hsl(3, 71%, 41%)";
+const DC_RED_PILL_TEXT = "hsl(3, 71%, 15%)";
+const DC_RED_PILL_BCKG = "hsl(4, 71%, 92%)";
 
-const DC_YELLOW = "hsl(35.3, 100%, 29%)";
-const DC_YELLOW_PILL_TEXT = "hsl(3.3, 71.1%, 14.9%)";
-const DC_YELLOW_PILL_BCKG = "hsl(40.4, 100%, 91%)";
+const DC_YELLOW = "hsl(35, 100%, 29%)";
+const DC_YELLOW_PILL_TEXT = "hsl(3, 71%, 15%)";
+const DC_YELLOW_PILL_BCKG = "hsl(40, 100%, 91%)";
 
-const DC_GRAY = "hsl(160, 2.2%, 27.3%)";
+const DC_ORANGE = "hsl(26 100% 35.9%)";
+const DC_YELLOW_DARK = "hsl(43 100% 35.9%)";
+
+const DC_GRAY_DARK = "hsl(200, 2.9%, 41.2%)";
+const DC_GRAY = "hsl(160, 2%, 27%)";
+const DC_GRAY_LIGHT = "hsl(0, 0%, 48%)";
+const DC_GRAY_LINING = "hsl(140, 3%, 77%)";
+const DC_GRAY_TOOLTIP = "hsl(213, 43%, 96%)";
+
 const DC_GRAY_PILL_TEXT = DC_YELLOW;
-const DC_GRAY_PILL_BCKG = "hsl(240, 20.8%, 90.6%)";
-const DC_GRAY_LIGHT = "hsl(0, 0%, 78%)";
+const DC_GRAY_PILL_BCKG = "hsl(240, 29%, 91%)";
 
 const theme: Theme = {
   breakpoints: BREAKPOINTS,
@@ -97,20 +111,44 @@ const theme: Theme = {
         dark: DC_BLUE_DARK,
         light: DC_WHITE,
       },
+      secondary: {
+        base: DC_GRAY,
+        dark: DC_BLACK_80,
+        light: DC_GRAY_PILL_BCKG,
+      },
+      tertiary: {
+        base: DC_GRAY_LIGHT,
+        dark: DC_GRAY_DARK,
+      },
+      code: {
+        base: DC_GREEN,
+        light: DC_GREEN_PILL_BCKG,
+        dark: DC_GREEN_PILL_TEXT,
+      },
     },
     background: {
       primary: {
         base: DC_WHITE,
         dark: DC_BLUE_DARK,
-        light: "#73175A",
+        light: DC_BLUE_WHITE,
+      },
+      secondary: {
+        base: DC_BONE,
+        dark: DC_GRAY,
+        light: DC_BLUE_WHITE,
       },
     },
     border: {
       primary: {
         base: DC_WHITE,
         dark: DC_BLUE_DARK,
-        light: DC_GRAY_LIGHT,
+        light: DC_BLACK_80,
       },
+    },
+    tabs: {
+      selected: DC_BLUE,
+      unselected: DC_BLACK_30,
+      lining: DC_GRAY_LINING,
     },
     box: {
       blue: {
@@ -139,9 +177,9 @@ const theme: Theme = {
         pill: DC_GRAY_PILL_BCKG,
       },
       tooltip: {
-        text: DC_WHITE,
-        tag: DC_BLACK,
-        pill: DC_BLACK,
+        text: DC_GRAY,
+        tag: DC_BLUE,
+        pill: DC_GRAY_TOOLTIP,
       },
     },
     link: {
@@ -152,7 +190,7 @@ const theme: Theme = {
       },
       secondary: {
         base: DC_GRAY,
-        light: DC_GRAY_LIGHT,
+        light: DC_BLACK_80,
         dark: DC_BLACK,
       },
     },
@@ -163,15 +201,26 @@ const theme: Theme = {
         dark: DC_BLUE_DARK,
       },
     },
+    error: {
+      primary: {
+        base: DC_RED,
+        light: DC_YELLOW,
+        dark: DC_RED_PILL_TEXT,
+      },
+    },
   },
   typography: {
     family: {
       text: {
-        fontFamily: "colfax-web, Arial, sans-serif",
+        fontFamily: "'Google Sans Text', Arial, sans-serif",
         fontStyle: "normal",
       },
       heading: {
-        fontFamily: "colfax-web, Arial, sans-serif",
+        fontFamily: "'Google Sans', Arial, sans-serif",
+        fontStyle: "normal",
+      },
+      code: {
+        fontFamily: "Courier, Monaco, Lucida Console, Courier New, monospace",
         fontStyle: "normal",
       },
     },
@@ -214,12 +263,12 @@ const theme: Theme = {
       xs: {
         fontSize: "1.375rem",
         lineHeight: "1.75rem",
-        fontWeight: 700,
+        fontWeight: 300,
       },
       sm: {
         fontSize: "1.75rem",
         lineHeight: "2.25rem",
-        fontWeight: 700,
+        fontWeight: 300,
         [`@media (max-width: ${BREAKPOINTS.md}px)`]: {
           fontSize: "1.5rem",
           lineHeight: "2rem",
@@ -228,7 +277,7 @@ const theme: Theme = {
       md: {
         fontSize: "2rem",
         lineHeight: "2.5rem",
-        fontWeight: 700,
+        fontWeight: 300,
         [`@media (max-width: ${BREAKPOINTS.md}px)`]: {
           fontSize: "1.7rem",
           lineHeight: "2.25rem",
@@ -237,7 +286,7 @@ const theme: Theme = {
       lg: {
         fontSize: "2.25rem",
         lineHeight: "2.75rem",
-        fontWeight: 700,
+        fontWeight: 300,
         [`@media (max-width: ${BREAKPOINTS.md}px)`]: {
           fontSize: "1.8rem",
           lineHeight: "2.4rem",
@@ -246,7 +295,7 @@ const theme: Theme = {
       xl: {
         fontSize: "3rem",
         lineHeight: "2.75rem",
-        fontWeight: 700,
+        fontWeight: 300,
         [`@media (max-width: ${BREAKPOINTS.md}px)`]: {
           fontSize: "2.4rem",
           lineHeight: "2.75rem",
@@ -258,17 +307,148 @@ const theme: Theme = {
     primary: {
       backgroundColor: DC_BONE,
       textDecoration: "none",
-      ["&:hover"]: {
+      ["&:hover:not(:disabled)"]: {
         backgroundColor: DC_BLUE_PILL_BCKG,
       },
     },
     secondary: {
       backgroundColor: DC_BLUE_LIGHTER,
       textDecoration: "none",
-      ["&:hover"]: {
+      ["&:hover:not(:disabled)"]: {
         backgroundColor: DC_BLUE_PILL_BCKG_HOVER,
       },
     },
+  },
+  button: {
+    variant: {
+      standard: {
+        color: DC_BLUE,
+        backgroundColor: DC_WHITE,
+        border: `1px solid ${DC_BLACK_70}`,
+        borderRadius: `1000px`,
+        ["&:hover:not(:disabled):not([aria-disabled])"]: {
+          backgroundColor: DC_WHITE,
+          color: DC_BLUE,
+          border: `1px solid ${DC_BLUE}`,
+        },
+      },
+      inverted: {
+        color: DC_BLUE,
+        backgroundColor: DC_BLUE_LIGHTER,
+        border: `1px solid ${DC_BLUE_LIGHTER}`,
+        borderRadius: `1000px`,
+        ["&:hover:not(:disabled):not([aria-disabled])"]: {
+          backgroundColor: DC_BLUE_LIGHTER,
+          color: DC_BLUE,
+          border: `1px solid ${DC_BLUE}`,
+        },
+      },
+      text: {
+        color: DC_BLUE,
+        backgroundColor: "transparent",
+        border: `1px solid transparent`,
+        borderRadius: `1000px`,
+        ["&:hover:not(:disabled):not([aria-disabled])"]: {
+          backgroundColor: "transparent",
+          color: DC_BLUE,
+          border: `1px solid ${DC_BLUE}`,
+        },
+      },
+      flat: {
+        color: DC_BLUE,
+        backgroundColor: DC_BLUE_WHITE_LIGHT,
+        border: `1px solid ${DC_BLUE_WHITE_LIGHT}`,
+        borderRadius: "100px",
+        ["&:hover:not(:disabled):not([aria-disabled])"]: {
+          backgroundColor: DC_BLUE_WHITE_LIGHT,
+          color: DC_BLUE,
+          border: `1px solid ${DC_BLUE}`,
+        },
+      },
+      light: {
+        color: DC_GRAY_LIGHT,
+        backgroundColor: "transparent",
+        border: "none",
+        borderRadius: "none",
+        ["&:hover:not(:disabled):not([aria-disabled])"]: {
+          backgroundColor: "transparent",
+          color: DC_BLUE,
+          border: "none",
+        },
+      },
+    },
+    size: {
+      sm: {
+        padding: `7px ${SPACING.md}px`,
+      },
+      md: {
+        padding: `11px ${SPACING.md}px 9px`,
+      },
+      lg: {
+        padding: `15px ${SPACING.lg}px`,
+      },
+    },
+  },
+  infoBox: {
+    backgroundColor: DC_BLUE_LIGHTEST,
+    icon: {
+      fontSize: "1.5rem",
+      lineHeight: "2rem",
+      [`@media (max-width: ${BREAKPOINTS.sm}px)`]: {
+        fontSize: "1.35rem",
+        lineHeight: "1.5rem",
+      },
+    },
+    heading: {
+      fontSize: "1.5rem",
+      lineHeight: "2rem",
+      fontWeight: 500,
+      [`@media (max-width: ${BREAKPOINTS.sm}px)`]: {
+        fontSize: "1.35rem",
+        lineHeight: "1.75rem",
+      },
+    },
+  },
+  codeHighlight: {
+    background: DC_WHITE,
+    border: DC_BLACK_80,
+    text: DC_GRAY,
+    highlight: DC_YELLOW_PILL_BCKG,
+    selection: DC_BLUE_WHITE_LIGHT,
+    comment: DC_GRAY_LIGHT,
+    prolog: DC_GRAY_LIGHT,
+    doctype: DC_GRAY_LIGHT,
+    cData: DC_GRAY_LIGHT,
+    punctuation: DC_BLUE_DARK,
+    property: DC_BLUE,
+    tag: DC_BLUE,
+    boolean: DC_BLUE,
+    number: DC_BLUE,
+    constant: DC_BLUE,
+    symbol: DC_BLUE,
+    deleted: DC_BLUE,
+    selector: DC_GREEN,
+    attrName: DC_GREEN,
+    string: DC_GREEN,
+    char: DC_GREEN,
+    builtin: DC_GREEN,
+    inserted: DC_GREEN,
+    operator: DC_ORANGE,
+    entity: DC_ORANGE,
+    url: DC_ORANGE,
+    langCSS: DC_ORANGE,
+    atrule: DC_BLUE,
+    attrValue: DC_BLUE,
+    keyword: DC_BLUE,
+    function: DC_BLUE,
+    className: DC_BLUE,
+    regex: DC_YELLOW_DARK,
+    important: DC_YELLOW_DARK,
+    variable: DC_YELLOW_DARK,
+    csvHeader: DC_GREEN,
+    csvSeparator: DC_ORANGE,
+    csvStringValue: DC_GRAY_LIGHT,
+    csvValue: DC_BLUE,
   },
   elevation: {
     none: {
@@ -302,61 +482,12 @@ const theme: Theme = {
       borderRadius: "8px",
     },
   },
-  button: {
-    variant: {
-      standard: {
-        backgroundColor: DC_BLUE,
-        color: DC_WHITE,
-        border: `1px solid ${DC_BLUE}`,
-        borderRadius: `1000px`,
-        ["&:hover:not(:disabled):not([aria-disabled])"]: {
-          backgroundColor: DC_BLUE_DARK,
-          color: DC_WHITE,
-          border: `1px solid ${DC_BLUE_DARK}`,
-        },
-      },
-      inverted: {
-        backgroundColor: DC_WHITE,
-        color: DC_BLUE,
-        border: `1px solid ${DC_BLUE}`,
-        borderRadius: `1000px`,
-        ["&:hover:not(:disabled):not([aria-disabled])"]: {
-          backgroundColor: DC_BLUE_LIGHTER,
-          color: DC_BLUE,
-          border: `1px solid ${DC_BLUE}`,
-        },
-      },
-    },
-    size: {
-      sm: {
-        padding: "8px 16px",
-      },
-      md: {
-        padding: "12px 24px",
-      },
-      lg: {
-        padding: "16px 32px",
-      },
-    },
-  },
-  infoBox: {
-    backgroundColor: DC_BLUE_WHITE,
-    heading: {
-      fontSize: "1.375rem",
-      lineHeight: "1.75rem",
-      fontWeight: 700,
-    },
-    icon: {
-      fontSize: "1.5rem",
-      lineHeight: "1.5rem",
-    },
-  },
   zIndex: {
-    tooltip: 1070,
-    dialog: 1050,
+    tooltip: 15000,
+    dialog: 10000,
   },
   tooltip: {
-    width: "200px",
+    width: "300px",
   },
 };
 

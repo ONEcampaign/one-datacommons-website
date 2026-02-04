@@ -18,7 +18,8 @@
  * Card for selecting places in a parent place for our visualization tools.
  */
 
-import { css, useTheme } from "@emotion/react";
+import { css, SerializedStyles, useTheme } from "@emotion/react";
+import styled from "@emotion/styled";
 import _ from "lodash";
 import React, { useEffect, useState } from "react";
 
@@ -36,6 +37,9 @@ import {
 } from "./place_select_utils";
 
 interface EnclosedPlacesSelectorProps {
+  // Other components/elements to render next to the place type selector
+  // Useful for cases like the scatter tool that has a chart type toggle
+  additionalControls?: React.ReactNode;
   // Current selected enclosed place type.
   enclosedPlaceType: string;
   // Callback to run when a place type is selected.
@@ -44,6 +48,8 @@ interface EnclosedPlacesSelectorProps {
   onPlaceSelected: (place: NamedTypedPlace) => void;
   // Text to show before the search bar.
   searchBarInstructionText?: string;
+  // Placeholder text to show in the place search bar.
+  searchBarPlaceholderText?: string;
   // Selected enclosing place.
   selectedParentPlace: NamedTypedPlace;
 }
@@ -102,10 +108,9 @@ export function EnclosedPlacesSelector(
   return (
     <div
       css={css`
-        align-items: center;
         display: flex;
-        flex-direction: row;
-        gap: ${theme.spacing.sm}px;
+        flex-direction: column;
+        gap: ${theme.spacing.md}px;
         flex-wrap: wrap;
         flex-grow: 1;
       `}
@@ -115,8 +120,9 @@ export function EnclosedPlacesSelector(
         numPlacesLimit={1}
         searchBarInstructionText={
           props.searchBarInstructionText ||
-          intl.formatMessage(toolMessages.enterAPlaceInstruction)
+          intl.formatMessage(toolMessages.placeSearchBoxLabel)
         }
+        searchBarPlaceholderText={props.searchBarPlaceholderText}
         selectedPlaces={
           props.selectedParentPlace.dcid
             ? {
@@ -126,24 +132,53 @@ export function EnclosedPlacesSelector(
             : {}
         }
       />
-      <div>{intl.formatMessage(toolMessages.childPlaceTypeInstruction)}</div>
-      <div>
-        <select
+      <div
+        css={css`
+          align-items: center;
+          display: flex;
+          flex-direction: row;
+          flex-wrap: wrap;
+          gap: ${theme.spacing.sm}px;
+        `}
+      >
+        <div>{intl.formatMessage(toolMessages.placeTypeGranularityLabel)}</div>
+        <PlaceTypeSelect
           id={"place-selector-place-type"}
           className="form-control"
           value={props.enclosedPlaceType}
           onChange={(event): void =>
             props.onEnclosedPlaceTypeSelected(event.target.value)
           }
+          isHighlighted={
+            props.selectedParentPlace.dcid && !props.enclosedPlaceType
+          }
         >
-          <option value="">Select a place type</option>
+          <option value="">
+            {intl.formatMessage(toolMessages.placeTypeDropdownPlaceholder)}
+          </option>
           {childPlaceTypes.map((type) => (
             <option value={type} key={type}>
               {ENCLOSED_PLACE_TYPE_NAMES[type] || type}
             </option>
           ))}
-        </select>
+        </PlaceTypeSelect>
+        {props.additionalControls}
       </div>
     </div>
   );
 }
+
+/** A select component with custom styling that allows the selector to be highlighted */
+const PlaceTypeSelect = styled.select<{ isHighlighted: boolean }>`
+  // Add a smooth transition for the highlight effect
+  transition: box-shadow 0.15s ease-in-out, border-color 0.15s ease-in-out;
+
+  // Conditionally apply highlight
+  ${(props): SerializedStyles | false =>
+    props.isHighlighted &&
+    css`
+      border-color: ${props.theme.colors.button.primary.base};
+      outline: 0;
+      box-shadow: 0 0 0 0.2rem ${props.theme.colors.button.primary.light};
+    `}
+`;

@@ -20,6 +20,7 @@
 
 import { css, ThemeProvider, useTheme } from "@emotion/react";
 import React, { ReactElement, useContext, useEffect, useState } from "react";
+import { RawIntlProvider } from "react-intl";
 import { Container, Row } from "reactstrap";
 
 import { ASYNC_ELEMENT_HOLDER_CLASS } from "../../constants/css_constants";
@@ -29,7 +30,7 @@ import {
   isFeatureEnabled,
   STANDARDIZED_VIS_TOOL_FEATURE_FLAG,
 } from "../../shared/feature_flags/util";
-import theme from "theme";
+import theme from "../../theme/theme";
 import { ToolHeader } from "../shared/tool_header";
 import { ChartLinkChips } from "../shared/vis_tools/chart_link_chips";
 import { VisToolInstructionsBox } from "../shared/vis_tools/vis_tool_instructions_box";
@@ -40,13 +41,13 @@ import { PlaceOptions } from "./place_options";
 import { StatVarChooser } from "./stat_var_chooser";
 import { Title } from "./title";
 import {
-  ALLOW_LEAFLET_URL_ARG,
   applyHashDate,
   applyHashDisplay,
   applyHashPlaceInfo,
   applyHashStatVar,
   ifShowChart,
   MAP_URL_PATH,
+  shouldShowStatVarInstructions,
   updateHashDisplay,
   updateHashPlaceInfo,
   updateHashStatVar,
@@ -61,7 +62,10 @@ function App(): ReactElement {
   const theme = useTheme();
   const { placeInfo, statVar } = useContext(Context);
   const showChart = ifShowChart(statVar.value, placeInfo.value);
-  const showInstructions = !showChart;
+  const showStatVarInstructions = shouldShowStatVarInstructions(
+    statVar.value,
+    placeInfo.value
+  );
 
   return (
     <React.StrictMode>
@@ -76,7 +80,6 @@ function App(): ReactElement {
               <ToolHeader
                 title={intl.formatMessage(toolMessages.mapToolTitle)}
                 subtitle={intl.formatMessage(toolMessages.mapToolSubtitle)}
-                switchToolsUrl="/tools/visualization#visType%3Dmap"
               />
             ) : (
               <Title />
@@ -85,11 +88,12 @@ function App(): ReactElement {
           <Row>
             <PlaceOptions toggleSvHierarchyModal={toggleSvModalCallback} />
           </Row>
-          {showInstructions && (
+          {!showChart && (
             <Row>
               {useStandardizedUi ? (
-                <>
+                showStatVarInstructions ? (
                   <VisToolInstructionsBox toolType="map" />
+                ) : (
                   <div
                     css={css`
                       margin-top: ${theme.spacing.xl}px;
@@ -97,7 +101,7 @@ function App(): ReactElement {
                   >
                     <ChartLinkChips toolType="map" />
                   </div>
-                </>
+                )
               ) : (
                 <Info />
               )}
@@ -125,9 +129,11 @@ export function AppWithContext(): ReactElement {
 
   return (
     <ThemeProvider theme={theme}>
-      <Context.Provider value={store}>
-        <App />
-      </Context.Provider>
+      <RawIntlProvider value={intl}>
+        <Context.Provider value={store}>
+          <App />
+        </Context.Provider>
+      </RawIntlProvider>
     </ThemeProvider>
   );
 }
@@ -149,14 +155,6 @@ function updateHash(context: ContextType): void {
   hash = updateHashPlaceInfo(hash, context.placeInfo.value);
   hash = updateHashDisplay(hash, context.display.value);
   const args = new URLSearchParams(location.search);
-  // leaflet flag is part of the search arguments instead of hash, so need to
-  // update that separately
-  if (context.display.value.allowLeaflet) {
-    args.set(ALLOW_LEAFLET_URL_ARG, "1");
-  } else {
-    // Do not propagate this argument. Let context settings control this instead.
-    args.delete(ALLOW_LEAFLET_URL_ARG);
-  }
   const newHash = hash ? `#${encodeURIComponent(hash)}` : "";
   const newArgs = args.toString() ? `?${args.toString()}` : "";
   const currentHash = location.hash.replace("#", "");
