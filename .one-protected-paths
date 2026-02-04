@@ -18,5 +18,7 @@ justfile
 CONTRIBUTING-AT-ONE.md
 .one-protected-paths
 
-# Files with ONE-specific additions
+# Files with ONE-specific modifications
 .gitignore
+static/package.json
+static/tsconfig.json

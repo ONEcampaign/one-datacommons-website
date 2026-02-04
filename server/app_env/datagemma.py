@@ -17,12 +17,8 @@ from server.app_env import local
 
 
 class Config(custom.Config):
-<<<<<<<< HEAD:server/app_env/custom_test.py
-  NAME = "Custom Data Commons (Test)"
-========
   USE_LLM = True
   SECRET_PROJECT = 'datcom-datagemma'
->>>>>>>> upstream/customdc_stable:server/app_env/datagemma.py
 
 
 class LocalConfig(Config, local.Config):

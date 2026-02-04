@@ -11,22 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-<<<<<<<< HEAD:server/app_env/datagemma.py
-
-from server.app_env import custom
-from server.app_env import local
-
-
-class Config(custom.Config):
-  USE_LLM = True
-  SECRET_PROJECT = 'datcom-datagemma'
-
-
-class LocalConfig(Config, local.Config):
-  pass
-
-
-class ComposeConfig(Config, local.Config):
-  pass
-========
->>>>>>>> upstream/customdc_stable:server/lib/nl/detection/agent/__init__.py

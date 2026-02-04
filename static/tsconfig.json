@@ -17,7 +17,13 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "moduleResolution": "node",
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+    "baseUrl": ".",
+    "paths": {
+      "theme": ["./js/theme/dc_custom_theme"],
+      "theme/*": ["./js/theme/dc_custom_theme/*"],
+      "js/components/nl_search_bar/auto_complete_input": ["./js/apps/custom_dc/one/base/components/nl_search_bar/auto_complete_input"]
+    }
   },
   "ts-node": {
     "compilerOptions": {

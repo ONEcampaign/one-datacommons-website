@@ -51,31 +51,141 @@ Run `just` or `just --list` for the full list. Here are the most common ones:
 
 ## Syncing Upstream Changes
 
-The upstream Data Commons project tags stable releases as `customdc_stable`. To pull in their latest changes:
+The upstream Data Commons project releases stable updates on the `customdc_stable` branch. To pull in their latest changes:
 
 ```bash
-# Guided (shows you each step):
+# 1. Check how far behind you are:
 just sync
 
-# Automatic (does everything in one go):
-just sync-auto
+# 2. Merge (pick one):
+just sync-auto       # Merge, stop on conflicts for manual resolution
+just sync-theirs     # Merge, accept upstream for ALL conflicts
+just sync-resolve    # Merge, accept upstream for most, flag protected files for review
 ```
 
-If there are merge conflicts, resolve them, then run `just submodules` to update git submodules.
+### Recommended sync workflow
+
+1. Run `just sync-auto` first.
+2. If there are conflicts, run `just sync-resolve`. This auto-resolves most files using upstream's version, but flags files listed in `.one-protected-paths` for manual review.
+3. Resolve the flagged files manually (usually just `.gitignore` and `static/package.json`), then `git add` and `git commit --no-edit`.
+4. Run `just submodules` to update git submodules.
+
+If something goes wrong: `just sync-abort` returns to the pre-merge state.
 
 ## Project Structure (ONE-specific)
 
 ```
-custom_dc/one/              # ONE-specific configuration
-  env.list                  # Your local env file (gitignored)
-  env.list.sample           # Template for env file (committed)
-  local_env.list            # Alternative env file (gitignored)
+custom_dc/one/                          # Environment configuration
+  env.list                              # Local env file (gitignored)
+  env.list.sample                       # Template (committed)
+  env.staging.sample                    # Staging template
+  env.prod.sample                       # Production template
 
-server/templates/custom_dc/ # Custom HTML templates
-server/config/              # Server configuration
+server/app_env/one.py                   # Flask app config (FLASK_ENV=one)
+server/templates/custom_dc/one/         # Custom Jinja templates (header, footer, pages)
 
-static/custom_dc/           # Custom static assets (CSS, JS, images)
+static/js/apps/custom_dc/one/          # Custom React apps
+  base/                                 # Header, footer, base template entry point
+    main.ts                             # Replaces upstream base entry point
+    header_app.tsx                      # Custom header component
+    components/                         # Custom components (footer, header bar, search)
+  homepage/                             # Custom homepage React app
+    main.ts                             # Replaces upstream homepage entry point
+    app.tsx                             # Homepage component
+
+static/js/theme/                        # Theme system
+  theme.ts, types.ts, emotion.d.ts      # Upstream root-level theme (for relative imports)
+  base_theme/                           # Upstream default theme (copy)
+  dc_custom_theme/                      # ONE custom Emotion theme (override)
+
+static/css/custom_dc/one/              # Custom SCSS
+static/custom_dc/one/                  # Static assets (favicon, fonts, images, overrides.css)
+
+static/webpack.one.js                  # Webpack wrapper (loads base config + ONE overrides)
+static/webpack.custom_dc.js            # ONE overrides (entry points, aliases)
 ```
+
+## Architecture: How Customization Works
+
+ONE's customization goes beyond the [official Custom DC model](https://docs.datacommons.org/custom_dc/custom_ui.html) (which only supports Jinja templates and CSS overrides). We also replace React entry points and use a custom Emotion theme. Here's how it all fits together.
+
+### Webpack Build Chain
+
+The upstream `webpack.config.js` is **never modified**. Instead, we use a wrapper:
+
+```
+package.json build command
+  → webpack --config webpack.one.js
+      → loads webpack.config.js        (upstream, untouched)
+      → loads webpack.custom_dc.js     (ONE overrides)
+      → merges entry points and resolve aliases
+      → outputs to server/dist/
+```
+
+`static/webpack.one.js` imports the base config and applies overrides from `static/webpack.custom_dc.js`:
+
+- **Entry point replacements** — `base` and `homepage` are replaced with ONE's custom React apps. The default `homepage_custom_dc` entry is removed.
+- **Webpack aliases** — `import from 'theme'` resolves to `dc_custom_theme/` instead of the root-level theme. The `auto_complete_input` component is replaced with ONE's custom version.
+
+### Theme System
+
+There are two ways upstream code imports themes:
+
+| Import style | Resolves to | Used by |
+|---|---|---|
+| `import from '../../theme/theme'` (relative) | `static/js/theme/theme.ts` | ~24 upstream files |
+| `import from 'theme'` (bare module) | `static/js/theme/dc_custom_theme/` via webpack alias | ~10 files (homepages, landing pages) |
+
+The root-level `theme.ts` must always match upstream. The `dc_custom_theme/` directory is where ONE can diverge colors, typography, spacing, etc. without touching any upstream files.
+
+### Flask Configuration
+
+`FLASK_ENV=one` tells the server to load `server/app_env/one.py`, which sets:
+- `CUSTOM = True` — enables custom DC mode
+- `NAME = "ONE Data Commons"` — site branding
+- `OVERRIDE_CSS_PATH` — points to ONE's CSS overrides
+- Template directory — `server/templates/custom_dc/one/`
+
+### What's Safe to Change Without Merge Conflicts
+
+| Location | Risk | Notes |
+|---|---|---|
+| `custom_dc/one/` | None | ONE-only directory, not in upstream |
+| `static/js/apps/custom_dc/one/` | None | ONE-only React apps |
+| `static/js/theme/dc_custom_theme/` | None | ONE-only theme |
+| `static/css/custom_dc/one/` | None | ONE-only styles |
+| `server/templates/custom_dc/one/` | None | ONE-only templates |
+| `static/webpack.one.js` | None | ONE-only wrapper |
+| `static/webpack.custom_dc.js` | None | ONE-only overrides |
+| `justfile` | None | ONE-only, not in upstream |
+| `static/js/theme/base_theme/` | Low | ONE copy; keep in sync with upstream `theme/` |
+| `static/package.json` | Low | 3 config filename changes in wireit section |
+| `static/tsconfig.json` | Low | `baseUrl` and `paths` added for theme/component aliases |
+| `.gitignore` | Low | Additive entries for ONE env files |
+
+### Override Drift Detection
+
+ONE replaces several upstream components via webpack aliases (e.g., the search bar, homepage, base app). When upstream changes the original files, ONE's replacements may need updating to stay compatible.
+
+`.one-overridden-files` maps each upstream file to its ONE replacement. After every sync, `just check-overrides` runs automatically and warns if any originals have changed:
+
+```
+═══════════════════════════════════════════════════════════
+ ⚠  1 overridden file(s) changed upstream
+═══════════════════════════════════════════════════════════
+
+  ⚠  static/js/components/nl_search_bar/auto_complete_input.tsx
+     ONE replacement: static/js/apps/custom_dc/one/base/components/nl_search_bar/auto_complete_input.tsx
+     Changes: 1 file changed, 5 insertions(+), 2 deletions(-)
+```
+
+If you see warnings, compare the upstream change with ONE's version and update as needed. You can also run `just check-overrides` at any time.
+
+If you add a new component substitution, add the mapping to `.one-overridden-files`.
+
+### Protected Paths
+
+`.one-protected-paths` lists files that `just sync-resolve` will flag for manual review instead of auto-accepting upstream's version. If you add new ONE-specific modifications to upstream files, add them here.
 
 ## Configuration
 

@@ -9,7 +9,7 @@ module.exports = {
   },
   resolve: {
     alias: {
-      'theme': 'js/theme/dc_custom_theme',
+      'theme': __dirname + '/js/theme/dc_custom_theme',
       'js/components/nl_search_bar/auto_complete_input': __dirname + "/js/apps/custom_dc/one/base/components/nl_search_bar/auto_complete_input.tsx",
     },
   },

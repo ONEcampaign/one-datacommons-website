@@ -142,7 +142,7 @@
       }
     },
     "build": {
-      "command": "webpack --mode=production --config webpack.config.js",
+      "command": "webpack --mode=production --config webpack.one.js",
       "dependencies": [
         "../packages/web-components:build",
         "../packages/client:build"
@@ -156,7 +156,7 @@
       ]
     },
     "dev-build": {
-      "command": "webpack --mode=development --config webpack.config.js",
+      "command": "webpack --mode=development --config webpack.one.js",
       "dependencies": [
         "../packages/web-components:build",
         "../packages/client:build"
@@ -170,7 +170,7 @@
       ]
     },
     "watch": {
-      "command": "webpack --mode=development --config webpack.config.js --watch",
+      "command": "webpack --mode=development --config webpack.one.js --watch",
       "dependencies": [
         "build-web-components-watch",
         "build-client-watch"

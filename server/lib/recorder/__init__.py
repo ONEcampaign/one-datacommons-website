@@ -4,7 +4,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     https://www.apache.org/licenses/LICENSE-2.0
+#      http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,19 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-<<<<<<<< HEAD:tools/release_automation/percy_snapshot_script/cloudbuild.push_image.yaml
-steps:
-  - name: "gcr.io/cloud-builders/docker"
-    args:
-      - build
-      - --tag=gcr.io/datcom-ci/percy-runner:latest
-      - "."
-    dir: "tools/release_automation/percy_snapshot_script"
-
-images:
-  - "gcr.io/datcom-ci/percy-runner:latest"
-========
 from server.lib.recorder.core import init_recorder
 
 __all__ = ['init_recorder']
->>>>>>>> upstream/customdc_stable:server/lib/recorder/__init__.py

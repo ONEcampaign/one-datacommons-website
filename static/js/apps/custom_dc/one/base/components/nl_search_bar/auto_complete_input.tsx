@@ -58,13 +58,15 @@ interface AutoCompleteInputPropType {
   enableAutoComplete?: boolean;
   value: string;
   invalid: boolean;
-  placeholder: string;
+  placeholder?: string;
   inputId: string;
   onChange: (query: string) => void;
-  onSearch: () => void;
+  onSearch: (dynamicPlaceholdersEnabled?: boolean) => void;
   feedbackLink: string;
   shouldAutoFocus: boolean;
   barType: string;
+  enableDynamicPlaceholders?: boolean;
+  enableStatVarAutocomplete?: boolean;
 }
 
 function convertJSONToAutoCompleteResults(

@@ -108,6 +108,8 @@ sync-auto:
         echo "Updating submodules..."
         ./scripts/update_git_submodules.sh
         echo ""
+        just check-overrides
+        echo ""
         echo "Sync complete. No conflicts."
     else
         echo ""
@@ -192,6 +194,8 @@ sync-theirs:
     echo ""
     echo "Updating submodules..."
     ./scripts/update_git_submodules.sh
+    echo ""
+    just check-overrides
     echo ""
     echo "Sync complete. All conflicts resolved using upstream versions."
 
@@ -287,11 +291,14 @@ sync-resolve:
         echo "  git add <files>"
         echo "  git commit --no-edit"
         echo "  just submodules"
+        echo "  just check-overrides"
     else
         git commit --no-edit
         echo ""
         echo "Updating submodules..."
         ./scripts/update_git_submodules.sh
+        echo ""
+        just check-overrides
         echo ""
         echo "Sync complete."
     fi
@@ -310,10 +317,58 @@ sync-abort:
 submodules:
     ./scripts/update_git_submodules.sh
 
+# Check if upstream changed files that ONE overrides (run after sync)
+check-overrides:
+    #!/usr/bin/env bash
+    OVERRIDES_FILE=".one-overridden-files"
+    if [ ! -f "$OVERRIDES_FILE" ]; then
+        echo "Warning: $OVERRIDES_FILE not found."
+        exit 0
+    fi
+    # Find the last merge from upstream
+    MERGE_BASE=$(git merge-base HEAD upstream/{{UPSTREAM_BRANCH}} 2>/dev/null)
+    if [ -z "$MERGE_BASE" ]; then
+        echo "Could not find merge base with upstream. Run 'git fetch upstream' first."
+        exit 0
+    fi
+    CHANGED_COUNT=0
+    WARNINGS=""
+    while IFS= read -r line; do
+        # Skip comments and blanks
+        [[ "$line" =~ ^#.*$ || -z "$line" ]] && continue
+        upstream_file=$(echo "$line" | sed 's/ *->.*$//' | xargs)
+        one_file=$(echo "$line" | sed 's/^.*-> *//' | xargs)
+        # Check if upstream changed this file since last merge
+        if git diff --quiet "$MERGE_BASE"..upstream/{{UPSTREAM_BRANCH}} -- "$upstream_file" 2>/dev/null; then
+            continue
+        fi
+        ((CHANGED_COUNT++))
+        WARNINGS="$WARNINGS\n  ⚠  $upstream_file"
+        WARNINGS="$WARNINGS\n     ONE replacement: $one_file"
+        # Show a short summary of what changed
+        STAT=$(git diff --stat "$MERGE_BASE"..upstream/{{UPSTREAM_BRANCH}} -- "$upstream_file" 2>/dev/null | tail -1)
+        if [ -n "$STAT" ]; then
+            WARNINGS="$WARNINGS\n     Changes: $STAT"
+        fi
+        WARNINGS="$WARNINGS\n"
+    done < "$OVERRIDES_FILE"
+    if [ "$CHANGED_COUNT" -gt 0 ]; then
+        echo "═══════════════════════════════════════════════════════════"
+        echo " ⚠  $CHANGED_COUNT overridden file(s) changed upstream"
+        echo "═══════════════════════════════════════════════════════════"
+        echo ""
+        echo -e "$WARNINGS"
+        echo "Review these changes and update the ONE replacements if needed:"
+        echo "  git diff $MERGE_BASE..upstream/{{UPSTREAM_BRANCH}} -- <file>"
+        echo ""
+    else
+        echo "All overridden files are up to date with upstream."
+    fi
+
 # ── Building ──────────────────────────────────
 
 # Build Docker image locally (override tag: just IMAGE_TAG=v1.0 build)
-build:
+build: typecheck
     @echo "Building {{IMAGE}} from {{DOCKERFILE}}..."
     docker build --tag {{IMAGE}} -f {{DOCKERFILE}} .
 
@@ -418,6 +473,44 @@ clean:
     docker rmi {{IMAGE}} 2>/dev/null || true
     docker rmi {{DOCKER_REGISTRY}}:{{IMAGE_TAG}} 2>/dev/null || true
     echo "Cleaned."
+
+# Run TypeScript type checker locally (catches errors without a full Docker build)
+typecheck:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd static
+    if [ ! -d "node_modules" ]; then
+        echo "Installing dependencies (first run only)..."
+        npm ci --ignore-scripts
+        echo ""
+    fi
+    echo "Running TypeScript type checker..."
+    # Filter out upstream-only errors (missing @datacommonsorg packages, node_modules type conflicts)
+    ERRORS=$(./node_modules/.bin/tsc --noEmit 2>&1 | grep -v 'node_modules/' | grep -v '@datacommonsorg/' | grep -v "'datacommons-" | grep 'error TS' || true)
+    if [ -n "$ERRORS" ]; then
+        # Separate ONE-specific errors from upstream errors
+        ONE_ERRORS=$(echo "$ERRORS" | grep 'custom_dc/one' || true)
+        OTHER_ERRORS=$(echo "$ERRORS" | grep -v 'custom_dc/one' || true)
+        if [ -n "$ONE_ERRORS" ]; then
+            echo "═══════════════════════════════════════════════════════════"
+            echo " ✗  TypeScript errors in ONE files (must fix before build)"
+            echo "═══════════════════════════════════════════════════════════"
+            echo ""
+            echo "$ONE_ERRORS"
+            echo ""
+            exit 1
+        fi
+        if [ -n "$OTHER_ERRORS" ]; then
+            echo "Upstream TypeScript errors (informational — these usually pass in Docker):"
+            echo "$OTHER_ERRORS" | head -10
+            TOTAL=$(echo "$OTHER_ERRORS" | wc -l | tr -d ' ')
+            if [ "$TOTAL" -gt 10 ]; then
+                echo "  ... and $((TOTAL - 10)) more"
+            fi
+            echo ""
+        fi
+    fi
+    echo "No ONE-specific TypeScript errors found. Safe to build."
 
 # ── Internal ──────────────────────────────────
 
