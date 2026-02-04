@@ -97,6 +97,10 @@ ft_final_v20230717230459.all-MiniLM-L6-v2/
 # CDC ignores
 custom_dc/sample/datacommons/**
 custom_dc/data/*.db
+custom_dc/one/env.list
+custom_dc/one/env.staging.list
+custom_dc/one/env.prod.list
+custom_dc/one/local_env.list
 
 .cache/
 
