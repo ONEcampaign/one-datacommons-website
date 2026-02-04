@@ -73,18 +73,28 @@ env-all:
 
 # ── Upstream Sync ─────────────────────────────
 
-# Fetch and merge upstream customdc_stable branch (guided, step-by-step)
+# Fetch upstream and show what's changed since last sync
 sync:
     #!/usr/bin/env bash
     set -euo pipefail
+    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
     echo "Fetching from upstream..."
     git fetch upstream
     echo ""
-    echo "To merge into your current branch, run:"
-    echo "  git merge upstream/{{UPSTREAM_BRANCH}}"
-    echo "  just submodules"
+    echo "Current branch: $CURRENT_BRANCH"
+    BEHIND=$(git rev-list --count HEAD..upstream/{{UPSTREAM_BRANCH}})
+    echo "Commits behind upstream/{{UPSTREAM_BRANCH}}: $BEHIND"
+    echo ""
+    if [ "$BEHIND" -eq 0 ]; then
+        echo "Already up to date."
+    else
+        echo "To merge, run one of:"
+        echo "  just sync-auto       # merge, keep both sides (may need manual conflict resolution)"
+        echo "  just sync-theirs     # merge, prefer upstream for conflicts (safe for most files)"
+        echo "  just sync-abort      # abort a failed merge and start over"
+    fi
 
-# Fetch and merge upstream customdc_stable into current branch automatically
+# Merge upstream, stop on conflicts for manual resolution
 sync-auto:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -93,12 +103,208 @@ sync-auto:
     git fetch upstream
     echo ""
     echo "Merging upstream/{{UPSTREAM_BRANCH}} into $CURRENT_BRANCH..."
-    git merge upstream/{{UPSTREAM_BRANCH}}
+    if git merge upstream/{{UPSTREAM_BRANCH}}; then
+        echo ""
+        echo "Updating submodules..."
+        ./scripts/update_git_submodules.sh
+        echo ""
+        echo "Sync complete. No conflicts."
+    else
+        echo ""
+        CONFLICTS=$(git diff --name-only --diff-filter=U)
+        COUNT=$(echo "$CONFLICTS" | wc -l | tr -d ' ')
+        echo "═══════════════════════════════════════════"
+        echo " $COUNT files with conflicts"
+        echo "═══════════════════════════════════════════"
+        echo ""
+        echo "$CONFLICTS"
+        echo ""
+        echo "Options:"
+        echo "  just sync-theirs     # accept upstream version for ALL conflicts"
+        echo "  just sync-resolve    # accept upstream for most, list ONE-modified files to review"
+        echo "  just sync-abort      # abort merge and go back to previous state"
+    fi
+
+# Merge upstream, accept their version for all conflicts
+sync-theirs:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    # Start merge if not already mid-merge
+    if git rev-parse --verify MERGE_HEAD > /dev/null 2>&1; then
+        echo "Continuing in-progress merge..."
+    else
+        echo "Fetching from upstream..."
+        git fetch upstream
+        echo ""
+        echo "Merging upstream/{{UPSTREAM_BRANCH}} into $CURRENT_BRANCH..."
+        git merge upstream/{{UPSTREAM_BRANCH}} || true
+    fi
+    echo ""
+    # Resolve each conflict type
+    # UU = both modified, AA = both added — accept theirs
+    UU_AA=$(git status --porcelain | grep "^UU\|^AA" | awk '{print $2}' | grep -v "^import$" || true)
+    if [ -n "$UU_AA" ]; then
+        COUNT=$(echo "$UU_AA" | wc -l | tr -d ' ')
+        echo "Accepting upstream version for $COUNT conflicted files..."
+        echo "$UU_AA" | while read -r file; do
+            git checkout --theirs -- "$file" 2>/dev/null && git add "$file"
+        done
+        echo ""
+    fi
+    # UD = deleted by upstream, modified by us — remove
+    UD=$(git status --porcelain | grep "^UD" | awk '{print $2}' || true)
+    if [ -n "$UD" ]; then
+        echo "Removing files deleted by upstream..."
+        echo "$UD" | while read -r file; do
+            git rm --force "$file" 2>/dev/null || true
+        done
+        echo ""
+    fi
+    # DU = deleted by us, modified by upstream — accept theirs
+    DU=$(git status --porcelain | grep "^DU" | awk '{print $2}' || true)
+    if [ -n "$DU" ]; then
+        echo "Restoring files upstream modified that we had deleted..."
+        echo "$DU" | while read -r file; do
+            git checkout --theirs -- "$file" 2>/dev/null && git add "$file" 2>/dev/null || true
+        done
+        echo ""
+    fi
+    # DD = both deleted (rename conflicts) — just remove
+    DD=$(git status --porcelain | grep "^DD" | awk '{print $2}' || true)
+    if [ -n "$DD" ]; then
+        echo "Removing files deleted by both sides..."
+        echo "$DD" | while read -r file; do
+            git rm --force "$file" 2>/dev/null || git add "$file" 2>/dev/null || true
+        done
+        echo ""
+    fi
+    # Submodule conflicts
+    if git status --porcelain | grep -q "^UU import"; then
+        echo "Resolving import submodule conflict..."
+        cd import && git fetch origin && git checkout origin/master && cd ..
+        git add import
+    fi
+    # Complete the merge
+    if git rev-parse --verify MERGE_HEAD > /dev/null 2>&1; then
+        git commit --no-edit
+    fi
     echo ""
     echo "Updating submodules..."
     ./scripts/update_git_submodules.sh
     echo ""
-    echo "Sync complete. Check for any merge conflicts."
+    echo "Sync complete. All conflicts resolved using upstream versions."
+
+# Merge upstream, accept theirs for most files but protect ONE-customized paths
+sync-resolve:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    PROTECTED_FILE=".one-protected-paths"
+    # Check if we're mid-merge
+    if ! git rev-parse --verify MERGE_HEAD > /dev/null 2>&1; then
+        echo "No merge in progress. Run 'just sync-auto' first."
+        exit 1
+    fi
+    # Load protected paths (strip comments and blanks)
+    if [ ! -f "$PROTECTED_FILE" ]; then
+        echo "Warning: $PROTECTED_FILE not found. All conflicts will use upstream version."
+        PROTECTED=""
+    else
+        PROTECTED=$(grep -v '^#' "$PROTECTED_FILE" | grep -v '^$')
+    fi
+    is_protected() {
+        local file="$1"
+        while IFS= read -r pattern; do
+            [ -z "$pattern" ] && continue
+            # Directory prefix match (pattern ends with /)
+            if [[ "$pattern" == */ ]] && [[ "$file" == "$pattern"* ]]; then
+                return 0
+            fi
+            # Exact match
+            if [[ "$file" == "$pattern" ]]; then
+                return 0
+            fi
+        done <<< "$PROTECTED"
+        return 1
+    }
+    # Categorize all conflicts
+    ALL_CONFLICTS=$(git status --porcelain | grep "^UU\|^AA\|^UD\|^DU\|^DD\|^AU\|^UA" | grep -v "^UU import$" || true)
+    AUTO_COUNT=0
+    REVIEW_LIST=""
+    while IFS= read -r line; do
+        [ -z "$line" ] && continue
+        status="${line:0:2}"
+        file="${line:3}"
+        if is_protected "$file"; then
+            REVIEW_LIST="$REVIEW_LIST"$'\n'"  [$status] $file"
+            continue
+        fi
+        case "$status" in
+            "UU"|"AA")
+                git checkout --theirs -- "$file" 2>/dev/null && git add "$file"
+                ((AUTO_COUNT++)) || true
+                ;;
+            "UD")
+                git rm --force "$file" 2>/dev/null || true
+                ((AUTO_COUNT++)) || true
+                ;;
+            "DU")
+                git checkout --theirs -- "$file" 2>/dev/null && git add "$file" 2>/dev/null || true
+                ((AUTO_COUNT++)) || true
+                ;;
+            "DD")
+                git rm --force "$file" 2>/dev/null || git add "$file" 2>/dev/null || true
+                ((AUTO_COUNT++)) || true
+                ;;
+            "UA"|"AU")
+                git checkout --theirs -- "$file" 2>/dev/null && git add "$file" 2>/dev/null || true
+                ((AUTO_COUNT++)) || true
+                ;;
+        esac
+    done <<< "$ALL_CONFLICTS"
+    echo "Auto-resolved $AUTO_COUNT files using upstream version."
+    echo ""
+    # Submodule conflicts
+    if git status --porcelain | grep -q "^UU import"; then
+        echo "Resolving import submodule conflict..."
+        cd import && git fetch origin && git checkout origin/master && cd ..
+        git add import
+    fi
+    # Report protected files that still need review
+    REMAINING=$(git diff --name-only --diff-filter=U 2>/dev/null || true)
+    REVIEW_LIST=$(echo "$REVIEW_LIST" | sed '/^$/d')
+    if [ -n "$REMAINING" ] || [ -n "$REVIEW_LIST" ]; then
+        echo "═══════════════════════════════════════════════════════"
+        echo " Protected files needing manual review:"
+        echo "═══════════════════════════════════════════════════════"
+        if [ -n "$REVIEW_LIST" ]; then
+            echo "$REVIEW_LIST"
+        fi
+        echo ""
+        echo "Protected paths loaded from: $PROTECTED_FILE"
+        echo ""
+        echo "Resolve these manually, then run:"
+        echo "  git add <files>"
+        echo "  git commit --no-edit"
+        echo "  just submodules"
+    else
+        git commit --no-edit
+        echo ""
+        echo "Updating submodules..."
+        ./scripts/update_git_submodules.sh
+        echo ""
+        echo "Sync complete."
+    fi
+
+# Abort a failed merge and return to previous state
+sync-abort:
+    #!/usr/bin/env bash
+    if git rev-parse --verify MERGE_HEAD > /dev/null 2>&1; then
+        git merge --abort
+        echo "Merge aborted. Back to clean state."
+    else
+        echo "No merge in progress."
+    fi
 
 # Update git submodules
 submodules:
