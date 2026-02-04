@@ -319,6 +319,9 @@ build:
 
 # ── Running Locally ───────────────────────────
 
+# Build and run in one step
+build-run: build run
+
 # Run container locally (port 8080, debug mode)
 run: _check-env
     docker run -it \
