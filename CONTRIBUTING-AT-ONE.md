@@ -1,6 +1,6 @@
 # Contributing to ONE Data Commons
 
-This is ONE Campaign's fork of the [Data Commons website](https://github.com/datacommonsorg/website). We track the upstream `customdc_stable` branch and add our own customizations.
+This is the ONE Data fork of the [Data Commons website](https://github.com/datacommonsorg/website). We track the upstream `customdc_stable` branch and add our own customizations.
 
 ## Prerequisites
 
@@ -41,6 +41,8 @@ Run `just` or `just --list` for the full list. Here are the most common ones:
 | `just setup` | First-time setup (env file, Docker auth, submodules) |
 | `just build` | Build the Docker image locally |
 | `just run` | Run locally on port 8080 |
+| `just dev` | Run with live frontend assets (pair with `just watch`) |
+| `just watch` | Start webpack watch mode for incremental frontend rebuilds |
 | `just shell` | Start container with bash (for debugging) |
 | `just sync` | Guided upstream sync from `customdc_stable` |
 | `just sync-auto` | Automatic upstream sync (merge + submodule update) |
@@ -48,6 +50,30 @@ Run `just` or `just --list` for the full list. Here are the most common ones:
 | `just status` | Show current branch, remotes, Docker images |
 | `just stop` | Stop running containers |
 | `just clean` | Remove built Docker images |
+
+## Frontend Development Without Full Rebuilds
+
+A full Docker build takes ~15 minutes because it bundles the entire frontend via webpack. For frontend-only changes (TypeScript, React components, CSS), you can skip that by running webpack locally in watch mode:
+
+**Terminal 1** — start the file watcher:
+```bash
+just watch
+```
+
+This runs webpack in development mode with `--watch`. It does a full build on first run, then rebuilds incrementally (a few seconds) whenever you save a file under `static/`.
+
+**Terminal 2** — run the container with live assets:
+```bash
+just dev
+```
+
+This is the same as `just run` but mounts your local `server/dist/` into the container, so the Flask server serves the locally-built frontend. After webpack rebuilds, reload the page in your browser to see changes.
+
+You still need a full `just build` for:
+- Python/Flask server changes
+- Changes to Docker-level configuration
+- Changes to dependencies (`package.json`)
+- Final verification before deploying
 
 ## Syncing Upstream Changes
 
@@ -76,10 +102,12 @@ If something goes wrong: `just sync-abort` returns to the pre-merge state.
 
 ```
 custom_dc/one/                          # Environment configuration
-  env.list                              # Local env file (gitignored)
-  env.list.sample                       # Template (committed)
-  env.staging.sample                    # Staging template
-  env.prod.sample                       # Production template
+  env.list                              # Local dev env file (gitignored, from env.list.sample)
+  env.staging.list                      # Staging env file (gitignored, from env.staging.sample)
+  env.prod.list                         # Production env file (gitignored, from env.prod.sample)
+  env.list.sample                       # Local dev template (committed)
+  env.staging.sample                    # Staging template (committed)
+  env.prod.sample                       # Production template (committed)
 
 server/app_env/one.py                   # Flask app config (FLASK_ENV=one)
 server/templates/custom_dc/one/         # Custom Jinja templates (header, footer, pages)
@@ -189,13 +217,25 @@ If you add a new component substitution, add the mapping to `.one-overridden-fil
 
 ## Configuration
 
-All environment variables are in `custom_dc/one/env.list`. Key settings:
+There is one env file per environment, all under `custom_dc/one/`:
+
+| File | Purpose |
+|------|---------|
+| `env.list` | Local development (created by `just env`) |
+| `env.staging.list` | Staging environment |
+| `env.prod.list` | Production environment |
+
+Each is gitignored. Create them from the matching `.sample` template (`just env` for local, `just env-all` for all three).
+
+**Local development** (`env.list`) — you only need to fill in API keys:
 
 - `DC_API_KEY` / `MAPS_API_KEY` — API keys (ask a team member)
-- `INPUT_DIR` / `OUTPUT_DIR` — Data directories (GCS or local paths)
 - `FLASK_ENV=one` — Tells the app to use `custom_dc/one/` customizations
-- `DOCKER_REGISTRY` — Where `just push` sends images
 - `ENABLE_MODEL=true` — Enables NL search functionality
+
+Data directories (`INPUT_DIR`, `OUTPUT_DIR`) are injected automatically by the justfile based on your repo location — you don't need to configure them.
+
+**Staging / Production** (`env.staging.list`, `env.prod.list`) — these also include GCS paths for `INPUT_DIR`/`OUTPUT_DIR`, Cloud SQL credentials, and Redis/admin settings.
 
 ## Deployment
 

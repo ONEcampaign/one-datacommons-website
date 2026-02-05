@@ -17,12 +17,13 @@ from server.app_env import local
 
 
 class Config(_base.Config):
-  GA_ACCOUNT = 'GTM-W6DJJVL'
+  GOOGLE_ANALYTICS_TAG_ID = 'GTM-W6DJJVL'
   CUSTOM = True
   NAME = "ONE Data Commons"
   OVERRIDE_CSS_PATH = '/custom_dc/one/overrides.css'
   SHOW_DISASTER = False
   USE_MEMCACHE = True
+  MIN_STAT_VAR_GEO_COVERAGE = 1
   APP_VARS = {"PRIMARY_SITE_WEB_ROOT": "https://data.one.org"}
   TOPIC_PAGE_CONFIGS = {
       'economy': ['africa'],
@@ -31,24 +32,10 @@ class Config(_base.Config):
   }
 
 
-class LocalConfig(local.Config):
-  CUSTOM = True
-  API_ROOT = 'https://api.datacommons.org'
-  NAME = "ONE Data Commons"
-  OVERRIDE_CSS_PATH = '/custom_dc/one/overrides.css'
-  SECRET_PROJECT = ''
-  # Do not use memcache so content is fresh after new data is loaded
-  USE_MEMCACHE = True
+class LocalConfig(Config, local.Config):
+  USE_MEMCACHE = False
   APP_VARS = {"PRIMARY_SITE_WEB_ROOT": "http://localhost:3000"}
-  TOPIC_PAGE_CONFIGS = {
-      'economy': ['africa'],
-      'health': ['africa'],
-      'people': ['africa']
-  }
-  pass
 
 
 class ComposeConfig(Config, local.Config):
-  # Do not use memcache so content is fresh after new data is loaded
-  USE_MEMCACHE = True
   pass

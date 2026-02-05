@@ -108,7 +108,6 @@ custom_dc/data/*.db
 custom_dc/one/env.list
 custom_dc/one/env.staging.list
 custom_dc/one/env.prod.list
-custom_dc/one/local_env.list
 
 .cache/
 

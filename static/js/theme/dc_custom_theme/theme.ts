@@ -130,7 +130,7 @@ const theme: Theme = {
       primary: {
         base: DC_WHITE,
         dark: DC_BLUE_DARK,
-        light: DC_BLUE_WHITE,
+        light: "#73175A",
       },
       secondary: {
         base: DC_BONE,
@@ -142,7 +142,7 @@ const theme: Theme = {
       primary: {
         base: DC_WHITE,
         dark: DC_BLUE_DARK,
-        light: DC_BLACK_80,
+        light: DC_GRAY_LIGHT,
       },
     },
     tabs: {
@@ -177,9 +177,9 @@ const theme: Theme = {
         pill: DC_GRAY_PILL_BCKG,
       },
       tooltip: {
-        text: DC_GRAY,
-        tag: DC_BLUE,
-        pill: DC_GRAY_TOOLTIP,
+        text: DC_WHITE,
+        tag: DC_BLACK,
+        pill: DC_BLACK,
       },
     },
     link: {
@@ -190,7 +190,7 @@ const theme: Theme = {
       },
       secondary: {
         base: DC_GRAY,
-        light: DC_BLACK_80,
+        light: DC_GRAY_LIGHT,
         dark: DC_BLACK,
       },
     },
@@ -212,11 +212,11 @@ const theme: Theme = {
   typography: {
     family: {
       text: {
-        fontFamily: "'Google Sans Text', Arial, sans-serif",
+        fontFamily: "colfax-web, Arial, sans-serif",
         fontStyle: "normal",
       },
       heading: {
-        fontFamily: "'Google Sans', Arial, sans-serif",
+        fontFamily: "colfax-web, Arial, sans-serif",
         fontStyle: "normal",
       },
       code: {
@@ -263,12 +263,12 @@ const theme: Theme = {
       xs: {
         fontSize: "1.375rem",
         lineHeight: "1.75rem",
-        fontWeight: 300,
+        fontWeight: 700,
       },
       sm: {
         fontSize: "1.75rem",
         lineHeight: "2.25rem",
-        fontWeight: 300,
+        fontWeight: 700,
         [`@media (max-width: ${BREAKPOINTS.md}px)`]: {
           fontSize: "1.5rem",
           lineHeight: "2rem",
@@ -277,7 +277,7 @@ const theme: Theme = {
       md: {
         fontSize: "2rem",
         lineHeight: "2.5rem",
-        fontWeight: 300,
+        fontWeight: 700,
         [`@media (max-width: ${BREAKPOINTS.md}px)`]: {
           fontSize: "1.7rem",
           lineHeight: "2.25rem",
@@ -286,7 +286,7 @@ const theme: Theme = {
       lg: {
         fontSize: "2.25rem",
         lineHeight: "2.75rem",
-        fontWeight: 300,
+        fontWeight: 700,
         [`@media (max-width: ${BREAKPOINTS.md}px)`]: {
           fontSize: "1.8rem",
           lineHeight: "2.4rem",
@@ -295,7 +295,7 @@ const theme: Theme = {
       xl: {
         fontSize: "3rem",
         lineHeight: "2.75rem",
-        fontWeight: 300,
+        fontWeight: 700,
         [`@media (max-width: ${BREAKPOINTS.md}px)`]: {
           fontSize: "2.4rem",
           lineHeight: "2.75rem",
@@ -322,20 +322,20 @@ const theme: Theme = {
   button: {
     variant: {
       standard: {
-        color: DC_BLUE,
-        backgroundColor: DC_WHITE,
-        border: `1px solid ${DC_BLACK_70}`,
+        backgroundColor: DC_BLUE,
+        color: DC_WHITE,
+        border: `1px solid ${DC_BLUE}`,
         borderRadius: `1000px`,
         ["&:hover:not(:disabled):not([aria-disabled])"]: {
-          backgroundColor: DC_WHITE,
-          color: DC_BLUE,
-          border: `1px solid ${DC_BLUE}`,
+          backgroundColor: DC_BLUE_DARK,
+          color: DC_WHITE,
+          border: `1px solid ${DC_BLUE_DARK}`,
         },
       },
       inverted: {
+        backgroundColor: DC_WHITE,
         color: DC_BLUE,
-        backgroundColor: DC_BLUE_LIGHTER,
-        border: `1px solid ${DC_BLUE_LIGHTER}`,
+        border: `1px solid ${DC_BLUE}`,
         borderRadius: `1000px`,
         ["&:hover:not(:disabled):not([aria-disabled])"]: {
           backgroundColor: DC_BLUE_LIGHTER,

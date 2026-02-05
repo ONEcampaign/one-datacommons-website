@@ -23,6 +23,18 @@ GOOGLE_CLOUD_REGION := env_var_or_default("GOOGLE_CLOUD_REGION", "us-east4")
 _ENV_STAGING := "custom_dc/one/env.staging.list"
 _ENV_PROD    := "custom_dc/one/env.prod.list"
 
+# GCP Application Default Credentials path (for mounting into Docker)
+GCP_ADC := env_var("HOME") / ".config/gcloud/application_default_credentials.json"
+
+# Local data directories (absolute paths, mounted into containers at same path)
+DATA_DIR     := justfile_directory() / "custom_dc"
+INPUT_DIR    := DATA_DIR / "one_input"
+OUTPUT_DIR   := DATA_DIR / "one_output"
+
+# Prebuilt Data Commons images
+DC_DATA_IMAGE    := "gcr.io/datcom-ci/datacommons-data:stable"
+DC_SERVICE_IMAGE := "gcr.io/datcom-ci/datacommons-services:stable"
+
 # Show available commands (default)
 _default:
     @just --list --unsorted
@@ -30,7 +42,7 @@ _default:
 # ── Setup & Configuration ────────────────────
 
 # First-time setup: create env file, configure Docker auth, update submodules
-setup: env
+setup: env-all
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Configuring Docker authentication for Artifact Registry..."
@@ -39,37 +51,230 @@ setup: env
     echo "Updating git submodules..."
     ./scripts/update_git_submodules.sh
     echo ""
-    echo "Setup complete. Edit {{ENV_FILE}} with your API keys and secrets, then run 'just run'."
+    echo "Setup complete. Run 'just run' to start the application."
 
-# Create env file from template (won't overwrite existing)
+# Create local env file with interactive prompts
 env:
     #!/usr/bin/env bash
-    if [ -f "{{ENV_FILE}}" ]; then
-        echo "{{ENV_FILE}} already exists. Remove it first to regenerate."
-    else
-        cp {{ENV_SAMPLE}} {{ENV_FILE}}
-        echo "Created {{ENV_FILE}} from template."
-        echo "Edit it with your API keys and configuration."
+    set -euo pipefail
+    TARGET="custom_dc/one/env.list"
+    if [ -f "$TARGET" ]; then
+        echo "$TARGET already exists. Remove it first to regenerate."
+        exit 0
     fi
-
-# Create env files for all environments from their templates
-env-all:
-    #!/usr/bin/env bash
-    for pair in \
-        "custom_dc/one/env.list.sample:custom_dc/one/env.list" \
-        "custom_dc/one/env.staging.sample:custom_dc/one/env.staging.list" \
-        "custom_dc/one/env.prod.sample:custom_dc/one/env.prod.list"; do
-        sample="${pair%%:*}"
-        target="${pair##*:}"
-        if [ -f "$target" ]; then
-            echo "$target already exists, skipping."
-        else
-            cp "$sample" "$target"
-            echo "Created $target from template."
-        fi
-    done
+    echo "Creating $TARGET..."
     echo ""
-    echo "Edit each env file with the appropriate secrets."
+    ask() {
+        local prompt="$1" default="${2:-}" value
+        if [ -n "$default" ]; then
+            read -rp "  $prompt [$default]: " value
+            echo "${value:-$default}"
+        else
+            while true; do
+                read -rp "  $prompt: " value
+                [ -n "$value" ] && break
+                echo "  (required)" >&2
+            done
+            echo "$value"
+        fi
+    }
+    echo "API keys (ask a team member if you don't have these):"
+    DC_API_KEY=$(ask "DC API key")
+    MAPS_API_KEY=$(ask "Maps API key")
+    echo ""
+    echo "Database:"
+    echo "  Local dev uses file-based data by default."
+    read -rp "  Connect to Cloud SQL instead? (y/N): " USE_SQL
+    echo ""
+    if [ "$USE_SQL" = "y" ] || [ "$USE_SQL" = "Y" ]; then
+        CLOUDSQL_INSTANCE=$(ask "Cloud SQL instance" "one-data-commons:northamerica-northeast1:kg-staging")
+        DB_PASS=$(ask "DB password")
+        echo ""
+    fi
+    {
+        echo "### ONE Data Commons — Local development ###"
+        echo "#"
+        echo "# Data directories (INPUT_DIR, OUTPUT_DIR) are injected automatically"
+        echo "# by the justfile based on your repo location. You don't need to set them here."
+        echo ""
+        echo "### API keys ###"
+        echo ""
+        echo "DC_API_KEY=$DC_API_KEY"
+        echo "MAPS_API_KEY=$MAPS_API_KEY"
+        echo ""
+        echo "### Application settings ###"
+        echo ""
+        echo "FLASK_ENV=one"
+        echo "ENABLE_MODEL=true"
+        echo "GOOGLE_CLOUD_PROJECT=one-data-commons"
+        echo ""
+        echo "### Database ###"
+        echo ""
+        if [ "$USE_SQL" = "y" ] || [ "$USE_SQL" = "Y" ]; then
+            echo "USE_CLOUDSQL=true"
+            echo "CLOUDSQL_INSTANCE=$CLOUDSQL_INSTANCE"
+            echo "DB_NAME=datacommons"
+            echo "DB_USER=datacommons"
+            echo "DB_PASS=$DB_PASS"
+        else
+            echo "# Local dev uses SQLite by default."
+            echo "# Uncomment below to connect to Cloud SQL instead."
+            echo "USE_SQLITE=true"
+            echo "USE_CLOUDSQL=false"
+            echo "#CLOUDSQL_INSTANCE=one-data-commons:northamerica-northeast1:kg-staging"
+            echo "#DB_NAME=datacommons"
+            echo "#DB_USER=datacommons"
+            echo "#DB_PASS="
+        fi
+    } > "$TARGET"
+    echo "Created $TARGET"
+
+# Create staging env file with interactive prompts
+env-staging:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    TARGET="custom_dc/one/env.staging.list"
+    if [ -f "$TARGET" ]; then
+        echo "$TARGET already exists. Remove it first to regenerate."
+        exit 0
+    fi
+    echo "Creating $TARGET..."
+    echo ""
+    ask() {
+        local prompt="$1" default="${2:-}" value
+        if [ -n "$default" ]; then
+            read -rp "  $prompt [$default]: " value
+            echo "${value:-$default}"
+        else
+            while true; do
+                read -rp "  $prompt: " value
+                [ -n "$value" ] && break
+                echo "  (required)" >&2
+            done
+            echo "$value"
+        fi
+    }
+    echo "API keys:"
+    DC_API_KEY=$(ask "DC API key")
+    MAPS_API_KEY=$(ask "Maps API key")
+    echo ""
+    echo "Directories:"
+    INPUT_DIR=$(ask "Input directory" "gs://one-datacommons-staging/one-data")
+    OUTPUT_DIR=$(ask "Output directory" "gs://one-datacommons-staging/one-data-output")
+    echo ""
+    echo "Database:"
+    CLOUDSQL_INSTANCE=$(ask "Cloud SQL instance" "one-data-commons:us-east4:dc-graph")
+    DB_PASS=$(ask "DB password")
+    echo ""
+    echo "Application:"
+    REDIS_HOST=$(ask "Redis host" "10.143.80.83")
+    ADMIN_SECRET=$(ask "Admin secret")
+    echo ""
+    {
+        echo "### ONE Data Commons — STAGING environment ###"
+        echo ""
+        echo "### API keys ###"
+        echo ""
+        echo "DC_API_KEY=$DC_API_KEY"
+        echo "MAPS_API_KEY=$MAPS_API_KEY"
+        echo ""
+        echo "### Directories ###"
+        echo ""
+        echo "INPUT_DIR=$INPUT_DIR"
+        echo "OUTPUT_DIR=$OUTPUT_DIR"
+        echo ""
+        echo "### Database ###"
+        echo ""
+        echo "USE_CLOUDSQL=true"
+        echo "GOOGLE_CLOUD_PROJECT=one-data-commons"
+        echo "CLOUDSQL_INSTANCE=$CLOUDSQL_INSTANCE"
+        echo "DB_NAME=datacommons"
+        echo "DB_USER=datacommons"
+        echo "DB_PASS=$DB_PASS"
+        echo ""
+        echo "### Application settings ###"
+        echo ""
+        echo "FLASK_ENV=one"
+        echo "ENABLE_MODEL=true"
+        echo "REDIS_HOST=$REDIS_HOST"
+        echo "ADMIN_SECRET=$ADMIN_SECRET"
+    } > "$TARGET"
+    echo "Created $TARGET"
+
+# Create production env file with interactive prompts
+env-prod:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    TARGET="custom_dc/one/env.prod.list"
+    if [ -f "$TARGET" ]; then
+        echo "$TARGET already exists. Remove it first to regenerate."
+        exit 0
+    fi
+    echo "Creating $TARGET..."
+    echo ""
+    ask() {
+        local prompt="$1" default="${2:-}" value
+        if [ -n "$default" ]; then
+            read -rp "  $prompt [$default]: " value
+            echo "${value:-$default}"
+        else
+            while true; do
+                read -rp "  $prompt: " value
+                [ -n "$value" ] && break
+                echo "  (required)" >&2
+            done
+            echo "$value"
+        fi
+    }
+    echo "API keys:"
+    DC_API_KEY=$(ask "DC API key")
+    MAPS_API_KEY=$(ask "Maps API key")
+    echo ""
+    echo "Directories:"
+    INPUT_DIR=$(ask "Input directory" "gs://one-datacommons-imports-prod/")
+    OUTPUT_DIR=$(ask "Output directory" "gs://one-datacommons-imports-prod/")
+    echo ""
+    echo "Database:"
+    CLOUDSQL_INSTANCE=$(ask "Cloud SQL instance" "one-data-commons:us-east4:dc-graph-prod")
+    DB_PASS=$(ask "DB password")
+    echo ""
+    echo "Application:"
+    REDIS_HOST=$(ask "Redis host" "10.143.80.83")
+    ADMIN_SECRET=$(ask "Admin secret")
+    echo ""
+    {
+        echo "### ONE Data Commons — PRODUCTION environment ###"
+        echo ""
+        echo "### API keys ###"
+        echo ""
+        echo "DC_API_KEY=$DC_API_KEY"
+        echo "MAPS_API_KEY=$MAPS_API_KEY"
+        echo ""
+        echo "### Directories ###"
+        echo ""
+        echo "INPUT_DIR=$INPUT_DIR"
+        echo "OUTPUT_DIR=$OUTPUT_DIR"
+        echo ""
+        echo "### Database ###"
+        echo ""
+        echo "USE_CLOUDSQL=true"
+        echo "GOOGLE_CLOUD_PROJECT=one-data-commons"
+        echo "CLOUDSQL_INSTANCE=$CLOUDSQL_INSTANCE"
+        echo "DB_NAME=datacommons"
+        echo "DB_USER=datacommons"
+        echo "DB_PASS=$DB_PASS"
+        echo ""
+        echo "### Application settings ###"
+        echo ""
+        echo "FLASK_ENV=one"
+        echo "ENABLE_MODEL=true"
+        echo "REDIS_HOST=$REDIS_HOST"
+        echo "ADMIN_SECRET=$ADMIN_SECRET"
+    } > "$TARGET"
+    echo "Created $TARGET"
+
+# Create env files for all environments (local, staging, production)
+env-all: env env-staging env-prod
 
 # ── Upstream Sync ─────────────────────────────
 
@@ -374,33 +579,133 @@ build: typecheck
 
 # ── Running Locally ───────────────────────────
 
+# Watch for frontend changes and rebuild incrementally (run in a separate terminal)
+watch:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Install deps for sub-packages if missing (they need TypeScript 5.x)
+    for pkg in packages/web-components packages/client; do
+        if [ ! -d "$pkg/node_modules" ]; then
+            echo "Installing dependencies for $pkg..."
+            npm --prefix "$pkg" ci
+            echo ""
+        fi
+    done
+    cd static
+    if [ ! -d "node_modules" ]; then
+        echo "Installing dependencies for static/..."
+        npm ci
+        echo ""
+    fi
+    echo "Starting webpack watch mode..."
+    echo "Frontend changes will rebuild automatically to server/dist/"
+    echo "Use 'just dev' in another terminal to run the container."
+    echo ""
+    npm run watch
+
+# Run container with live frontend assets (pair with 'just watch' in another terminal)
+dev: _check-env _check-gcloud
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ ! -d "server/dist" ]; then
+        echo "Error: server/dist/ not found."
+        echo "Run 'just watch' in another terminal first to build frontend assets."
+        exit 1
+    fi
+    echo "Running with live frontend assets from server/dist/"
+    echo "Changes rebuild automatically while 'just watch' is running."
+    echo "Reload the page in your browser to pick up changes."
+    echo ""
+    docker run -it \
+        --init \
+        --env-file {{ENV_FILE}} \
+        -p 8080:8080 \
+        -e DEBUG=true \
+        -e INPUT_DIR={{INPUT_DIR}} \
+        -e OUTPUT_DIR={{OUTPUT_DIR}} \
+        -e GOOGLE_APPLICATION_CREDENTIALS=/gcp/adc.json \
+        -v {{justfile_directory()}}/custom_dc/one:/userdata \
+        -v {{justfile_directory()}}/server/config:/workspace/server/config \
+        -v {{justfile_directory()}}/server/dist:/workspace/server/dist \
+        -v {{GCP_ADC}}:/gcp/adc.json:ro \
+        -v {{INPUT_DIR}}:{{INPUT_DIR}} \
+        -v {{OUTPUT_DIR}}:{{OUTPUT_DIR}} \
+        {{IMAGE}}
+
 # Build and run in one step
 build-run: build run
 
 # Run container locally (port 8080, debug mode)
-run: _check-env
+run: _check-env _check-gcloud
     docker run -it \
         --init \
         --env-file {{ENV_FILE}} \
         -p 8080:8080 \
         -e DEBUG=true \
+        -e INPUT_DIR={{INPUT_DIR}} \
+        -e OUTPUT_DIR={{OUTPUT_DIR}} \
+        -e GOOGLE_APPLICATION_CREDENTIALS=/gcp/adc.json \
         -v {{justfile_directory()}}/custom_dc/one:/userdata \
         -v {{justfile_directory()}}/server/config:/workspace/server/config \
+        -v {{GCP_ADC}}:/gcp/adc.json:ro \
+        -v {{INPUT_DIR}}:{{INPUT_DIR}} \
+        -v {{OUTPUT_DIR}}:{{OUTPUT_DIR}} \
         {{IMAGE}}
 
 # Run container with bash shell (for debugging)
-shell: _check-env
+shell: _check-env _check-gcloud
     docker run -it \
         --init \
         --env-file {{ENV_FILE}} \
         -p 8080:8080 \
         -e DEBUG=true \
+        -e INPUT_DIR={{INPUT_DIR}} \
+        -e OUTPUT_DIR={{OUTPUT_DIR}} \
+        -e GOOGLE_APPLICATION_CREDENTIALS=/gcp/adc.json \
         -v {{justfile_directory()}}/custom_dc/one:/userdata \
         -v {{justfile_directory()}}/server/config:/workspace/server/config \
+        -v {{GCP_ADC}}:/gcp/adc.json:ro \
+        -v {{INPUT_DIR}}:{{INPUT_DIR}} \
+        -v {{OUTPUT_DIR}}:{{OUTPUT_DIR}} \
         {{IMAGE}} \
         /bin/bash
 
-# Run only the service container (no data reload)
+# Run the data container to process/regenerate local data
+run-data: _check-env _check-gcloud
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p "{{INPUT_DIR}}" "{{OUTPUT_DIR}}"
+    echo "Running data container..."
+    echo "  INPUT_DIR:  {{INPUT_DIR}}"
+    echo "  OUTPUT_DIR: {{OUTPUT_DIR}}"
+    echo ""
+    docker run -it \
+        --env-file {{ENV_FILE}} \
+        -e INPUT_DIR={{INPUT_DIR}} \
+        -e OUTPUT_DIR={{OUTPUT_DIR}} \
+        -e GOOGLE_APPLICATION_CREDENTIALS=/gcp/creds.json \
+        -v {{GCP_ADC}}:/gcp/creds.json:ro \
+        -v {{INPUT_DIR}}:{{INPUT_DIR}} \
+        -v {{OUTPUT_DIR}}:{{OUTPUT_DIR}} \
+        {{DC_DATA_IMAGE}}
+
+# Run the prebuilt DC service container with local data (useful for testing without building)
+run-prebuilt: _check-env _check-gcloud
+    docker run -it \
+        --env-file {{ENV_FILE}} \
+        -p 8080:8080 \
+        -e DEBUG=true \
+        -e INPUT_DIR={{INPUT_DIR}} \
+        -e OUTPUT_DIR={{OUTPUT_DIR}} \
+        -e GOOGLE_APPLICATION_CREDENTIALS=/gcp/creds.json \
+        -v {{GCP_ADC}}:/gcp/creds.json:ro \
+        -v {{INPUT_DIR}}:{{INPUT_DIR}} \
+        -v {{OUTPUT_DIR}}:{{OUTPUT_DIR}} \
+        -v {{justfile_directory()}}/server/templates/custom_dc/one:/workspace/server/templates/custom_dc/one \
+        -v {{justfile_directory()}}/static/custom_dc/one:/workspace/static/custom_dc/one \
+        {{DC_SERVICE_IMAGE}}
+
+# Run only the service container via upstream script (no data reload)
 run-service: _check-env
     ./run_cdc_dev_docker.sh \
         --env_file {{ENV_FILE}} \
@@ -409,25 +714,29 @@ run-service: _check-env
         --image {{IMAGE}}
 
 # Run with staging environment config
-run-staging: (_check-env-file _ENV_STAGING)
+run-staging: (_check-env-file _ENV_STAGING) _check-gcloud
     docker run -it \
         --init \
         --env-file {{_ENV_STAGING}} \
         -p 8080:8080 \
         -e DEBUG=true \
+        -e GOOGLE_APPLICATION_CREDENTIALS=/gcp/adc.json \
         -v {{justfile_directory()}}/custom_dc/one:/userdata \
         -v {{justfile_directory()}}/server/config:/workspace/server/config \
+        -v {{GCP_ADC}}:/gcp/adc.json:ro \
         {{IMAGE}}
 
 # Run with production environment config
-run-prod: (_check-env-file _ENV_PROD)
+run-prod: (_check-env-file _ENV_PROD) _check-gcloud
     docker run -it \
         --init \
         --env-file {{_ENV_PROD}} \
         -p 8080:8080 \
         -e DEBUG=true \
+        -e GOOGLE_APPLICATION_CREDENTIALS=/gcp/adc.json \
         -v {{justfile_directory()}}/custom_dc/one:/userdata \
         -v {{justfile_directory()}}/server/config:/workspace/server/config \
+        -v {{GCP_ADC}}:/gcp/adc.json:ro \
         {{IMAGE}}
 
 # ── Deploying ─────────────────────────────────
@@ -459,6 +768,11 @@ status:
     echo "Env files:"
     for f in custom_dc/one/env.list custom_dc/one/env.staging.list custom_dc/one/env.prod.list; do
         if [ -f "$f" ]; then echo "  ✓ $f"; else echo "  ✗ $f (missing)"; fi
+    done
+    echo ""
+    echo "Local data directories:"
+    for d in custom_dc/one_input custom_dc/one_output; do
+        if [ -d "$d" ]; then echo "  ✓ $d"; else echo "  ✗ $d (run 'just run-data' to generate)"; fi
     done
 
 # Stop all running datacommons containers
@@ -519,6 +833,14 @@ _check-env:
     if [ ! -f "{{ENV_FILE}}" ]; then
         echo "Error: {{ENV_FILE}} not found."
         echo "Run 'just setup' or 'just env' first."
+        exit 1
+    fi
+
+_check-gcloud:
+    #!/usr/bin/env bash
+    if [ ! -f "{{GCP_ADC}}" ]; then
+        echo "Error: GCP Application Default Credentials not found."
+        echo "Run 'gcloud auth application-default login' to create them."
         exit 1
     fi
 
