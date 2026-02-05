@@ -8,9 +8,9 @@ module.exports = {
     ],
   },
   resolve: {
+    modules: [__dirname, "node_modules"],
     alias: {
       'theme': __dirname + '/js/theme/dc_custom_theme',
-      'js/components/nl_search_bar/auto_complete_input': __dirname + "/js/apps/custom_dc/one/base/components/nl_search_bar/auto_complete_input.tsx",
     },
   },
 };

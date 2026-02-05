@@ -10,60 +10,70 @@ export const MenuItems: MenuSource[] = [
   {
     id: "data",
     title: "Data",
-    url: "{primaryWebRoot}/places",
+    url: "https://data.one.org/tools",
     description:
-      "Use our **interactive tools**, powered by Google Data Commons, to explore and analyse millions of development data points seamlessly.",
+      "Use our **interactive tools** to explore and analyse millions of development data points seamlessly.",
     childContent: [
       {
-        title: "Place explorer",
-        url: "{primaryWebRoot}/places",
+        title: "Dashboards",
+        url: "https://data.one.org/tools/dashboard",
       },
       {
-        title: "Scatter plots",
-        url: "/tools/scatter",
+        title: "Agents",
+        url: "https://data.one.org/tools/agent",
       },
       {
-        title: "Timelines",
-        url: "/tools/timeline",
+        title: "Packages",
+        url: "https://data.one.org/tools/package",
       },
       {
-        title: "Map explorer",
-        url: "/tools/map",
+        title: "Data Commons Explorers",
+        url: "https://data.one.org/tools/dc-explorers",
       },
       {
-        title: "Data downloads",
-        url: "/tools/downloads",
+        title: "Resources",
+        url: "https://data.one.org/resources",
+      },
+      {
+        title: "All our tools",
+        url: "https://data.one.org/tools",
       },
     ],
   },
   {
     id: "analysis",
     title: "Analysis",
-    url: "{primaryWebRoot}/analysis",
+    url: "https://data.one.org/analysis",
     description:
       "Smart **articles** on the economic, political, and social forces shaping the world – and what they mean for Africa and beyond.",
     childContent: [
       {
         title: "Deep Dives",
-        url: "{primaryWebRoot}/analysis/type/deep-dive",
+        url: "https://data.one.org/analysis/type/deep-dive",
         description:
           "In-depth analyses and comprehensive explorations of key topics.",
       },
       {
         title: "Overviews",
-        url: "{primaryWebRoot}/analysis/type/overview",
+        url: "https://data.one.org/analysis/type/overview",
         description:
           "Get the essentials—background, key insights, and framing of major issues.",
       },
       {
         title: "Advocacy",
-        url: "{primaryWebRoot}/analysis/type/advocacy",
+        url: "https://data.one.org/analysis/type/advocacy",
         description:
           "Actionable insights, policy recommendations, and timely perspectives.",
       },
       {
+        title: "Data Insights",
+        url: "https://data.one.org/analysis/type/data-insights",
+        description:
+          "Key findings and trends, straight from the data.",
+      },
+      {
         title: "All our analysis",
-        url: "{primaryWebRoot}/analysis",
+        url: "https://data.one.org/analysis",
         description: "Browse all our articles.",
       },
     ],
@@ -71,25 +81,25 @@ export const MenuItems: MenuSource[] = [
   {
     id: "about-us",
     title: "About Us",
-    url: "{primaryWebRoot}/about",
+    url: "https://data.one.org/about",
     description:
       "We provide cutting-edge data, analysis, and tools so that together we can fight for a more just world.",
     childContent: [
       {
         title: "About Us",
-        url: "{primaryWebRoot}/about",
+        url: "https://data.one.org/about",
       },
       {
         title: "Our Team",
-        url: "{primaryWebRoot}/about/team",
+        url: "https://data.one.org/about/team",
       },
       {
         title: "FAQ",
-        url: "{primaryWebRoot}/about/faq",
+        url: "https://data.one.org/about/faq",
       },
       {
         title: "Newsletter",
-        url: "{primaryWebRoot}/newsletter",
+        url: "https://data.one.org/newsletter",
       },
     ],
   },
@@ -97,14 +107,7 @@ export const MenuItems: MenuSource[] = [
 
 export function prepareMenu(
   menuItems: MenuSource[],
-  primaryWebRoot: string
+  _primaryWebRoot: string
 ): MenuSource[] {
-  return menuItems.map((item) => ({
-    ...item,
-    url: item.url.replace("{primaryWebRoot}", primaryWebRoot),
-    childContent: item.childContent?.map((child) => ({
-      ...child,
-      url: child.url.replace("{primaryWebRoot}", primaryWebRoot),
-    })),
-  }));
+  return menuItems;
 }

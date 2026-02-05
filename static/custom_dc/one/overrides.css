@@ -16,3 +16,7 @@
   p {
     font-family: "colfax-web", sans-serif;
   }
+
+  .app-header a[href^="/tools/visualization#visType"] {
+    display: none !important;
+  }

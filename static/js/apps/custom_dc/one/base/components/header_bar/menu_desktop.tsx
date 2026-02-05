@@ -36,6 +36,7 @@ const MenuDesktop = ({
   const [panelHeight, setPanelHeight] = useState<number>(0);
   const submenuRefs = useRef<Array<HTMLDivElement | null>>([]);
   const menuContainerRef = useRef<HTMLDivElement | null>(null);
+  const closeTimeoutRef = useRef<number | null>(null);
 
   const menuItems = prepareMenu(MenuItems, primarySiteWebRoot);
 
@@ -44,9 +45,27 @@ const MenuDesktop = ({
     setPanelHeight(0);
   };
 
+  const cancelScheduledClose = (): void => {
+    if (closeTimeoutRef.current !== null) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+  };
+
+  const scheduleClose = (): void => {
+    cancelScheduledClose();
+    closeTimeoutRef.current = window.setTimeout(() => {
+      resetMenu();
+    }, 300);
+  };
+
   const toggleMenu = (index: number): void => {
     openMenu === index ? resetMenu() : setOpenMenu(index);
   };
+
+  useEffect(() => {
+    return () => cancelScheduledClose();
+  }, []);
 
   useEscapeKeyInputHandler(() => {
     resetMenu();
@@ -82,7 +101,12 @@ const MenuDesktop = ({
   }, [openMenu]);
 
   return (
-    <div className="header-menu" ref={menuContainerRef}>
+    <div
+      className="header-menu"
+      ref={menuContainerRef}
+      onMouseLeave={scheduleClose}
+      onMouseEnter={cancelScheduledClose}
+    >
       <ul className="header-menu-list">
         {menuItems.map((menuItem, index) => {
           const buttonId = slugify(`nav-${menuItem.title}-button`);
@@ -118,6 +142,8 @@ const MenuDesktop = ({
                 id={dropdownId}
                 className="rich-menu-container"
                 aria-labelledby={buttonId}
+                onMouseEnter={cancelScheduledClose}
+                onMouseLeave={scheduleClose}
                 style={{
                   maxHeight: openMenu === index ? `${panelHeight}px` : 0,
                 }}

@@ -79,8 +79,9 @@ export const Footer = ({ primarySiteWebRoot }: FooterProps): ReactElement => {
                   rel="noopener noreferrer"
                 >
                   Google&#39;s Data Commons
+                  <ArrowOutward />
                 </a>
-                <ArrowOutward />.
+                .
               </p>
             </div>
 
@@ -93,6 +94,15 @@ export const Footer = ({ primarySiteWebRoot }: FooterProps): ReactElement => {
                   </li>
                   <li>
                     <a href="/">Data</a>
+                  </li>
+                  <li>
+                    <a
+                      href="https://datacommons.one.org"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      ONE Data Commons
+                    </a>
                   </li>
                   <li>
                     <a href={`${primarySiteWebRoot}/newsletter`}>Newsletter</a>
@@ -164,13 +174,13 @@ export const Footer = ({ primarySiteWebRoot }: FooterProps): ReactElement => {
             <ul className="footer-bottom-links">
               <li className="footer-bottom-link footer-bottom-link-separator">
                 <a
-                  href="https://act.one.org/unsubscribe/unsubscribe_intl/"
+                  href="https://www.one.org/info/privacy-policy/"
                   rel="noopener noreferrer"
                   target="_blank"
                 >
-                  Unsubscribe
+                  Privacy Policy
+                  <ArrowOutward />
                 </a>
-                <ArrowOutward />
               </li>
               <li>
                 <a href={`${primarySiteWebRoot}/sitemap`}>Sitemap</a>

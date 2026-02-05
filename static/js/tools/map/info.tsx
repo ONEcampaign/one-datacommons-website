@@ -40,7 +40,11 @@ export function Info(): JSX.Element {
           <ol>
             <li>
               Enter a place in the search box and then select the type of places
-              you want to plot in the dropdown menu above.
+              you want to plot in the dropdown menu above. To see country-level data,
+              enter a region/continent in the search box (e.g. Africa for
+              African countries, or Earth for all countries), then
+              select the geographic level you want to plot in the dropdown menu
+              above.
             </li>
             <li>
               Pick a statistical variable in the left pane. There are thousands
