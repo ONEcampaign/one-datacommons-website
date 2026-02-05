@@ -18,19 +18,22 @@ git clone https://github.com/ONEcampaign/one-datacommons-website.git
 cd one-datacommons-website
 git remote add upstream https://github.com/datacommonsorg/website.git
 
-# 2. Run first-time setup (creates env file, configures Docker auth, updates submodules)
+# 2. Run first-time setup — prompts for API keys and creates env files
+#    for all environments (local, staging, prod), configures Docker auth,
+#    and updates submodules. Ask a team member for the API key values.
 just setup
 
-# 3. Edit your env file with API keys and secrets
-#    (ask a team member for the values)
-nano custom_dc/one/env.list
-
-# 4. Build the Docker image
+# 3. Build the Docker image
 just build
+
+# 4. Load data into local SQLite database (first time only)
+just run-data
 
 # 5. Run locally on http://localhost:8080
 just run
 ```
+
+Step 4 runs the data management container, which converts CSV data into a local SQLite database and generates NL embeddings. You only need to rerun it when your input data changes. If you skip this step, the services container will fail with a "Cannot open sqlite database" error.
 
 ## Available Commands
 
@@ -38,12 +41,17 @@ Run `just` or `just --list` for the full list. Here are the most common ones:
 
 | Command | What it does |
 |---------|-------------|
-| `just setup` | First-time setup (env file, Docker auth, submodules) |
+| `just setup` | First-time setup (interactive env prompts, Docker auth, submodules) |
 | `just build` | Build the Docker image locally |
+| `just run-data` | Run data container to load CSV data into SQLite and generate NL embeddings |
 | `just run` | Run locally on port 8080 |
 | `just dev` | Run with live frontend assets (pair with `just watch`) |
 | `just watch` | Start webpack watch mode for incremental frontend rebuilds |
 | `just shell` | Start container with bash (for debugging) |
+| `just env` | Create local env file (interactive prompts) |
+| `just env-staging` | Create staging env file (interactive prompts) |
+| `just env-prod` | Create production env file (interactive prompts) |
+| `just env-all` | Create all three env files |
 | `just sync` | Guided upstream sync from `customdc_stable` |
 | `just sync-auto` | Automatic upstream sync (merge + submodule update) |
 | `just deploy` | Build and push to Artifact Registry |
@@ -219,23 +227,44 @@ If you add a new component substitution, add the mapping to `.one-overridden-fil
 
 There is one env file per environment, all under `custom_dc/one/`:
 
-| File | Purpose |
-|------|---------|
-| `env.list` | Local development (created by `just env`) |
-| `env.staging.list` | Staging environment |
-| `env.prod.list` | Production environment |
+| File | Created by | Purpose |
+|------|-----------|---------|
+| `env.list` | `just env` | Local development |
+| `env.staging.list` | `just env-staging` | Staging environment |
+| `env.prod.list` | `just env-prod` | Production environment |
 
-Each is gitignored. Create them from the matching `.sample` template (`just env` for local, `just env-all` for all three).
+Each is gitignored. The `just env*` commands prompt interactively for secrets and offer sensible defaults for everything else. Run `just setup` or `just env-all` to create all three at once. If a file already exists, the command skips it — delete it first to regenerate.
 
-**Local development** (`env.list`) — you only need to fill in API keys:
+The `.sample` files in the same directory serve as documentation of what each env file contains.
 
-- `DC_API_KEY` / `MAPS_API_KEY` — API keys (ask a team member)
-- `FLASK_ENV=one` — Tells the app to use `custom_dc/one/` customizations
-- `ENABLE_MODEL=true` — Enables NL search functionality
+### Local development (`env.list`)
 
-Data directories (`INPUT_DIR`, `OUTPUT_DIR`) are injected automatically by the justfile based on your repo location — you don't need to configure them.
+The interactive prompt asks for:
+- **DC_API_KEY** / **MAPS_API_KEY** — required (ask a team member)
+- **Cloud SQL** — optional; defaults to "no", which uses a local SQLite database
 
-**Staging / Production** (`env.staging.list`, `env.prod.list`) — these also include GCS paths for `INPUT_DIR`/`OUTPUT_DIR`, Cloud SQL credentials, and Redis/admin settings.
+Other prompts with defaults:
+- **INPUT_DIR** / **OUTPUT_DIR** — defaults to `custom_dc/sample` (upstream example data) and `custom_dc/sample_output`
+- **DC_RELEASE** — Docker image tag, `stable` (tested) or `latest` (newest)
+
+Everything else is set automatically: `FLASK_ENV=one`, `ENABLE_MODEL=true`, `USE_SQLITE=true`, `GOOGLE_CLOUD_PROJECT`.
+
+**Important:** Local dev uses SQLite by default. Before running the services (`just run` or `just dev`), you must run the data container once to create the database:
+
+```bash
+just run-data
+```
+
+This processes CSV data from the input directory into a SQLite database in the output directory (`datacommons/datacommons.db`) and generates NL embeddings. Rerun it whenever your input data changes. With the default paths, the sample data works out of the box.
+
+If you connect to Cloud SQL instead (answering "y" during `just env`), you don't need `just run-data` locally — the database is managed remotely.
+
+### Staging / Production (`env.staging.list`, `env.prod.list`)
+
+These prompts additionally ask for:
+- **INPUT_DIR** / **OUTPUT_DIR** — GCS bucket paths (with defaults per environment)
+- **Cloud SQL** credentials — instance, DB password
+- **REDIS_HOST** / **ADMIN_SECRET** — application settings
 
 ## Deployment
 

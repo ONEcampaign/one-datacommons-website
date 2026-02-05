@@ -122,6 +122,7 @@ deploy/terraform-custom-datacommons/modules/backend.tf
 tools/nl/nl_metadata/.env
 /custom_dc/one_input
 /custom_dc/one_output
+/custom_dc/sample_output
 
 # Gemini files
 GEMINI.md

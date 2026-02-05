@@ -26,14 +26,14 @@ _ENV_PROD    := "custom_dc/one/env.prod.list"
 # GCP Application Default Credentials path (for mounting into Docker)
 GCP_ADC := env_var("HOME") / ".config/gcloud/application_default_credentials.json"
 
-# Local data directories (absolute paths, mounted into containers at same path)
-DATA_DIR     := justfile_directory() / "custom_dc"
-INPUT_DIR    := DATA_DIR / "one_input"
-OUTPUT_DIR   := DATA_DIR / "one_output"
+# Local data directories (read from env file, or default to sample data)
+INPUT_DIR    := `{ grep -s '^INPUT_DIR=' custom_dc/one/env.list || echo "INPUT_DIR=$PWD/custom_dc/sample"; } | head -1 | cut -d= -f2`
+OUTPUT_DIR   := `{ grep -s '^OUTPUT_DIR=' custom_dc/one/env.list || echo "OUTPUT_DIR=$PWD/custom_dc/sample_output"; } | head -1 | cut -d= -f2`
 
-# Prebuilt Data Commons images
-DC_DATA_IMAGE    := "gcr.io/datcom-ci/datacommons-data:stable"
-DC_SERVICE_IMAGE := "gcr.io/datcom-ci/datacommons-services:stable"
+# Prebuilt Data Commons images (reads DC_RELEASE from local env file, or override: just DC_RELEASE=latest run-data)
+DC_RELEASE       := `{ grep -s '^DC_RELEASE=' custom_dc/one/env.list || echo DC_RELEASE=stable; } | head -1 | cut -d= -f2`
+DC_DATA_IMAGE    := "gcr.io/datcom-ci/datacommons-data:" + DC_RELEASE
+DC_SERVICE_IMAGE := "gcr.io/datcom-ci/datacommons-services:" + DC_RELEASE
 
 # Show available commands (default)
 _default:
@@ -91,22 +91,40 @@ env:
         DB_PASS=$(ask "DB password")
         echo ""
     fi
+    echo "Data directories:"
+    echo "  Local paths are mounted into the Docker container."
+    echo "  The sample/ directory has example data to get started."
+    INPUT_DIR=$(ask "Input directory" "$(pwd)/custom_dc/sample")
+    OUTPUT_DIR=$(ask "Output directory" "$(pwd)/custom_dc/sample_output")
+    echo ""
+    echo "Docker images:"
+    echo "  Prebuilt DC images come in two channels:"
+    echo "    stable — tested release (may be a few weeks old)"
+    echo "    latest — newest build from head"
+    DC_RELEASE=$(ask "Release channel" "stable")
+    echo ""
     {
         echo "### ONE Data Commons — Local development ###"
-        echo "#"
-        echo "# Data directories (INPUT_DIR, OUTPUT_DIR) are injected automatically"
-        echo "# by the justfile based on your repo location. You don't need to set them here."
         echo ""
         echo "### API keys ###"
         echo ""
         echo "DC_API_KEY=$DC_API_KEY"
         echo "MAPS_API_KEY=$MAPS_API_KEY"
         echo ""
+        echo "### Data directories ###"
+        echo ""
+        echo "INPUT_DIR=$INPUT_DIR"
+        echo "OUTPUT_DIR=$OUTPUT_DIR"
+        echo ""
         echo "### Application settings ###"
         echo ""
         echo "FLASK_ENV=one"
         echo "ENABLE_MODEL=true"
         echo "GOOGLE_CLOUD_PROJECT=one-data-commons"
+        echo ""
+        echo "### Docker images ###"
+        echo ""
+        echo "DC_RELEASE=$DC_RELEASE"
         echo ""
         echo "### Database ###"
         echo ""
