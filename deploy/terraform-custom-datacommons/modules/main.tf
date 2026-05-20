@@ -340,9 +340,10 @@ resource "google_cloud_run_v2_service" "dc_web_service" {
         }
       }
 
-      # ONE override: ENABLE_MCP env block removed for now. Live deployment
-      # does not set this; enabling MCP is a feature change that should ship
-      # in its own deploy + verification cycle, not bundled with image swaps.
+      env {
+        name  = "ENABLE_MCP"
+        value = tostring(var.enable_mcp)
+      }
 
       env {
         name  = "DC_SEARCH_SCOPE"
