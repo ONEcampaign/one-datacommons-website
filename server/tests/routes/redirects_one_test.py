@@ -37,17 +37,18 @@ class TestRedirectsOne(unittest.TestCase):
   def setUp(self):
     self.client = _make_app().test_client()
 
-  def _assert_redirect(self, path):
+  def _assert_redirect(self, path, target='https://data.one.org/tools'):
     resp = self.client.get(path, follow_redirects=False)
     self.assertEqual(resp.status_code, 301, f'{path} should 301')
-    self.assertEqual(resp.headers['Location'], 'https://data.one.org/tools')
+    self.assertEqual(resp.headers['Location'], target,
+                     f'{path} redirected to wrong target')
 
   def _assert_passthrough(self, path):
     resp = self.client.get(path, follow_redirects=False)
     self.assertLess(resp.status_code, 300, f'{path} should not redirect')
 
-  def test_root_redirects(self):
-    self._assert_redirect('/')
+  def test_root_redirects_to_homepage(self):
+    self._assert_redirect('/', target='https://data.one.org')
 
   def test_scatter_redirects(self):
     self._assert_redirect('/tools/scatter')
