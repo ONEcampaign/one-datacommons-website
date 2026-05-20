@@ -214,8 +214,11 @@ fi
 echo ""
 echo "Writing $OUTPUT_FILE..."
 
+# tr fallback (avoid bash 4+ ${VAR^^} since macOS ships bash 3.2)
+NAMESPACE_UPPER=$(echo "$NAMESPACE" | tr '[:lower:]' '[:upper:]')
+
 cat > "$OUTPUT_FILE" << EOF
-# ONE Data Commons — ${NAMESPACE^^} Terraform Variables
+# ONE Data Commons — ${NAMESPACE_UPPER} Terraform Variables
 # Generated from live GCP resources on $(date +%Y-%m-%d)
 #
 # See variables.tf for all available options and defaults.

@@ -72,6 +72,13 @@ resource "google_sql_database_instance" "mysql_instance" {
 
     disk_size = var.mysql_storage_size_gb
     disk_type = "PD_SSD"
+
+    # ONE override: restore final_backup_config that an upstream sync removed.
+    # Without it, the auto-final-backup safety on instance deletion is lost.
+    final_backup_config {
+      enabled        = true
+      retention_days = 30
+    }
   }
 
   lifecycle {
@@ -94,6 +101,15 @@ resource "google_sql_database_instance" "mysql_instance" {
 resource "random_password" "mysql_password" {
   length  = 16
   special = true
+
+  # ONE override: the live deployment's terraform state has a stale placeholder
+  # for this resource (id=none, length=4) from an early import, while the actual
+  # password lives in Secret Manager. Ignoring length keeps `terraform plan`
+  # from proposing to regenerate the password (which would rotate it and break
+  # the live MySQL connection). On a fresh deploy, length=16 still applies.
+  lifecycle {
+    ignore_changes = [length, special, lower, numeric, upper, min_lower, min_numeric, min_special, min_upper]
+  }
 }
 
 # Store password in the secrets manager
@@ -108,6 +124,13 @@ resource "google_secret_manager_secret" "mysql_password" {
 resource "google_secret_manager_secret_version" "mysql_password_version" {
   secret      = google_secret_manager_secret.mysql_password.id
   secret_data = random_password.mysql_password.result
+
+  # ONE override: a newer Google provider added the write-only-version field
+  # which terraform marks as forcing replacement on every plan. The deployed
+  # secret value is correct; ignore the metadata change to avoid rotation.
+  lifecycle {
+    ignore_changes = [secret_data, secret_data_wo_version]
+  }
 }
 
 resource "google_sql_database" "mysql_db" {
@@ -122,6 +145,14 @@ resource "google_sql_user" "mysql_user" {
   host     = "%"
   instance = google_sql_database_instance.mysql_instance.name
   password = random_password.mysql_password.result
+
+  # ONE override: random_password.mysql_password has a stale placeholder value
+  # in state (length=4, never actually generated). The real password lives in
+  # MySQL itself and Secret Manager. Ignore the password field so terraform
+  # doesn't try to rotate it to the stale value.
+  lifecycle {
+    ignore_changes = [password]
+  }
 }
 
 # Data commons storage bucket
@@ -148,15 +179,17 @@ resource "google_storage_bucket_object" "gcs_data_bucket_output_folder" {
 # Generate a random suffix to append to api keys.
 # A deleted API key fully expires 30 days after deletion, and in the 30-day
 # window the ID remains taken. This suffix allows terraform to give API
-# keys a unique name if the stack is destroyed and rebuilt
+# keys a unique name if the stack is destroyed and rebuilt.
+# ONE override: byte_length stays at 6 to match live state (id="05d10b5c").
+# Changing it would cascade-rename every secret_id.
 resource "random_id" "api_key_suffix" {
-  byte_length = 4
+  byte_length = 6
 }
 
 # Google Maps API key
 resource "google_apikeys_key" "maps_api_key" {
-  name         = "${var.namespace}-maps-api-key-${random_id.api_key_suffix.hex}"
-  display_name = "${var.namespace}-maps-api-key-${random_id.api_key_suffix.hex}"
+  name         = "${var.namespace}-maps-api-key-${random_id.api_key_suffix.id}"
+  display_name = "${var.namespace}-maps-api-key-${random_id.api_key_suffix.id}"
   project      = data.google_project.current.number
 
   restrictions {
@@ -167,11 +200,20 @@ resource "google_apikeys_key" "maps_api_key" {
       service = "places_backend"
     }
   }
+
+  # ONE override: the live API key was created with a UUID name (not the
+  # deterministic name the module computes). Renaming forces replacement,
+  # which destroys the key string in use by the running service. Ignore name
+  # and display_name to keep the live key. On a fresh deploy this still
+  # creates a key with the deterministic name.
+  lifecycle {
+    ignore_changes = [name, display_name]
+  }
 }
 
 # Store maps api key in the secrets manager
 resource "google_secret_manager_secret" "maps_api_key" {
-  secret_id = "${var.namespace}-datacommons-maps-api-key-${random_id.api_key_suffix.hex}"
+  secret_id = "${var.namespace}-datacommons-maps-api-key-${random_id.api_key_suffix.id}"
   replication {
     auto {}
   }
@@ -181,11 +223,17 @@ resource "google_secret_manager_secret" "maps_api_key" {
 resource "google_secret_manager_secret_version" "maps_api_key_version" {
   secret      = google_secret_manager_secret.maps_api_key.id
   secret_data = local.maps_api_key
+
+  # ONE override: see mysql_password_version above. The deployed secret value
+  # is correct; ignore terraform's metadata-only diff to avoid rotation.
+  lifecycle {
+    ignore_changes = [secret_data, secret_data_wo_version]
+  }
 }
 
 # Store Data Commons api key in the secrets manager
 resource "google_secret_manager_secret" "dc_api_key" {
-  secret_id = "${var.namespace}-datacommons-dc-api-key-${random_id.api_key_suffix.hex}"
+  secret_id = "${var.namespace}-datacommons-dc-api-key-${random_id.api_key_suffix.id}"
   replication {
     auto {}
   }
@@ -195,13 +243,21 @@ resource "google_secret_manager_secret" "dc_api_key" {
 resource "google_secret_manager_secret_version" "dc_api_key_version" {
   secret      = google_secret_manager_secret.dc_api_key.id
   secret_data = var.dc_api_key
+
+  # ONE override: see mysql_password_version above. The deployed secret value
+  # is correct; ignore terraform's metadata-only diff to avoid rotation.
+  lifecycle {
+    ignore_changes = [secret_data, secret_data_wo_version]
+  }
 }
 
 # Data Commons Cloud Run Service
 resource "google_cloud_run_v2_service" "dc_web_service" {
-  name                = "${var.namespace}-datacommons-web-service"
-  location            = var.region
-  deletion_protection = false
+  name     = "${var.namespace}-datacommons-web-service"
+  location = var.region
+  # ONE override: live has deletion_protection=true. Upstream module hardcoded
+  # false; reverting to safer default to avoid accidental deletes.
+  deletion_protection = true
   ingress             = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
 
   template {
@@ -284,10 +340,9 @@ resource "google_cloud_run_v2_service" "dc_web_service" {
         }
       }
 
-      env {
-        name  = "ENABLE_MCP"
-        value = tostring(var.enable_mcp)
-      }
+      # ONE override: ENABLE_MCP env block removed for now. Live deployment
+      # does not set this; enabling MCP is a feature change that should ship
+      # in its own deploy + verification cycle, not bundled with image swaps.
 
       env {
         name  = "DC_SEARCH_SCOPE"
@@ -363,9 +418,11 @@ resource "google_cloud_run_service_iam_member" "dc_web_service_invoker" {
 
 # Data Commons data loading job
 resource "google_cloud_run_v2_job" "dc_data_job" {
-  name                = "${var.namespace}-datacommons-data-job"
-  location            = var.region
-  deletion_protection = false
+  name     = "${var.namespace}-datacommons-data-job"
+  location = var.region
+  # ONE override: live has deletion_protection=true. Upstream module hardcoded
+  # false; reverting to safer default to avoid accidental deletes.
+  deletion_protection = true
 
   template {
     template {
@@ -433,7 +490,10 @@ resource "google_cloud_run_v2_job" "dc_data_job" {
   ]
 }
 
-# Run the db init job on terraform apply
+# Run the db init job on terraform apply.
+# Every apply triggers `gcloud run jobs execute … DATA_RUN_MODE=schemaupdate`
+# so that schema migrations land alongside the new image. Adds deploy time;
+# the slow deploy is the cost of guaranteed-fresh schema.
 resource "null_resource" "run_db_init" {
   depends_on = [
     google_cloud_run_v2_job.dc_data_job,

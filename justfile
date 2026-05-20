@@ -46,7 +46,10 @@ setup: env-all
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Configuring Docker authentication for Artifact Registry..."
-    gcloud auth configure-docker {{GOOGLE_CLOUD_REGION}}-docker.pkg.dev
+    # Derive the registry hostname from DOCKER_REGISTRY (the single source of
+    # truth for where images are pushed) rather than GOOGLE_CLOUD_REGION, which
+    # tracks the Cloud Run deploy region and may differ from the registry's.
+    gcloud auth configure-docker "$(echo '{{DOCKER_REGISTRY}}' | cut -d/ -f1)" --quiet
     echo ""
     echo "Updating git submodules..."
     ./scripts/update_git_submodules.sh
@@ -740,10 +743,10 @@ check-overrides:
 
 # ── Building ──────────────────────────────────
 
-# Build Docker image locally (override tag: just IMAGE_TAG=v1.0 build)
+# Build Docker image for linux/amd64 (Cloud Run target). Override tag: just IMAGE_TAG=v1.0 build
 build: typecheck
-    @echo "Building {{IMAGE}} from {{DOCKERFILE}}..."
-    docker build --tag {{IMAGE}} -f {{DOCKERFILE}} .
+    @echo "Building {{IMAGE}} from {{DOCKERFILE}} for linux/amd64..."
+    docker buildx build --platform linux/amd64 --provenance=false --load --tag {{IMAGE}} -f {{DOCKERFILE}} .
 
 # ── Running Locally ───────────────────────────
 
