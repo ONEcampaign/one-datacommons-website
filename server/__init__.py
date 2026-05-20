@@ -347,6 +347,10 @@ def create_app(nl_root=DEFAULT_NL_ROOT):
   register_routes_common(app)
   register_routes_base_dc(app)
 
+  if cfg.ENV == 'one':
+    from server.routes import redirects_one
+    redirects_one.install(app)
+
   if cfg.SHOW_DISASTER:
     register_routes_disasters(app)
 
