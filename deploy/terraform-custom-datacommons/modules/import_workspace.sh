@@ -139,7 +139,7 @@ import_if_missing \
 
 import_if_missing \
   'google_cloud_run_service_iam_member.dc_web_service_invoker[0]' \
-  "projects/${PROJECT}/locations/${REGION}/services/${NAMESPACE}-datacommons-web-service/roles/run.invoker/allUsers"
+  "projects/${PROJECT}/locations/${REGION}/services/${NAMESPACE}-datacommons-web-service roles/run.invoker allUsers"
 
 import_if_missing \
   google_cloud_run_v2_job.dc_data_job \
@@ -152,22 +152,24 @@ import_if_missing \
   google_service_account.datacommons_service_account \
   "projects/${PROJECT}/serviceAccounts/${SA_EMAIL}"
 
-# IAM bindings: format is "project role serviceAccount:email" (space-separated)
-import_if_missing \
-  'google_project_iam_member.secret_accessor' \
-  "${PROJECT} roles/secretmanager.secretAccessor serviceAccount:${SA_EMAIL}"
-
-import_if_missing \
-  'google_project_iam_member.cloudsql_client' \
-  "${PROJECT} roles/cloudsql.client serviceAccount:${SA_EMAIL}"
-
-import_if_missing \
-  'google_project_iam_member.storage_admin' \
-  "${PROJECT} roles/storage.admin serviceAccount:${SA_EMAIL}"
-
-import_if_missing \
-  'google_project_iam_member.cloud_run_admin' \
-  "${PROJECT} roles/run.admin serviceAccount:${SA_EMAIL}"
+# IAM bindings: format is "project role serviceAccount:email" (space-separated).
+# Terraform consolidates these into a single for_each resource in
+# service_account.tf, so each binding is imported into a for_each-indexed
+# address. Keep this role list in sync with the toset(...) literal there.
+for role in \
+  "roles/compute.networkViewer" \
+  "roles/redis.editor" \
+  "roles/cloudsql.admin" \
+  "roles/storage.objectAdmin" \
+  "roles/run.admin" \
+  "roles/vpcaccess.user" \
+  "roles/iam.serviceAccountUser" \
+  "roles/secretmanager.secretAccessor"
+do
+  import_if_missing \
+    "google_project_iam_member.datacommons_service_account_roles[\"${role}\"]" \
+    "${PROJECT} ${role} serviceAccount:${SA_EMAIL}"
+done
 
 echo ""
 echo "═══════════════════════════════════════════════════════"
