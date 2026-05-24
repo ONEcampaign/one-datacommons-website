@@ -231,6 +231,18 @@ variable "enable_mcp" {
   default     = true
 }
 
+variable "enable_dc_search" {
+  description = "Whether to run the dc-search server. Requires the Gemini API key secret (see gemini_secret_id) to exist in Secret Manager."
+  type        = bool
+  default     = false
+}
+
+variable "gemini_secret_id" {
+  description = "Secret Manager secret ID holding the Gemini API key used by dc-search (only read when enable_dc_search is true)."
+  type        = string
+  default     = "gemini-api-key"
+}
+
 # Data Commons Cloud VPC Network variables
 
 variable "vpc_network_name" {

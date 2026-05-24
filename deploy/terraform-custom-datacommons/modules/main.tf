@@ -251,6 +251,15 @@ resource "google_secret_manager_secret_version" "dc_api_key_version" {
   }
 }
 
+# Existing Gemini API key secret (managed outside this module, shared across
+# namespaces). Read only when dc-search is enabled; the service account already
+# has project-wide secretmanager.secretAccessor (see service_account.tf).
+data "google_secret_manager_secret" "gemini_api_key" {
+  count     = var.enable_dc_search ? 1 : 0
+  project   = var.project_id
+  secret_id = var.gemini_secret_id
+}
+
 # Data Commons Cloud Run Service
 resource "google_cloud_run_v2_service" "dc_web_service" {
   name     = "${var.namespace}-datacommons-web-service"
@@ -343,6 +352,26 @@ resource "google_cloud_run_v2_service" "dc_web_service" {
       env {
         name  = "ENABLE_MCP"
         value = tostring(var.enable_mcp)
+      }
+
+      env {
+        name  = "ENABLE_DC_SEARCH"
+        value = tostring(var.enable_dc_search)
+      }
+
+      # dc-search reads its Gemini key from Secret Manager. Only wired when
+      # enable_dc_search is true; the secret is managed outside this module.
+      dynamic "env" {
+        for_each = data.google_secret_manager_secret.gemini_api_key
+        content {
+          name = "GEMINI_API_KEY"
+          value_source {
+            secret_key_ref {
+              secret  = env.value.secret_id
+              version = "latest"
+            }
+          }
+        }
       }
 
       env {
