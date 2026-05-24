@@ -18,6 +18,7 @@ from typing import Literal
 import httpx
 from datacommons_client.utils.error_handling import APIError as DCAPIError
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
@@ -126,6 +127,16 @@ app = FastAPI(
     description="Statistical-variable search for DataCommons.",
     version="0.1.0",
     lifespan=lifespan,
+)
+
+# Permissive CORS so browser-based clients (comparison UIs, notebooks) can call
+# the API cross-origin. Matches the mixer's existing `*` CORS posture in this
+# deployment; tighten allow_origins if this is ever exposed beyond internal use.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 

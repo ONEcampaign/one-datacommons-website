@@ -383,9 +383,7 @@ class SdgAskClarificationHook:
 _CRS_SVG_PREFIX = "ONE/g/DevelopmentFinance_"
 
 
-def _observed_crs_svg_dcids(
-    sv_set: list[str], candidates: tuple[StatVarFeatures, ...]
-) -> set[str]:
+def _observed_crs_svg_dcids(sv_set: list[str], candidates: tuple[StatVarFeatures, ...]) -> set[str]:
     """CRS_DAC group DCIDs the in-result candidate SVs declare via ``memberOf``.
 
     Reads the group identity straight from graph data (the ``memberOf`` arc on
