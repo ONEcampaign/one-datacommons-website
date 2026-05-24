@@ -376,6 +376,33 @@ class SdgAskClarificationHook:
 # CrsDacSvgExpansionHook
 # ---------------------------------------------------------------------------
 
+# CRS_DAC structural-group DCID prefix. The DevelopmentFinance import mints
+# group DCIDs under this namespace; an SV may also belong to unrelated
+# (topic/rollup) groups, so memberOf is filtered to this prefix when reading the
+# group identity back out of candidate data.
+_CRS_SVG_PREFIX = "ONE/g/DevelopmentFinance_"
+
+
+def _observed_crs_svg_dcids(
+    sv_set: list[str], candidates: tuple[StatVarFeatures, ...]
+) -> set[str]:
+    """CRS_DAC group DCIDs the in-result candidate SVs declare via ``memberOf``.
+
+    Reads the group identity straight from graph data (the ``memberOf`` arc on
+    each SV) instead of reconstructing it, so it can cross-check — and, for a
+    fully-bound predicate, stand in for — the synthesized DCID without
+    re-coupling to the import's naming recipe. Empty when candidates carry no
+    ``memberOf`` (e.g. unit tests that bypass feature fetching).
+    """
+    in_result = set(sv_set)
+    return {
+        group
+        for c in candidates
+        if c.dcid in in_result
+        for group in c.member_of
+        if group.startswith(_CRS_SVG_PREFIX)
+    }
+
 
 @dataclass(frozen=True, slots=True)
 class CrsDacSvgExpansionHook:
@@ -410,7 +437,6 @@ class CrsDacSvgExpansionHook:
         result: AnswerCollection,
         ctx: HookContext,
     ) -> HookResult:
-        del ctx
         if not result.sv_set:
             return AskClarification(
                 reason="under_specified",
@@ -426,6 +452,18 @@ class CrsDacSvgExpansionHook:
         sv_set = list(result.sv_set)
         caveats = list(result.caveats)
         svg_verified = True
+        observed = _observed_crs_svg_dcids(result.sv_set, ctx.raw_candidates)
+
+        # Drift check: for a fully-bound predicate the synthesized DCID should
+        # equal the group the candidates actually declare via memberOf. A
+        # mismatch means the import's naming recipe has moved out from under
+        # _build_crs_svg_dcid — log it instead of letting recall quietly rot.
+        if not has_wildcards and observed and svg_dcid not in observed:
+            logger.warning(
+                "CRS_DAC SVG drift: synthesized %s absent from candidate memberOf %s",
+                svg_dcid,
+                sorted(observed),
+            )
 
         try:
             vg = variable_group(dcid=svg_dcid)
@@ -451,8 +489,27 @@ class CrsDacSvgExpansionHook:
             svg_verified = False
 
         if not svg_verified:
-            if "retrieval_weak" not in caveats:
-                caveats.append("retrieval_weak")
+            # Synthesis failed. For a fully-bound predicate the candidates' own
+            # memberOf names the real group — trust the graph over our
+            # reconstructed DCID and recover the verified signal. Wildcard
+            # predicates need a parent-walk to reach the right granularity, so
+            # they degrade to the retrieved candidates as before.
+            if not has_wildcards and observed:
+                svg_dcid = sorted(observed)[0]
+                svg_verified = True
+                logger.warning(
+                    "CRS_DAC SVG synthesis failed; recovered via candidate memberOf %s",
+                    svg_dcid,
+                )
+            else:
+                logger.warning(
+                    "CRS_DAC SVG unverified for %s (wildcards=%s); "
+                    "degrading to retrieved candidates",
+                    svg_dcid,
+                    has_wildcards,
+                )
+                if "retrieval_weak" not in caveats:
+                    caveats.append("retrieval_weak")
 
         # Confidence: fully-bound (no wildcards) + SVG verifies → high.
         # Anything else stays at the universal materializer's default (medium).

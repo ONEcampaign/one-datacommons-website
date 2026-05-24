@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from unittest.mock import MagicMock, patch
 
 from dc_search import retrieval
@@ -75,6 +76,37 @@ _EMPTY_VG = VariableGroupInfo(
     child_vars=[{"dcid": "ONE/CRS_DAC/Malariacontrol-ODAGrants-KEN", "name": "test"}],
 )
 
+# Truly empty group — no child_vars and no child_groups → svg_verified=False.
+_UNVERIFIED_VG = VariableGroupInfo(
+    dcid="ONE/g/DevelopmentFinance_test",
+    name="Test",
+    parents=[],
+    child_groups=[],
+    child_vars=[],
+)
+
+# Real group the import wired onto the SV via memberOf; differs from whatever
+# _build_crs_svg_dcid synthesizes, so it exercises the drift / recovery paths.
+# The leading dc/g entry is an unrelated rollup group and must be ignored.
+_CRS_CANDIDATES_WITH_MEMBEROF = [
+    StatVarFeatures(
+        dcid="ONE/CRS_DAC/Malariacontrol-ODAGrants-KEN",
+        name="Malaria grants to Kenya",
+        population_type=["DevelopmentFinance"],
+        measured_property=["DevelopmentFinanceFlow"],
+        stat_type=["measuredValue"],
+        constraints={
+            "DevelopmentFinancePurpose": ["DAC/Malariacontrol"],
+            "DevelopmentFinanceRecipient": ["country/KEN"],
+            "DevelopmentFinanceScheme": ["ODAGrants"],
+        },
+        member_of=[
+            "dc/g/Some_Topic_Rollup",
+            "ONE/g/DevelopmentFinance_RealMalariaGroup",
+        ],
+    ),
+]
+
 
 def _make_ctx(
     candidates: list[StatVarFeatures],
@@ -114,6 +146,90 @@ def test_materialize_via_hooks_crs_dac() -> None:
     assert "ONE/CRS_DAC/Malariacontrol-ODAGrants-KEN" in result.sv_set
     assert result.svg_dcids
     assert any("DevelopmentFinance" in d for d in result.svg_dcids)
+
+
+_CRS_FULLY_BOUND_PREDICATE = Predicate(
+    population_type="DevelopmentFinance",
+    measured_property="DevelopmentFinanceFlow",
+    constraints={
+        "DevelopmentFinancePurpose": "DAC/Malariacontrol",
+        "DevelopmentFinanceRecipient": "country/KEN",
+        "DevelopmentFinanceScheme": "ODAGrants",
+    },
+)
+
+
+def test_crs_dac_synthesis_drift_warns(caplog) -> None:
+    """Synthesized DCID resolves but disagrees with candidate memberOf → warn.
+
+    Happy path is preserved (confidence still high); the mismatch is logged so
+    naming-recipe drift surfaces in telemetry instead of as silent recall loss.
+    """
+    ctx = _make_ctx(_CRS_CANDIDATES_WITH_MEMBEROF)
+    with (
+        patch("dc_search.hooks.variable_group", return_value=_EMPTY_VG),
+        caplog.at_level(logging.WARNING, logger="dc_search.hooks"),
+    ):
+        result = materialize_via_hooks(
+            _CRS_FULLY_BOUND_PREDICATE, _CRS_CANDIDATES_WITH_MEMBEROF, ctx=ctx
+        )
+
+    assert isinstance(result, AnswerCollection)
+    assert result.confidence == "high"
+    assert any("drift" in r.message for r in caplog.records)
+
+
+def test_crs_dac_synthesis_failure_recovers_via_member_of(caplog) -> None:
+    """Fully-bound predicate: synthesis fails → recover the group from memberOf.
+
+    The real group is read off the candidate (ignoring the unrelated dc/g
+    rollup), the verified/high-confidence signal is recovered, and no
+    retrieval_weak caveat is emitted.
+    """
+    ctx = _make_ctx(_CRS_CANDIDATES_WITH_MEMBEROF)
+    with (
+        patch("dc_search.hooks.variable_group", return_value=_UNVERIFIED_VG),
+        caplog.at_level(logging.WARNING, logger="dc_search.hooks"),
+    ):
+        result = materialize_via_hooks(
+            _CRS_FULLY_BOUND_PREDICATE, _CRS_CANDIDATES_WITH_MEMBEROF, ctx=ctx
+        )
+
+    assert isinstance(result, AnswerCollection)
+    assert result.confidence == "high"
+    assert result.svg_dcids == ("ONE/g/DevelopmentFinance_RealMalariaGroup",)
+    assert "retrieval_weak" not in result.caveats
+    assert any("recovered via candidate memberOf" in r.message for r in caplog.records)
+
+
+def test_crs_dac_wildcard_synthesis_failure_degrades(caplog) -> None:
+    """Wildcard predicate: synthesis fails → degrade as before, but log loudly.
+
+    No memberOf recovery (the leaf group is the wrong granularity for a
+    wildcard), so retrieval_weak is added and confidence stays medium.
+    """
+    predicate = Predicate(
+        population_type="DevelopmentFinance",
+        measured_property="DevelopmentFinanceFlow",
+        constraints={
+            "DevelopmentFinancePurpose": "DAC/Malariacontrol",
+            "DevelopmentFinanceRecipient": "country/KEN",
+            "DevelopmentFinanceScheme": None,
+        },
+    )
+    ctx = _make_ctx(_CRS_CANDIDATES_WITH_MEMBEROF)
+    with (
+        patch("dc_search.hooks.variable_group", return_value=_UNVERIFIED_VG),
+        caplog.at_level(logging.WARNING, logger="dc_search.hooks"),
+    ):
+        result = materialize_via_hooks(
+            predicate, _CRS_CANDIDATES_WITH_MEMBEROF, ctx=ctx
+        )
+
+    assert isinstance(result, AnswerCollection)
+    assert "retrieval_weak" in result.caveats
+    assert result.confidence == "medium"
+    assert any("degrading" in r.message for r in caplog.records)
 
 
 # ---------------------------------------------------------------------------
