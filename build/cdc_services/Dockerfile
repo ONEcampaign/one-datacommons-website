@@ -75,6 +75,12 @@ RUN pip3 install --upgrade pip setuptools \
     && pip3 install --no-cache-dir -r /workspace/nl_server/requirements.txt \
     && pip3 install --no-cache-dir datacommons-mcp
 
+# dc-search service — isolated venv (latest google-genai, pydantic, fastapi)
+RUN python -m venv /workspace/dc_search_venv
+COPY dc_search_server/requirements.txt /workspace/dc_search_server/requirements.txt
+RUN /workspace/dc_search_venv/bin/pip install --no-cache-dir -r /workspace/dc_search_server/requirements.txt
+COPY dc_search_server/ /workspace/dc_search_server/
+
 # Copy website app script.
 COPY web_app.py ./web_app.py
 # Copy server module.

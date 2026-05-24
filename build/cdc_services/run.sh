@@ -150,6 +150,51 @@ if [[ $ENABLE_MCP == "true" ]]; then
     ) &
 fi
 
+if [[ "$ENABLE_DC_SEARCH" == "true" ]]; then
+    if [[ -z "$GEMINI_API_KEY" ]]; then
+        echo "ERROR: ENABLE_DC_SEARCH=true but GEMINI_API_KEY is not set." >&2
+        exit 1
+    fi
+    echo "Starting DC-Search Server."
+    # Direct to mixer on port 8081 (no nginx prefix strip needed).
+    # Alternative via nginx on 8080: http://localhost:8080/core/api/v2
+    export DC_API_URL="${DC_API_URL:-http://localhost:8081/v2}"
+    export DC_SEARCH_MODEL="${DC_SEARCH_MODEL:-gemini-flash-lite-latest}"
+    # Wait for Mixer before starting: the FastAPI lifespan constructs a
+    # DataCommonsClient against mixer, which validates the URL with a live
+    # request — starting before mixer is ready crash-loops the worker.
+    (
+      # Ensure this subshell exits if the main script kills it
+      trap "exit" INT TERM
+      # Loop until Mixer /version endpoint returns 200
+      wait_time=1
+      # total wait time: 1+2+4+8+16+32*8 ~ 5 mins = ~13 retries
+      retries_left=13
+      while [[ "$(python3 -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8081/version', timeout=5).getcode())" 2>/dev/null || echo 0)" != "200" ]]; do
+        if [[ $retries_left -le 0 ]]; then
+          echo "Mixer failed to start after 5 minutes. DC-Search server will not start."
+          exit 1
+        fi
+
+        echo "Mixer not ready yet. Retrying in ${wait_time}s... ($retries_left retries left)"
+        sleep $wait_time
+        wait_time=$((wait_time * 2))
+        if [[ $wait_time -gt 32 ]]; then wait_time=32; fi
+        retries_left=$((retries_left - 1))
+      done
+      echo "Mixer is ready."
+
+      exec /workspace/dc_search_venv/bin/gunicorn \
+          --log-level info \
+          --bind 0.0.0.0:7800 \
+          -w 4 \
+          -k uvicorn_worker.UvicornWorker \
+          --timeout 60 \
+          --pythonpath /workspace/dc_search_server/src \
+          dc_search.app:app
+    ) &
+fi
+
 # Start website server.
 if [[ $DEBUG == "true" ]]; then
     echo "Starting Website Server in debug mode."

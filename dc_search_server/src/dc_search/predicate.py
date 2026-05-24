@@ -1,0 +1,194 @@
+"""Materialization layer for the predicate paradigm.
+
+A Predicate ``{slot: value | wildcard}`` is materialized into either an
+``AnswerCollection`` (the SV-set / constructable SVG that answers the query)
+or an ``AskClarification`` (when the predicate is under-specified or the
+retrieval is too weak to commit).
+
+Dispatch is handled by the hook pipeline in ``hooks.py``
+(``materialize_via_hooks``).  This module owns the core types (``Predicate``,
+``AnswerCollection``, ``AskClarification``) and the shared filter helpers
+(``_filter_by_predicate``, ``_apply_availability_filter``) that hooks use.
+"""
+
+from __future__ import annotations
+
+import re
+from typing import TYPE_CHECKING, Literal, Protocol
+
+from pydantic import BaseModel, ConfigDict, Field
+
+if TYPE_CHECKING:
+    from dc_search.retrieval import StatVarFeatures
+
+# ---------------------------------------------------------------------------
+# Core types
+# ---------------------------------------------------------------------------
+
+Caveat = Literal[
+    "availability_filtered",
+    "donor_is_observation_facet",
+    "denominator_implicit",
+    "partial_result",
+    "set_valued_answer",
+    "retrieval_weak",
+    "topic_expanded",
+]
+
+Confidence = Literal["low", "medium", "high"]
+
+CONFIDENCE_LEVELS: tuple[Confidence, ...] = ("low", "medium", "high")
+
+
+class Predicate(BaseModel):
+    """Slot-value specification for a DataCommons statistical-variable query.
+
+    ``constraints`` maps slot DCID → value DCID; ``None`` values are wildcards
+    (the slot is intentionally unbound, not missing).
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    population_type: str | None
+    measured_property: str | None
+    constraints: dict[str, str | None] = Field(default_factory=dict)
+
+
+class AnswerCollection(BaseModel):
+    """A resolved SV-set (and optional SVG DCIDs) that answers the query."""
+
+    model_config = ConfigDict(frozen=True)
+
+    predicate: Predicate
+    sv_set: list[str]
+    svg_dcids: tuple[str, ...] = ()
+    collection_dcid: str | None = None
+    confidence: Confidence
+    caveats: list[Caveat] = Field(default_factory=list)
+    variable_label: str | None = None
+    """Populated by pipeline._run_one_variable for default-endpoint fan-out.
+
+    Allows callers to correlate N answers back to N extracted variables when
+    positional alignment breaks (e.g. any variable returns AskClarification).
+    Simple endpoint leaves this None.
+    """
+
+
+class AskClarification(BaseModel):
+    """Signal to the caller that the query cannot be confidently answered."""
+
+    reason: Literal[
+        "under_specified",
+        "retrieval_weak",
+        "ambiguous_shape",
+        "parse_error",
+        "no_candidates",
+        "no_shapes",
+        "error",
+    ]
+    message: str
+    proposed_clarifications: list[str] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Materializer protocol (retained for type-checking compatibility)
+# ---------------------------------------------------------------------------
+
+
+class Materializer(Protocol):
+    """A callable that materializes a predicate given a candidate SV list."""
+
+    def __call__(
+        self,
+        predicate: Predicate,
+        candidates: list[StatVarFeatures],
+    ) -> AnswerCollection | AskClarification: ...
+
+
+# ---------------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------------
+
+
+def _specificity_extras(sv: StatVarFeatures, addressed_slots: frozenset[str]) -> int:
+    """Count SV constraint slots not in ``addressed_slots``."""
+    return sum(1 for slot, vals in sv.constraints.items() if vals and slot not in addressed_slots)
+
+
+def _filter_by_predicate(
+    predicate: Predicate,
+    candidates: list[StatVarFeatures],
+) -> list[str]:
+    """Return DCIDs of candidates matching ``predicate``, ranked by specificity."""
+    addressed_slots = frozenset(predicate.constraints)
+    scored: list[tuple[int, int, str]] = []
+    for idx, sv in enumerate(candidates):
+        if predicate.population_type is not None:
+            if predicate.population_type not in sv.population_type:
+                continue
+        if predicate.measured_property is not None:
+            if predicate.measured_property not in sv.measured_property:
+                continue
+        ok = True
+        for slot, value in predicate.constraints.items():
+            if value is None:
+                continue
+            candidate_vals = sv.constraints.get(slot, [])
+            if value not in candidate_vals:
+                ok = False
+                break
+        if not ok:
+            continue
+        scored.append((_specificity_extras(sv, addressed_slots), idx, sv.dcid))
+    scored.sort()
+    return [s[2] for s in scored]
+
+
+def _apply_availability_filter(
+    sv_set: list[str],
+    availability_set: frozenset[str] | None,
+) -> list[str]:
+    """Filter sv_set to those present in availability_set.
+
+    Fails open: None/empty availability_set returns sv_set unchanged.
+    Empty intersection also falls back to sv_set (variables_for_entity
+    can undercover; better to return possibly-wrong than to blank-out).
+    """
+    if not availability_set:
+        return sv_set
+    filtered = [sv for sv in sv_set if sv in availability_set]
+    return filtered if filtered else sv_set
+
+
+# ---------------------------------------------------------------------------
+# CRS_DAC SVG construction helpers (used by CrsDacSvgExpansionHook in hooks.py)
+# ---------------------------------------------------------------------------
+
+_CRS_SLOT_ORDER: tuple[str, str, str] = (
+    "DevelopmentFinancePurpose",
+    "DevelopmentFinanceRecipient",
+    "DevelopmentFinanceScheme",
+)
+
+_DCID_SEGMENT_RE = re.compile(r"^[A-Za-z0-9]+/(.+)$")
+
+
+def _value_slug(value_dcid: str) -> str:
+    """Strip namespace prefix from a value DCID for SVG segment construction."""
+    m = _DCID_SEGMENT_RE.match(value_dcid)
+    if m is None:
+        return value_dcid
+    prefix, rest = value_dcid.split("/", 1)
+    return prefix[0].upper() + prefix[1:] + rest
+
+
+def _build_crs_svg_dcid(predicate: Predicate) -> str:
+    """Construct the CRS_DAC SVG DCID from a predicate."""
+    parts: list[str] = []
+    for slot in _CRS_SLOT_ORDER:
+        value = predicate.constraints.get(slot)
+        if value is None:
+            parts.append(slot)
+        else:
+            parts.append(f"{slot}-{_value_slug(value)}")
+    return "ONE/g/DevelopmentFinance_" + "_".join(parts)
