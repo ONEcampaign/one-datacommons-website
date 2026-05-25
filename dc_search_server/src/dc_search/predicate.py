@@ -18,6 +18,8 @@ from typing import TYPE_CHECKING, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from dc_search.extraction import ExtractedDate
+
 if TYPE_CHECKING:
     from dc_search.retrieval import StatVarFeatures
 
@@ -27,8 +29,10 @@ if TYPE_CHECKING:
 
 Caveat = Literal[
     "availability_filtered",
+    "date_filtered",
     "donor_is_observation_facet",
     "denominator_implicit",
+    "filtering_degraded",
     "partial_result",
     "set_valued_answer",
     "retrieval_weak",
@@ -71,6 +75,12 @@ class AnswerCollection(BaseModel):
     Allows callers to correlate N answers back to N extracted variables when
     positional alignment breaks (e.g. any variable returns AskClarification).
     Simple endpoint leaves this None.
+    """
+    date_filter: ExtractedDate | None = None
+    """Carries the resolved date window when DateFilterHook dropped ≥1 var.
+
+    None when no date filtering occurred or the simple endpoint was used.
+    Populated alongside the ``"date_filtered"`` caveat.
     """
 
 

@@ -5,11 +5,21 @@ Wraps construction so callers don't repeat the base-DC-vs-custom-DC branch.
 
 from __future__ import annotations
 
+import socket
 from functools import cache
 
 from datacommons_client.client import DataCommonsClient
 
 from dc_search.config import load_config
+
+# Hard wall-clock cap for requests-based DC SDK calls.  The SDK calls
+# requests.post() with no timeout; setting the process-wide socket default
+# here is the only way to bound it without patching the SDK.
+#
+# Safety note: google-genai uses httpx (which ignores socket defaults and
+# manages its own timeout via HttpOptions), so this only affects the
+# requests-based datacommons-client SDK.
+_DC_SDK_SOCKET_TIMEOUT_S = 5
 
 
 @cache
@@ -19,7 +29,11 @@ def get_client() -> DataCommonsClient:
     Intentional process-lifetime singleton, not a bounded cache — one client
     instance per process is correct and expected. Use dependency injection
     (pass a mock DataCommonsClient) in tests instead of clearing this cache.
+
+    Sets a process-wide socket default timeout so the requests-based DC SDK
+    is bounded.  google-genai (httpx) is unaffected.
     """
+    socket.setdefaulttimeout(_DC_SDK_SOCKET_TIMEOUT_S)
     cfg = load_config()
     api_key = cfg.api_key
     api_url = cfg.api_url

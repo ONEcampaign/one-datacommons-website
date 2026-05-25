@@ -19,6 +19,7 @@ The four primitives:
 
 from __future__ import annotations
 
+import contextvars
 import logging
 import threading
 from dataclasses import dataclass, field
@@ -30,6 +31,28 @@ import httpx
 from dc_search.client import get_client
 
 logger = logging.getLogger(__name__)
+
+# Per-request flag tripped when a coverage/availability mixer call fails open
+# (returns an empty result on a transient error instead of raising).  Lets the
+# pipeline attach a "filtering_degraded" caveat so an unfiltered fallback result
+# is distinguishable from a clean one.  A ContextVar (not a global) keeps the
+# signal isolated per asyncio task / per copied context: asyncio.to_thread runs
+# its target in a context copy, so a helper tripping this inside a thread is
+# visible to the same thread's later reads but never leaks across requests.
+_dc_call_degraded: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "_dc_call_degraded", default=False
+)
+
+
+def reset_dc_call_degraded() -> None:
+    """Clear the per-request degraded flag (call before a batch of mixer calls)."""
+    _dc_call_degraded.set(False)
+
+
+def dc_call_was_degraded() -> bool:
+    """True if a coverage/availability call has failed open since the last reset."""
+    return _dc_call_degraded.get()
+
 
 # Single RLock guards all module-level LRUCache instances.  cachetools LRUCache
 # is not thread-safe (OrderedDict.move_to_end races under concurrent __setitem__).
@@ -533,6 +556,40 @@ def variables_for_entity(*, entity_dcid: str) -> tuple[str, ...]:
 _presence_cache: cachetools.LRUCache = cachetools.LRUCache(maxsize=1024)
 
 
+def _parse_observation(
+    raw: dict[str, Any],
+    variable_dcids: tuple[str, ...],
+) -> tuple[frozenset[str], dict[tuple[str, str], tuple[str | None, str | None]]]:
+    """Parse a /v2/observation response into (present_vars, per-(var,entity) date ranges).
+
+    present_vars: vars with at least one orderedFacet at any requested entity.
+    ranges: (var, entity) -> (earliestDate, latestDate) unioned across ALL
+    orderedFacets for that pair.  orderedFacets are ranked by preference, not
+    date coverage; taking only facet[0] under-reports the true span when a
+    multi-facet series' in-window data lives in a non-preferred facet.
+    Shared by presence_for_entities and observation_date_ranges.
+    """
+    by_variable = raw.get("byVariable", {})
+    present: set[str] = set()
+    ranges: dict[tuple[str, str], tuple[str | None, str | None]] = {}
+    for sv in variable_dcids:
+        by_entity = by_variable.get(sv, {}).get("byEntity", {})
+        for ent, ent_data in by_entity.items():
+            facets = ent_data.get("orderedFacets") or []
+            if not facets:
+                continue
+            present.add(sv)
+            # Union earliest/latest across all facets — preference order ≠ date
+            # coverage order.
+            earliest_dates = [f.get("earliestDate") for f in facets if f.get("earliestDate")]
+            latest_dates = [f.get("latestDate") for f in facets if f.get("latestDate")]
+            ranges[(sv, ent)] = (
+                min(earliest_dates) if earliest_dates else None,
+                max(latest_dates) if latest_dates else None,
+            )
+    return frozenset(present), ranges
+
+
 def presence_for_entities(
     *,
     variable_dcids: tuple[str, ...],
@@ -564,27 +621,235 @@ def presence_for_entities(
     if cached is not None:
         return cached
 
-    client = get_client()
-    raw = client.observation.fetch(
-        variable_dcids=list(variable_dcids),
-        entity_dcids=list(entity_dcids),
-        date="LATEST",
-    ).to_dict()
+    try:
+        client = get_client()
+        raw = client.observation.fetch(
+            variable_dcids=list(variable_dcids),
+            entity_dcids=list(entity_dcids),
+            date="LATEST",
+        ).to_dict()
+    except Exception:
+        logger.warning(
+            "presence_for_entities: transient error; fail-open",
+            exc_info=True,
+        )
+        _dc_call_degraded.set(True)
+        return frozenset()
 
-    # Response shape: {"byVariable": {sv_dcid: {"byEntity": {entity_dcid: ...}}}}
-    by_variable: dict[str, Any] = raw.get("byVariable", {})
-    present: set[str] = set()
-    for sv_dcid in variable_dcids:
-        sv_data = by_variable.get(sv_dcid, {})
-        by_entity: dict[str, Any] = sv_data.get("byEntity", {})
-        for entity_data in by_entity.values():
-            if entity_data.get("orderedFacets"):
-                present.add(sv_dcid)
-                break
-
-    result = frozenset(present)
+    result = _parse_observation(raw, variable_dcids)[0]
     with _cache_lock:
         _presence_cache[cache_key] = result
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Date-coverage helpers (custom-DC + base-DC)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class DateCoverage:
+    """Coverage returned by the mixer /v2/variable/coverage endpoint.
+
+    envelopes: var dcid -> (earliest, latest); each bound may be None.
+    entity_ranges: (var dcid, entity dcid) -> (earliest, latest).
+    """
+
+    envelopes: dict[str, tuple[str | None, str | None]]
+    entity_ranges: dict[tuple[str, str], tuple[str | None, str | None]]
+
+
+# Module-level cache for coverage fetches. Keyed by
+# (sorted_variable_dcids, sorted_entity_dcids). Cleared by tests.
+_coverage_cache: cachetools.LRUCache = cachetools.LRUCache(maxsize=1024)
+
+
+def variable_date_coverage(
+    *,
+    variable_dcids: tuple[str, ...],
+    entity_dcids: tuple[str, ...] = (),
+) -> DateCoverage:
+    """Fetch precomputed custom-DC date coverage from the mixer.
+
+    One POST to /v2/variable/coverage via the SDK's low-level client.api.post.
+    Cached by (sorted(variable_dcids), sorted(entity_dcids)). Fail-open: returns
+    an empty DateCoverage on HTTP/parse error so callers never drop vars on
+    transient failure.
+    """
+    if not variable_dcids:
+        return DateCoverage({}, {})
+
+    cache_key = (tuple(sorted(variable_dcids)), tuple(sorted(entity_dcids)))
+    with _cache_lock:
+        cached = _coverage_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    payload: dict[str, Any] = {
+        "variables": list(variable_dcids),
+        "entities": list(entity_dcids),
+    }
+    try:
+        client = get_client()
+        raw: dict[str, Any] = client.api.post(payload, endpoint="variable/coverage")
+    except Exception:
+        logger.warning(
+            "variable_date_coverage: transient error fetching coverage; fail-open",
+            exc_info=True,
+        )
+        _dc_call_degraded.set(True)
+        return DateCoverage({}, {})
+
+    # Parse both camelCase and snake_case (Envoy transcoder may emit either).
+    vc = raw.get("variableCoverage") or raw.get("variable_coverage") or {}
+    ec = raw.get("entityCoverage") or raw.get("entity_coverage") or {}
+
+    envelopes: dict[str, tuple[str | None, str | None]] = {
+        v: (r.get("earliest"), r.get("latest")) for v, r in vc.items()
+    }
+    entity_ranges: dict[tuple[str, str], tuple[str | None, str | None]] = {}
+    for v, ent_map in ec.items():
+        # EntityRanges.entity wraps the per-entity dict in {"entity": {...}}.
+        inner = ent_map.get("entity") or ent_map
+        for e, r in inner.items():
+            entity_ranges[(v, e)] = (r.get("earliest"), r.get("latest"))
+
+    result = DateCoverage(envelopes=envelopes, entity_ranges=entity_ranges)
+    with _cache_lock:
+        _coverage_cache[cache_key] = result
+    return result
+
+
+# Bound the base-DC batch sent to variable/info (placeless path can exceed this
+# after topic expansion); the overflow is fail-open kept.
+_VARIABLE_INFO_DATE_CAP = 25
+
+# Module-level cache for variable/info date ranges. Cleared by tests.
+_variable_info_dates_cache: cachetools.LRUCache = cachetools.LRUCache(maxsize=1024)
+
+
+def variable_info_date_ranges(
+    *,
+    variable_dcids: tuple[str, ...],
+) -> dict[str, tuple[str | None, str | None]]:
+    """Base-DC placeless date envelopes from /v2/bulk/info/variable.
+
+    Folds provenanceSummary[].seriesSummary[].{earliestDate,latestDate} to one
+    (min earliest, max latest) per variable. Capped at _VARIABLE_INFO_DATE_CAP,
+    cached by sorted tuple, fail-open → empty dict.
+    """
+    if not variable_dcids:
+        return {}
+
+    # Sort then cap so the checked subset is deterministic regardless of caller
+    # argument order (avoids order-dependent cache keys for >cap-var sets).
+    variable_dcids = tuple(sorted(variable_dcids))[:_VARIABLE_INFO_DATE_CAP]
+
+    cache_key = variable_dcids
+    with _cache_lock:
+        cached = _variable_info_dates_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    try:
+        client = get_client()
+        raw: dict[str, Any] = client.api.post(
+            {"nodes": list(variable_dcids)},
+            endpoint="bulk/info/variable",
+        )
+    except Exception:
+        logger.warning(
+            "variable_info_date_ranges: transient error; fail-open",
+            exc_info=True,
+        )
+        _dc_call_degraded.set(True)
+        return {}
+
+    result: dict[str, tuple[str | None, str | None]] = {}
+    for entry in raw.get("data") or []:
+        node = entry.get("node")
+        info = entry.get("info") or {}
+        if not node:
+            continue
+        prov_summary = info.get("provenanceSummary") or {}
+        # provenanceSummary may be:
+        #   1. a dict keyed by prov DCID → values() gives prov objects
+        #   2. a list of prov objects
+        #   3. a single prov object (has "seriesSummary" directly at top level)
+        if isinstance(prov_summary, dict):
+            if "seriesSummary" in prov_summary:
+                # Single-prov shape: the dict IS the prov object, not a map.
+                prov_items = [prov_summary]
+            else:
+                prov_items = prov_summary.values()
+        else:
+            prov_items = prov_summary
+
+        earliest_dates: list[str] = []
+        latest_dates: list[str] = []
+        for prov in prov_items:
+            for series in prov.get("seriesSummary") or []:
+                ed = series.get("earliestDate")
+                ld = series.get("latestDate")
+                if ed:
+                    earliest_dates.append(ed)
+                if ld:
+                    latest_dates.append(ld)
+
+        if earliest_dates or latest_dates:
+            result[node] = (
+                min(earliest_dates) if earliest_dates else None,
+                max(latest_dates) if latest_dates else None,
+            )
+
+    with _cache_lock:
+        _variable_info_dates_cache[cache_key] = result
+    return result
+
+
+# Module-level cache for observation date ranges. Cleared by tests.
+_observation_dates_cache: cachetools.LRUCache = cachetools.LRUCache(maxsize=1024)
+
+
+def observation_date_ranges(
+    *,
+    variable_dcids: tuple[str, ...],
+    entity_dcids: tuple[str, ...],
+) -> dict[tuple[str, str], tuple[str | None, str | None]]:
+    """Base-DC placed date ranges via /v2/observation (LATEST).
+
+    Returns a (var, entity) -> (earliestDate, latestDate) dict from the first
+    orderedFacet per (var, entity) pair. Cached by (sorted vars, sorted entities).
+    Fail-open → empty dict on any error.
+    """
+    if not variable_dcids or not entity_dcids:
+        return {}
+
+    cache_key = (tuple(sorted(variable_dcids)), tuple(sorted(entity_dcids)))
+    with _cache_lock:
+        cached = _observation_dates_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    try:
+        client = get_client()
+        raw = client.observation.fetch(
+            variable_dcids=list(variable_dcids),
+            entity_dcids=list(entity_dcids),
+            date="LATEST",
+        ).to_dict()
+    except Exception:
+        logger.warning(
+            "observation_date_ranges: transient error; fail-open",
+            exc_info=True,
+        )
+        _dc_call_degraded.set(True)
+        return {}
+
+    _present, result = _parse_observation(raw, variable_dcids)
+
+    with _cache_lock:
+        _observation_dates_cache[cache_key] = result
     return result
 
 

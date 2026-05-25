@@ -603,3 +603,188 @@ async def test_simple_endpoint_skips_resolve_places_batch(monkeypatch):
     assert not resolve_batch_called, (
         "resolve_places_batch must NOT be called from the simple endpoint (entities=None)"
     )
+
+
+# ---------------------------------------------------------------------------
+# B4: _resolve_union_availability hybrid tests
+# ---------------------------------------------------------------------------
+
+
+def _make_date_coverage(
+    envelopes: dict,
+    entity_ranges: dict,
+):
+    from dc_search.retrieval import DateCoverage
+
+    return DateCoverage(envelopes=envelopes, entity_ranges=entity_ranges)
+
+
+def test_resolve_union_availability_custom_via_map_no_presence_call():
+    """Custom var (in coverage map at resolved places) → no presence_for_entities call."""
+    from unittest.mock import patch
+
+    import dc_search.pipeline as _pipeline
+    import dc_search.retrieval as _retrieval
+
+    cov = _make_date_coverage(
+        envelopes={"SV_CUSTOM": ("2010", "2024")},
+        entity_ranges={("SV_CUSTOM", "country/KEN"): ("2012", "2022")},
+    )
+
+    with (
+        patch.object(_retrieval, "variable_date_coverage", return_value=cov),
+        patch.object(_retrieval, "presence_for_entities") as mock_presence,
+    ):
+        result = _pipeline._resolve_union_availability(
+            ["country/KEN"],
+            candidate_sv_dcids=("SV_CUSTOM",),
+        )
+
+    mock_presence.assert_not_called()
+    assert "SV_CUSTOM" in result
+
+
+def test_resolve_union_availability_base_dc_via_presence():
+    """Base-DC var (map-absent) → presence_for_entities is called with only base candidates."""
+    from unittest.mock import patch
+
+    import dc_search.pipeline as _pipeline
+    import dc_search.retrieval as _retrieval
+
+    # No custom vars in map
+    cov = _make_date_coverage(envelopes={}, entity_ranges={})
+
+    with (
+        patch.object(_retrieval, "variable_date_coverage", return_value=cov),
+        patch.object(
+            _retrieval,
+            "presence_for_entities",
+            return_value=frozenset({"BASE_SV"}),
+        ) as mock_presence,
+    ):
+        result = _pipeline._resolve_union_availability(
+            ["country/KEN"],
+            candidate_sv_dcids=("BASE_SV",),
+        )
+
+    # presence_for_entities called with only base candidates
+    call_kwargs = mock_presence.call_args.kwargs
+    assert "BASE_SV" in call_kwargs["variable_dcids"]
+    assert "BASE_SV" in result
+
+
+def test_resolve_union_availability_mixed_set_unions_both():
+    """Mixed set: custom resolved from map + base-DC from presence, unioned."""
+    from unittest.mock import patch
+
+    import dc_search.pipeline as _pipeline
+    import dc_search.retrieval as _retrieval
+
+    cov = _make_date_coverage(
+        envelopes={"SV_CUSTOM": ("2010", "2024")},
+        entity_ranges={("SV_CUSTOM", "country/KEN"): ("2012", "2022")},
+    )
+
+    with (
+        patch.object(_retrieval, "variable_date_coverage", return_value=cov),
+        patch.object(
+            _retrieval,
+            "presence_for_entities",
+            return_value=frozenset({"BASE_SV"}),
+        ) as mock_presence,
+    ):
+        result = _pipeline._resolve_union_availability(
+            ["country/KEN"],
+            candidate_sv_dcids=("SV_CUSTOM", "BASE_SV"),
+        )
+
+    # Only base candidate passed to presence_for_entities
+    call_kwargs = mock_presence.call_args.kwargs
+    assert "BASE_SV" in call_kwargs["variable_dcids"]
+    assert "SV_CUSTOM" not in call_kwargs["variable_dcids"]
+    assert "SV_CUSTOM" in result
+    assert "BASE_SV" in result
+
+
+def test_resolve_union_availability_map_absent_base_absent_fail_open():
+    """Map-absent + base-DC-absent → var still in candidates (fail-open)."""
+    from unittest.mock import patch
+
+    import dc_search.pipeline as _pipeline
+    import dc_search.retrieval as _retrieval
+
+    cov = _make_date_coverage(envelopes={}, entity_ranges={})
+
+    with (
+        patch.object(_retrieval, "variable_date_coverage", return_value=cov),
+        patch.object(_retrieval, "presence_for_entities", return_value=frozenset()),
+    ):
+        result = _pipeline._resolve_union_availability(
+            ["country/KEN"],
+            candidate_sv_dcids=("UNKNOWN_SV",),
+        )
+
+    # result is an empty frozenset; _apply_availability_filter's empty-intersection
+    # fallback preserves UNKNOWN_SV in the final sv_set.
+    assert isinstance(result, frozenset)
+    # The availability set is empty; the caller (pipeline step 3) uses
+    # _apply_availability_filter which falls back to the full sv_set when empty.
+
+
+def test_resolve_union_availability_topic_path_uses_variables_for_entities_batch():
+    """Topic path (no candidate_sv_dcids) → variables_for_entities_batch called."""
+    from unittest.mock import patch
+
+    import dc_search.pipeline as _pipeline
+    import dc_search.retrieval as _retrieval
+
+    with (
+        patch.object(
+            _retrieval,
+            "variables_for_entities_batch",
+            return_value={"country/KEN": ("SV_A", "SV_B")},
+        ) as mock_batch,
+        patch.object(_retrieval, "variable_date_coverage") as mock_cov,
+    ):
+        result = _pipeline._resolve_union_availability(
+            ["country/KEN"],
+            candidate_sv_dcids=(),
+        )
+
+    mock_batch.assert_called_once()
+    mock_cov.assert_not_called()
+    assert "SV_A" in result
+    assert "SV_B" in result
+
+
+def test_resolve_union_availability_custom_in_envelope_but_absent_at_place_not_in_custom_present():
+    """Correctness invariant (generic-review G1):
+
+    A custom var present in cov.envelopes but with NO {E,V} pair at the resolved
+    places must be excluded from custom_present AND must NOT be re-queried via
+    presence_for_entities (it is in the map, so not base-DC).
+    """
+    from unittest.mock import patch
+
+    import dc_search.pipeline as _pipeline
+    import dc_search.retrieval as _retrieval
+
+    # SV_CUSTOM in envelopes but no entity_range at country/KEN
+    cov = _make_date_coverage(
+        envelopes={"SV_CUSTOM": ("2010", "2024")},
+        entity_ranges={},  # no {E,V} at country/KEN
+    )
+
+    with (
+        patch.object(_retrieval, "variable_date_coverage", return_value=cov),
+        patch.object(_retrieval, "presence_for_entities") as mock_presence,
+    ):
+        result = _pipeline._resolve_union_availability(
+            ["country/KEN"],
+            candidate_sv_dcids=("SV_CUSTOM",),
+        )
+
+    # SV_CUSTOM not in custom_present (no entity_ranges at place)
+    assert "SV_CUSTOM" not in result
+    # SV_CUSTOM is in the map → not base-DC → presence_for_entities not called
+    mock_presence.assert_not_called()

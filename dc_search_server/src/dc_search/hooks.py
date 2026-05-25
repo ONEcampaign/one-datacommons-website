@@ -30,11 +30,9 @@ import time
 from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from dataclasses import field as dataclasses_field
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
-if TYPE_CHECKING:
-    from dc_search.extraction import ExtractedDate
-
+from dc_search.extraction import ExtractedDate
 from dc_search.predicate import (
     CONFIDENCE_LEVELS,
     AnswerCollection,
@@ -47,11 +45,17 @@ from dc_search.predicate import (
     _filter_by_predicate,
 )
 from dc_search.retrieval import (
+    DateCoverage,
     StatVarFeatures,
     child_vars_of_groups,
+    dc_call_was_degraded,
     expand_topic,
+    observation_date_ranges,
+    reset_dc_call_degraded,
+    variable_date_coverage,
     variable_group,
     variable_groups_batch,
+    variable_info_date_ranges,
 )
 
 logger = logging.getLogger(__name__)
@@ -130,6 +134,14 @@ class HookContext:
     """Candidate features as received by the materializer."""
     dates: list[ExtractedDate] = dataclasses_field(default_factory=list)
     """Extracted date references; empty list when not provided (simple endpoint)."""
+    availability_degraded: bool = False
+    """True when the availability re-rank fetch failed open (transient mixer error).
+
+    Computed during the pre-rerank step (a separate ``asyncio.to_thread`` whose
+    ContextVar copy cannot propagate back), so it is captured there and threaded
+    in here.  ``materialize_via_hooks`` turns it — together with any in-hook
+    degradation — into a ``filtering_degraded`` caveat.
+    """
     hook_timings: dict[str, float] | None = None
     """Optional sink for per-hook wall-clock seconds written by materialize_via_hooks.
 
@@ -810,18 +822,106 @@ class EmptyResultHook:
 
 
 # ---------------------------------------------------------------------------
+# DateFilterHook — pure helpers
+# ---------------------------------------------------------------------------
+
+
+def _year(date_str: str | None) -> int | None:
+    """Leading 4-digit year of an ISO date string, or None.
+
+    Compares mixed-granularity dates ("2015", "2015-03", "2015-03-01") at year
+    granularity per the brief. Returns None for None/empty/unparseable input.
+    """
+    if not date_str:
+        return None
+    head = date_str[:4]
+    return int(head) if head.isdigit() else None
+
+
+def _overlaps(
+    cov_min: str | None,
+    cov_max: str | None,
+    win_start: str | None,
+    win_end: str | None,
+) -> bool:
+    """True if coverage [cov_min, cov_max] overlaps window [win_start, win_end].
+
+    Year granularity; open bounds (None) are treated as -inf / +inf. With no
+    coverage evidence on either side, returns True (caller fails open). Overlap
+    rule: cov_min <= win_end AND cov_max >= win_start.
+    """
+    cmin, cmax = _year(cov_min), _year(cov_max)
+    wstart, wend = _year(win_start), _year(win_end)
+    # No positive coverage evidence -> caller should keep (fail-open).
+    if cmin is None and cmax is None:
+        return True
+    # Open bounds (None) widen to ±inf so a missing edge never excludes overlap.
+    lo = cmin if cmin is not None else float("-inf")
+    hi = cmax if cmax is not None else float("inf")
+    ws = wstart if wstart is not None else float("-inf")
+    we = wend if wend is not None else float("inf")
+    return lo <= we and hi >= ws
+
+
+def _union_range(
+    a: tuple[str | None, str | None] | None,
+    b: tuple[str | None, str | None],
+) -> tuple[str | None, str | None]:
+    """Union two (min, max) ranges at string granularity; None bounds widen."""
+    if a is None:
+        return b
+    amin, amax = a
+    bmin, bmax = b
+    lo = min(x for x in (amin, bmin) if x) if (amin or bmin) else None
+    hi = max(x for x in (amax, bmax) if x) if (amax or bmax) else None
+    return (lo, hi)
+
+
+def _range_for(
+    v: str,
+    cov: DateCoverage,
+    base_ranges: dict[str, tuple[str | None, str | None]],
+    place_dcids: tuple[str, ...],
+) -> tuple[str, tuple[str | None, str | None] | None]:
+    """Effective coverage verdict for var v as a 3-state result.
+
+    A plain (min,max)|None return is insufficient because ``None`` would have to
+    mean two opposite things. The three states disambiguate:
+      ("keep",  None)     -> var absent from the map entirely (base-DC with no
+                             evidence) -> fail-open keep. Absence != miss.
+      ("drop",  None)     -> var IS in the map ({V} present) but has no {E,V}
+                             at the resolved places -> positive evidence it has
+                             no data there -> clear miss -> drop.
+      ("range", (lo, hi)) -> a concrete range to test against the window.
+    """
+    if v in cov.envelopes:
+        if place_dcids:
+            pairs = [cov.entity_ranges[(v, e)] for e in place_dcids if (v, e) in cov.entity_ranges]
+            if not pairs:
+                return ("drop", None)  # custom, no data at these places
+            lo = min((p[0] for p in pairs if p[0]), default=None)
+            hi = max((p[1] for p in pairs if p[1]), default=None)
+            return ("range", (lo, hi))
+        return ("range", cov.envelopes[v])
+    rng = base_ranges.get(v)
+    if rng is None:
+        return ("keep", None)  # base-DC, no evidence -> fail-open
+    return ("range", rng)
+
+
+# ---------------------------------------------------------------------------
 # DateFilterHook
 # ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True, slots=True)
 class DateFilterHook:
-    """Filter candidates by extracted date range. SCAFFOLD ONLY — body is a no-op.
+    """Filter SV candidates by extracted date window using the coverage map.
 
-    The hook is fully wired into the chain and applies() correctly detects when
-    dates are present; run() is a pass-through that logs the dates so we can
-    validate the data path. Actual filtering logic is deferred to the next pass
-    once we settle on how mixer date-window queries are constructed.
+    Custom-DC vars (present in the coverage map) are filtered via map ranges.
+    Base-DC vars (map-absent) are routed to variable/info (placeless) or live
+    observation fetch (placed). Vars with no positive range evidence are kept
+    (fail-open). ``latest`` queries bypass filtering entirely.
     """
 
     name: str = "date_filter"
@@ -841,10 +941,86 @@ class DateFilterHook:
         result: AnswerCollection,
         ctx: HookContext,
     ) -> HookResult:
-        # TODO(date-filter): implement actual date-window filtering.
-        # For now, log the received dates and pass candidates through unchanged.
-        logger.info("DateFilterHook received dates: %s (no-op pass-through)", ctx.dates)
-        return result
+        del predicate
+
+        # Only filter on point/range dates with at least one usable bound.
+        # A point requires start; a range requires at least one of start or end.
+        # Reject degenerate windows (both bounds None) to avoid silently keeping
+        # every var as if the date constraint didn't exist.
+        def _has_usable_bound(d: ExtractedDate) -> bool:
+            if d.kind == "point":
+                return bool(d.start)
+            # range: "since 2015" (start set, end None) and "before 2010" (start
+            # None, end set) are both valid open-ended windows.
+            return bool(d.start or d.end)
+
+        dates = [d for d in ctx.dates if d.kind in ("point", "range") and _has_usable_bound(d)]
+        if not dates:
+            return result
+
+        window = dates[0]
+        if window.kind == "point":
+            win_start = win_end = window.start
+        else:  # range
+            win_start, win_end = window.start, window.end
+
+        sv_set = list(result.sv_set)
+        if not sv_set:
+            return result
+
+        place_dcids = ctx.place_dcids
+        try:
+            cov = variable_date_coverage(
+                variable_dcids=tuple(sv_set),
+                entity_dcids=tuple(place_dcids),
+            )
+        except Exception:
+            # Defensive; the helper already fails open, but guard against any
+            # unexpected runtime error so callers never lose their sv_set.
+            return result
+
+        # Custom vars (in cov.envelopes) get their ranges from the coverage map;
+        # only the base-DC remainder needs a network fetch here. _range_for does
+        # the per-var routing below, so we only need the base list explicitly.
+        base = [v for v in sv_set if v not in cov.envelopes]
+
+        # Base-DC ranges: placed -> live obs, placeless -> variable/info.
+        base_ranges: dict[str, tuple[str | None, str | None]] = {}
+        if base:
+            if place_dcids:
+                obs = observation_date_ranges(
+                    variable_dcids=tuple(base),
+                    entity_dcids=tuple(place_dcids),
+                )
+                for (v, _e), rng in obs.items():
+                    base_ranges[v] = _union_range(base_ranges.get(v), rng)
+            else:
+                base_ranges = variable_info_date_ranges(variable_dcids=tuple(base))
+
+        keep: list[str] = []
+        for v in sv_set:
+            verdict, rng = _range_for(v, cov, base_ranges, place_dcids)
+            if verdict == "keep":
+                keep.append(v)
+            elif verdict == "drop":
+                pass  # custom var, clear miss at resolved places -> drop
+            else:  # "range"
+                assert rng is not None
+                if _overlaps(rng[0], rng[1], win_start, win_end):
+                    keep.append(v)
+
+        if len(keep) == len(sv_set):
+            return result  # nothing dropped
+
+        caveats = _caveats("date_filtered", base=list(result.caveats))
+        return result.model_copy(
+            update={
+                "sv_set": keep,
+                "caveats": caveats,
+                "date_filter": window,
+            }
+        )
+        # keep == [] -> downstream EmptyResultHook emits AskClarification.
 
 
 # ---------------------------------------------------------------------------
@@ -916,6 +1092,10 @@ def materialize_via_hooks(
     cand_tuple = tuple(candidates)
     sink = ctx.hook_timings
 
+    # Clear the per-request degraded flag so any in-hook coverage/date fetch that
+    # fails open during this chain is attributable to this call (not a prior one).
+    reset_dc_call_degraded()
+
     # Universal pre-filter.
     _t = time.perf_counter()
     result: HookResult = _universal_materialize(predicate, candidates)
@@ -931,6 +1111,18 @@ def materialize_via_hooks(
         result = hook.run(predicate, result, ctx)
         if sink is not None:
             sink[hook.name] = time.perf_counter() - _t
+
+    # A transient mixer failure anywhere in the filtering path (the availability
+    # re-rank, captured on ctx; or an in-hook date/coverage fetch, tripped on the
+    # ContextVar) means the surviving sv_set may be unfiltered.  Flag it so the
+    # fallback is distinguishable from a clean result.
+    if isinstance(result, AnswerCollection) and (
+        ctx.availability_degraded or dc_call_was_degraded()
+    ):
+        if "filtering_degraded" not in result.caveats:
+            result = result.model_copy(
+                update={"caveats": _caveats("filtering_degraded", base=list(result.caveats))}
+            )
 
     return result
 

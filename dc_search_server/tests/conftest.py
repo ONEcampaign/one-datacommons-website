@@ -31,12 +31,19 @@ def _clear_module_caches() -> None:
             "_features_cache",
             "_entity_svs_cache",
             "_presence_cache",
+            "_coverage_cache",
+            "_variable_info_dates_cache",
+            "_observation_dates_cache",
             "_vgroups_cache",
             "_topic_arc_cache",
         ):
             cache = getattr(_retrieval, cache_name, None)
             if cache is not None and hasattr(cache, "clear"):
                 cache.clear()
+        # The fail-open degraded flag is a ContextVar; tests run synchronously in
+        # one context (no asyncio.to_thread copy), so a set() in one test would
+        # otherwise leak into the next.
+        _retrieval.reset_dc_call_degraded()
     except (ImportError, AttributeError):
         pass
 

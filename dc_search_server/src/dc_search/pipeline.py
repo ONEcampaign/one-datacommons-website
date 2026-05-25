@@ -141,24 +141,63 @@ def _resolve_union_availability(
 ) -> frozenset[str]:
     """Union the availability sets for already-resolved place DCIDs.
 
-    Uses targeted ``presence_for_entities`` when candidate SVs are known
-    (one HTTP call with small payload); falls back to full-inventory batch
-    for the Topic-dominant path where the SV set is unknown.
+    Candidate path (known SVs): hybrid — custom-DC vars resolved via the
+    coverage map's {E,V} presence, base-DC vars (map-absent) via a targeted
+    live observation fetch, unioned. Map-absent + base-absent vars fail-open
+    (not in either set, so _apply_availability_filter's empty-intersection
+    fallback preserves them).
+
+    Topic path (no candidate SVs): falls back to full-inventory batch.
     """
     if not place_dcids:
         return frozenset()
 
     if candidate_sv_dcids:
-        return retrieval.presence_for_entities(
+        # Fetch precomputed coverage map for the candidate set + resolved places.
+        cov = retrieval.variable_date_coverage(
             variable_dcids=candidate_sv_dcids,
             entity_dcids=tuple(place_dcids),
         )
+
+        # Custom vars: present in the coverage map at any of the resolved places.
+        custom_present: set[str] = {
+            v for v in candidate_sv_dcids if any((v, e) in cov.entity_ranges for e in place_dcids)
+        }
+
+        # Base-DC vars: map-absent (not in cov.envelopes) -> live obs check.
+        base_candidates = tuple(v for v in candidate_sv_dcids if v not in cov.envelopes)
+        base_present: frozenset[str] = (
+            retrieval.presence_for_entities(
+                variable_dcids=base_candidates,
+                entity_dcids=tuple(place_dcids),
+            )
+            if base_candidates
+            else frozenset()
+        )
+
+        return frozenset(custom_present | base_present)
 
     batch = retrieval.variables_for_entities_batch(entity_dcids=tuple(place_dcids))
     available: set[str] = set()
     for svs in batch.values():
         available.update(svs)
     return frozenset(available)
+
+
+def _resolve_union_availability_checked(
+    place_dcids: list[str],
+    candidate_sv_dcids: tuple[str, ...] = (),
+) -> tuple[frozenset[str], bool]:
+    """``_resolve_union_availability`` plus a fail-open degraded flag.
+
+    Runs as the ``asyncio.to_thread`` target so it can read retrieval's per-context
+    degraded flag in the SAME thread the coverage/presence helpers ran on (a
+    ContextVar mutation inside a thread does not propagate back to the caller's
+    context, so the flag must be captured here and returned).
+    """
+    retrieval.reset_dc_call_degraded()
+    avail = _resolve_union_availability(place_dcids, candidate_sv_dcids)
+    return avail, retrieval.dc_call_was_degraded()
 
 
 # ---------------------------------------------------------------------------
@@ -209,8 +248,11 @@ async def _short_circuit_topic(
 
     place_dcids: list[str] = await _resolve_place_dcids(query, entities)
     union_avail: frozenset[str] = frozenset()
+    avail_degraded = False
     if place_dcids:
-        union_avail = await asyncio.to_thread(_resolve_union_availability, place_dcids)
+        union_avail, avail_degraded = await asyncio.to_thread(
+            _resolve_union_availability_checked, place_dcids
+        )
     topic_predicate = Predicate(
         population_type=None,
         measured_property=None,
@@ -222,6 +264,7 @@ async def _short_circuit_topic(
         retrieval_scores=retrieval_scores,
         raw_candidates=(),
         dates=dates or [],
+        availability_degraded=avail_degraded,
     )
     answer = await asyncio.to_thread(
         hooks_module.materialize_many, (topic_predicate,), [], ctx=topic_ctx
@@ -267,20 +310,24 @@ async def _rerank_by_availability(
     sv_dcids: list[str],
     query: str,
     entities: list[str] | None = None,
-) -> tuple[list[str], list[str], frozenset[str]]:
-    """Step 3 — availability re-rank; returns (reranked_sv_dcids, place_dcids, union_avail)."""
+) -> tuple[list[str], list[str], frozenset[str], bool]:
+    """Step 3 — availability re-rank.
+
+    Returns (reranked_sv_dcids, place_dcids, union_avail, availability_degraded).
+    """
     place_dcids: list[str] = await _resolve_place_dcids(query, entities)
     union_avail: frozenset[str] = frozenset()
+    avail_degraded = False
     if place_dcids:
-        union_avail = await asyncio.to_thread(
-            _resolve_union_availability, place_dcids, tuple(sv_dcids)
+        union_avail, avail_degraded = await asyncio.to_thread(
+            _resolve_union_availability_checked, place_dcids, tuple(sv_dcids)
         )
         if union_avail:
             sv_dcids = sorted(
                 sv_dcids,
                 key=lambda d: _availability_sort_key(d, union_avail),
             )
-    return sv_dcids, place_dcids, union_avail
+    return sv_dcids, place_dcids, union_avail, avail_degraded
 
 
 async def _fetch_features(sv_dcids: list[str]) -> list:
@@ -343,6 +390,7 @@ async def _materialize(
     retrieval_scores: dict[str, float],
     variable: str | None,
     dates: list[ExtractedDate] | None = None,
+    availability_degraded: bool = False,
 ) -> AnswerCollection | AskClarification:
     """Step 8 — materialize via hooks (to_thread offloads blocking mixer HTTP calls)."""
     hook_ctx = HookContext(
@@ -351,6 +399,7 @@ async def _materialize(
         retrieval_scores=retrieval_scores,
         raw_candidates=tuple(feature_list),
         dates=dates or [],
+        availability_degraded=availability_degraded,
     )
     answer = await asyncio.to_thread(
         hooks_module.materialize_many, predicates, feature_list, ctx=hook_ctx
@@ -412,7 +461,9 @@ async def _run_one_variable(
         return _VariableResult(outcome=topic_answer, n_candidates=n_candidates)
 
     # Step 3 — availability re-rank.
-    sv_dcids, place_dcids, union_avail = await _rerank_by_availability(sv_dcids, query, entities)
+    sv_dcids, place_dcids, union_avail, avail_degraded = await _rerank_by_availability(
+        sv_dcids, query, entities
+    )
 
     # Step 4 — feature fetch.
     feature_list = await _fetch_features(sv_dcids)
@@ -444,6 +495,7 @@ async def _run_one_variable(
         retrieval_scores,
         variable,
         dates=dates,
+        availability_degraded=avail_degraded,
     )
     return _VariableResult(outcome=answer, n_candidates=n_candidates, n_shapes=n_shapes)
 

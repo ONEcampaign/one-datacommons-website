@@ -222,9 +222,7 @@ def test_crs_dac_wildcard_synthesis_failure_degrades(caplog) -> None:
         patch("dc_search.hooks.variable_group", return_value=_UNVERIFIED_VG),
         caplog.at_level(logging.WARNING, logger="dc_search.hooks"),
     ):
-        result = materialize_via_hooks(
-            predicate, _CRS_CANDIDATES_WITH_MEMBEROF, ctx=ctx
-        )
+        result = materialize_via_hooks(predicate, _CRS_CANDIDATES_WITH_MEMBEROF, ctx=ctx)
 
     assert isinstance(result, AnswerCollection)
     assert "retrieval_weak" in result.caveats
@@ -252,6 +250,49 @@ def test_materialize_via_hooks_census() -> None:
     assert isinstance(result, AnswerCollection)
     assert "Count_Person_Female" in result.sv_set
     assert "Count_Person" not in result.sv_set
+
+
+# ---------------------------------------------------------------------------
+# materialize_via_hooks — filtering_degraded caveat (fail-open signal)
+# ---------------------------------------------------------------------------
+
+
+def _degraded_test_predicate() -> Predicate:
+    return Predicate(
+        population_type="Person", measured_property="count", constraints={"gender": "Female"}
+    )
+
+
+def test_materialize_via_hooks_filtering_degraded_on_in_hook_failure() -> None:
+    """An in-hook coverage/date fetch that fails open trips the ContextVar, which
+    materialize_via_hooks turns into a filtering_degraded caveat."""
+    ctx = _make_ctx(_CENSUS_CANDIDATES)
+    with patch("dc_search.hooks.dc_call_was_degraded", return_value=True):
+        result = materialize_via_hooks(_degraded_test_predicate(), _CENSUS_CANDIDATES, ctx=ctx)
+    assert isinstance(result, AnswerCollection)
+    assert "filtering_degraded" in result.caveats
+
+
+def test_materialize_via_hooks_filtering_degraded_on_availability_degraded() -> None:
+    """A degraded availability re-rank (captured on HookContext) surfaces the caveat."""
+    ctx = HookContext(
+        place_dcids=(),
+        place_availability=None,
+        retrieval_scores={},
+        raw_candidates=tuple(_CENSUS_CANDIDATES),
+        availability_degraded=True,
+    )
+    result = materialize_via_hooks(_degraded_test_predicate(), _CENSUS_CANDIDATES, ctx=ctx)
+    assert isinstance(result, AnswerCollection)
+    assert "filtering_degraded" in result.caveats
+
+
+def test_materialize_via_hooks_no_degraded_caveat_when_clean() -> None:
+    """No transient failure → no filtering_degraded caveat."""
+    ctx = _make_ctx(_CENSUS_CANDIDATES)
+    result = materialize_via_hooks(_degraded_test_predicate(), _CENSUS_CANDIDATES, ctx=ctx)
+    assert isinstance(result, AnswerCollection)
+    assert "filtering_degraded" not in result.caveats
 
 
 # ---------------------------------------------------------------------------
@@ -983,13 +1024,17 @@ def test_weak_retrieval_topic_dump_hook_no_fire_empty_place_dcids() -> None:
 
 
 # ===========================================================================
-# DateFilterHook tests (scaffold — no-op pass-through)
+# DateFilterHook tests
 # ===========================================================================
 
 
-def _ctx_with_dates(dates: list[ExtractedDate]) -> HookContext:
+def _ctx_with_dates(
+    dates: list[ExtractedDate],
+    *,
+    place_dcids: tuple[str, ...] = (),
+) -> HookContext:
     return HookContext(
-        place_dcids=(),
+        place_dcids=place_dcids,
         place_availability=None,
         retrieval_scores={},
         raw_candidates=(),
@@ -997,43 +1042,523 @@ def _ctx_with_dates(dates: list[ExtractedDate]) -> HookContext:
     )
 
 
+# ---------------------------------------------------------------------------
+# applies()
+# ---------------------------------------------------------------------------
+
+
 def test_date_filter_hook_applies_when_dates_present() -> None:
-    """DateFilterHook.applies() returns True when ctx.dates is non-empty."""
     hook = DateFilterHook()
     pred = _census_predicate()
     dates = [ExtractedDate(kind="range", start="2010", end=None)]
     ctx = _ctx_with_dates(dates)
-
     assert hook.applies(pred, (), ctx) is True
 
 
 def test_date_filter_hook_does_not_apply_when_dates_empty() -> None:
-    """DateFilterHook.applies() returns False when ctx.dates is empty."""
     hook = DateFilterHook()
     pred = _census_predicate()
     ctx = _ctx_with_dates([])
-
     assert hook.applies(pred, (), ctx) is False
 
 
-def test_date_filter_hook_run_is_no_op(caplog) -> None:
-    """DateFilterHook.run() returns all candidates unchanged and logs the dates."""
-    import logging
+# ---------------------------------------------------------------------------
+# _year + _overlaps + _union_range pure-helper unit tests
+# ---------------------------------------------------------------------------
+
+
+def test_year_helper_extracts_leading_4_digits() -> None:
+    from dc_search.hooks import _year
+
+    assert _year("2015") == 2015
+    assert _year("2015-03") == 2015
+    assert _year("2015-03-01") == 2015
+    assert _year(None) is None
+    assert _year("") is None
+    assert _year("XXXX") is None
+
+
+def test_overlaps_basic_inside() -> None:
+    from dc_search.hooks import _overlaps
+
+    # Coverage 2010-2024; point 2020 → keep
+    assert _overlaps("2010", "2024", "2020", "2020") is True
+
+
+def test_overlaps_basic_outside() -> None:
+    from dc_search.hooks import _overlaps
+
+    # Coverage 2010-2024; point 2008 → drop
+    assert _overlaps("2010", "2024", "2008", "2008") is False
+
+
+def test_overlaps_range_disjoint() -> None:
+    from dc_search.hooks import _overlaps
+
+    # Coverage ends 2012; window starts 2015 → drop
+    assert _overlaps("2010", "2012", "2015", None) is False
+
+
+def test_overlaps_range_overlap() -> None:
+    from dc_search.hooks import _overlaps
+
+    # Coverage 2010-2024; window from 2015 → keep
+    assert _overlaps("2010", "2024", "2015", None) is True
+
+
+def test_overlaps_no_evidence_returns_true() -> None:
+    from dc_search.hooks import _overlaps
+
+    # Both bounds None → no evidence → fail-open keep
+    assert _overlaps(None, None, "2015", "2020") is True
+
+
+def test_overlaps_open_bounds() -> None:
+    from dc_search.hooks import _overlaps
+
+    # start-only window: cov 2010-2012, window [2015,+∞) → drop
+    assert _overlaps("2010", "2012", "2015", None) is False
+    # end-only window: cov 2010-2012, window [-∞,2020] → keep
+    assert _overlaps("2010", "2012", None, "2020") is True
+
+
+def test_overlaps_mixed_granularity() -> None:
+    from dc_search.hooks import _overlaps
+
+    # Coverage "2015-03" to "2018-09-01"; point "2016" → keep
+    assert _overlaps("2015-03", "2018-09-01", "2016", "2016") is True
+    # Point "2019" → drop (cov_max = 2018)
+    assert _overlaps("2015-03", "2018-09-01", "2019", "2019") is False
+
+
+def test_union_range_none_paths() -> None:
+    from dc_search.hooks import _union_range
+
+    # Both-None first arg → returns b unchanged
+    assert _union_range(None, ("2010", "2015")) == ("2010", "2015")
+    # Widen open bounds
+    assert _union_range(("2010", None), (None, "2020")) == ("2010", "2020")
+    # Both-None bounds stay None
+    assert _union_range((None, None), (None, None)) == (None, None)
+
+
+# ---------------------------------------------------------------------------
+# run() — latest no-op
+# ---------------------------------------------------------------------------
+
+
+def test_date_filter_hook_latest_no_op() -> None:
+    """kind='latest' → hook is bypassed even if applies() fired."""
+    hook = DateFilterHook()
+    pred = _census_predicate()
+    sv_set = ["SV_A", "SV_B"]
+    result = _answer(sv_set)
+    ctx = _ctx_with_dates([ExtractedDate(kind="latest", start=None, end=None)])
+
+    from unittest.mock import patch
+
+    with patch("dc_search.hooks.variable_date_coverage") as mock_cov:
+        out = hook.run(pred, result, ctx)
+        assert isinstance(out, AnswerCollection)
+
+    mock_cov.assert_not_called()
+    assert out is result
+
+
+# ---------------------------------------------------------------------------
+# run() — point inside/outside (custom var, placeless, via envelope)
+# ---------------------------------------------------------------------------
+
+
+def _empty_cov(*_args, **_kwargs):
+    from dc_search.retrieval import DateCoverage
+
+    return DateCoverage({}, {})
+
+
+def _cov_with_envelope(v: str, earliest: str, latest: str):
+    from dc_search.retrieval import DateCoverage
+
+    return DateCoverage(
+        envelopes={v: (earliest, latest)},
+        entity_ranges={},
+    )
+
+
+def test_date_filter_hook_point_inside_kept() -> None:
+    hook = DateFilterHook()
+    pred = _census_predicate()
+    result = _answer(["SV_A"])
+    ctx = _ctx_with_dates([ExtractedDate(kind="point", start="2020", end=None)])
+
+    with patch(
+        "dc_search.hooks.variable_date_coverage",
+        return_value=_cov_with_envelope("SV_A", "2010", "2024"),
+    ):
+        out = hook.run(pred, result, ctx)
+        assert isinstance(out, AnswerCollection)
+
+    assert isinstance(out, AnswerCollection)
+    assert "SV_A" in out.sv_set
+
+
+def test_date_filter_hook_point_outside_dropped() -> None:
+    hook = DateFilterHook()
+    pred = _census_predicate()
+    result = _answer(["SV_A", "SV_B"])
+    # SV_A covers 2010-2012; point 2015 → drop SV_A; SV_B is base-DC (map-absent → keep)
+    ctx = _ctx_with_dates([ExtractedDate(kind="point", start="2015", end=None)])
+
+    from dc_search.retrieval import DateCoverage
+
+    cov = DateCoverage(envelopes={"SV_A": ("2010", "2012")}, entity_ranges={})
+
+    with (
+        patch("dc_search.hooks.variable_date_coverage", return_value=cov),
+        patch("dc_search.hooks.variable_info_date_ranges", return_value={}),
+    ):
+        out = hook.run(pred, result, ctx)
+        assert isinstance(out, AnswerCollection)
+
+    assert "SV_A" not in out.sv_set
+    assert "SV_B" in out.sv_set
+    assert "date_filtered" in out.caveats
+    assert out.date_filter is not None
+
+
+# ---------------------------------------------------------------------------
+# run() — range overlap / disjoint
+# ---------------------------------------------------------------------------
+
+
+def test_date_filter_hook_range_overlap_kept() -> None:
+    hook = DateFilterHook()
+    pred = _census_predicate()
+    result = _answer(["SV_A"])
+    ctx = _ctx_with_dates([ExtractedDate(kind="range", start="2015", end=None)])
+
+    with patch(
+        "dc_search.hooks.variable_date_coverage",
+        return_value=_cov_with_envelope("SV_A", "2010", "2024"),
+    ):
+        out = hook.run(pred, result, ctx)
+        assert isinstance(out, AnswerCollection)
+
+    assert "SV_A" in out.sv_set
+
+
+def test_date_filter_hook_range_disjoint_dropped() -> None:
+    hook = DateFilterHook()
+    pred = _census_predicate()
+    result = _answer(["SV_A"])
+    ctx = _ctx_with_dates([ExtractedDate(kind="range", start="2015", end=None)])
+
+    with (
+        patch(
+            "dc_search.hooks.variable_date_coverage",
+            return_value=_cov_with_envelope("SV_A", "2010", "2012"),
+        ),
+    ):
+        out = hook.run(pred, result, ctx)
+        assert isinstance(out, AnswerCollection)
+
+    assert "SV_A" not in out.sv_set
+    assert "date_filtered" in out.caveats
+
+
+# ---------------------------------------------------------------------------
+# run() — placeless uses envelope; placed uses per-entity union
+# ---------------------------------------------------------------------------
+
+
+def test_date_filter_hook_placed_uses_entity_ranges() -> None:
+    from dc_search.retrieval import DateCoverage
 
     hook = DateFilterHook()
     pred = _census_predicate()
-    sv_set = ["SV_A", "SV_B", "SV_C"]
-    result = _answer(sv_set)
-    dates = [
-        ExtractedDate(kind="point", start="2020", end=None),
-        ExtractedDate(kind="range", start="2015", end="2020"),
-    ]
-    ctx = _ctx_with_dates(dates)
-
-    with caplog.at_level(logging.INFO, logger="dc_search.hooks"):
+    result = _answer(["SV_A"])
+    ctx = _ctx_with_dates(
+        [ExtractedDate(kind="point", start="2020", end=None)],
+        place_dcids=("country/KEN",),
+    )
+    # Envelope says 2010-2012 (would drop), but entity range says 2015-2024 (keep).
+    cov = DateCoverage(
+        envelopes={"SV_A": ("2010", "2012")},
+        entity_ranges={("SV_A", "country/KEN"): ("2015", "2024")},
+    )
+    with patch("dc_search.hooks.variable_date_coverage", return_value=cov):
         out = hook.run(pred, result, ctx)
+        assert isinstance(out, AnswerCollection)
+    assert "SV_A" in out.sv_set
+
+
+# ---------------------------------------------------------------------------
+# run() — routing: base-DC placeless vs base-DC placed vs custom
+# ---------------------------------------------------------------------------
+
+
+def test_date_filter_hook_base_dc_placeless_uses_variable_info() -> None:
+    """Base-DC var (map-absent, no places) → variable_info_date_ranges called."""
+    hook = DateFilterHook()
+    pred = _census_predicate()
+    result = _answer(["BASE_SV"])
+    ctx = _ctx_with_dates([ExtractedDate(kind="point", start="2020", end=None)])
+
+    from dc_search.retrieval import DateCoverage
+
+    empty_cov = DateCoverage({}, {})
+
+    with (
+        patch("dc_search.hooks.variable_date_coverage", return_value=empty_cov),
+        patch(
+            "dc_search.hooks.variable_info_date_ranges",
+            return_value={"BASE_SV": ("2010", "2024")},
+        ) as mock_info,
+        patch("dc_search.hooks.observation_date_ranges") as mock_obs,
+    ):
+        out = hook.run(pred, result, ctx)
+        assert isinstance(out, AnswerCollection)
+
+    mock_info.assert_called_once()
+    mock_obs.assert_not_called()
+    assert "BASE_SV" in out.sv_set  # 2020 inside 2010-2024
+
+
+def test_date_filter_hook_base_dc_placed_uses_observation() -> None:
+    """Base-DC var (map-absent, with places) → observation_date_ranges called."""
+    hook = DateFilterHook()
+    pred = _census_predicate()
+    result = _answer(["BASE_SV"])
+    ctx = _ctx_with_dates(
+        [ExtractedDate(kind="point", start="2020", end=None)],
+        place_dcids=("country/KEN",),
+    )
+
+    from dc_search.retrieval import DateCoverage
+
+    empty_cov = DateCoverage({}, {})
+
+    with (
+        patch("dc_search.hooks.variable_date_coverage", return_value=empty_cov),
+        patch("dc_search.hooks.variable_info_date_ranges") as mock_info,
+        patch(
+            "dc_search.hooks.observation_date_ranges",
+            return_value={("BASE_SV", "country/KEN"): ("2015", "2024")},
+        ) as mock_obs,
+    ):
+        out = hook.run(pred, result, ctx)
+        assert isinstance(out, AnswerCollection)
+
+    mock_info.assert_not_called()
+    mock_obs.assert_called_once()
+    assert "BASE_SV" in out.sv_set
+
+
+# ---------------------------------------------------------------------------
+# run() — fail-open on helper exception
+# ---------------------------------------------------------------------------
+
+
+def test_date_filter_hook_fail_open_on_coverage_exception() -> None:
+    hook = DateFilterHook()
+    pred = _census_predicate()
+    sv_set = ["SV_A", "SV_B"]
+    result = _answer(sv_set)
+    ctx = _ctx_with_dates([ExtractedDate(kind="point", start="2020", end=None)])
+
+    with patch("dc_search.hooks.variable_date_coverage", side_effect=RuntimeError("boom")):
+        out = hook.run(pred, result, ctx)
+        assert isinstance(out, AnswerCollection)
+
+    assert out is result  # all kept, unchanged
+    assert "date_filtered" not in out.caveats
+
+
+def test_date_filter_hook_base_helper_returns_empty_keeps_var() -> None:
+    """Base-DC var with no range evidence (helper returns {}) → fail-open keep."""
+    hook = DateFilterHook()
+    pred = _census_predicate()
+    result = _answer(["BASE_SV"])
+    ctx = _ctx_with_dates([ExtractedDate(kind="point", start="2020", end=None)])
+
+    from dc_search.retrieval import DateCoverage
+
+    empty_cov = DateCoverage({}, {})
+
+    with (
+        patch("dc_search.hooks.variable_date_coverage", return_value=empty_cov),
+        patch("dc_search.hooks.variable_info_date_ranges", return_value={}),
+    ):
+        out = hook.run(pred, result, ctx)
+        assert isinstance(out, AnswerCollection)
+
+    assert "BASE_SV" in out.sv_set
+    assert "date_filtered" not in out.caveats
+
+
+# ---------------------------------------------------------------------------
+# run() — custom var in {V} but no {E,V} at resolved places → drop
+# ---------------------------------------------------------------------------
+
+
+def test_date_filter_hook_custom_absent_at_place_dropped() -> None:
+    """3-state _range_for: custom var in envelopes but no {E,V} → drop."""
+    from dc_search.retrieval import DateCoverage
+
+    hook = DateFilterHook()
+    pred = _census_predicate()
+    result = _answer(["SV_A"])
+    ctx = _ctx_with_dates(
+        [ExtractedDate(kind="point", start="2020", end=None)],
+        place_dcids=("country/KEN",),
+    )
+    # SV_A is in envelopes but no entity_range at country/KEN.
+    cov = DateCoverage(
+        envelopes={"SV_A": ("2010", "2024")},
+        entity_ranges={},  # no {E,V} at country/KEN
+    )
+    with patch("dc_search.hooks.variable_date_coverage", return_value=cov):
+        out = hook.run(pred, result, ctx)
+        assert isinstance(out, AnswerCollection)
+
+    assert "SV_A" not in out.sv_set
+    assert "date_filtered" in out.caveats
+
+
+# ---------------------------------------------------------------------------
+# run() — empty after filter → sv_set stays empty (EmptyResultHook fires next)
+# ---------------------------------------------------------------------------
+
+
+def test_date_filter_hook_empty_after_filter_returns_empty_result() -> None:
+    """Everything dropped → run() returns AnswerCollection with empty sv_set.
+
+    Must NOT return AskClarification from this hook — EmptyResultHook handles that.
+    """
+    hook = DateFilterHook()
+    pred = _census_predicate()
+    result = _answer(["SV_A"])
+    ctx = _ctx_with_dates([ExtractedDate(kind="point", start="2005", end=None)])
+
+    # SV_A covers only 2010-2024; point 2005 → drop
+    with patch(
+        "dc_search.hooks.variable_date_coverage",
+        return_value=_cov_with_envelope("SV_A", "2010", "2024"),
+    ):
+        out = hook.run(pred, result, ctx)
+        assert isinstance(out, AnswerCollection)
 
     assert isinstance(out, AnswerCollection)
-    assert out.sv_set == sv_set
+    assert out.sv_set == []
+    assert "date_filtered" in out.caveats
+    assert out.date_filter is not None
+
+
+# ---------------------------------------------------------------------------
+# Fix 3 — degenerate date window silently no-ops
+# ---------------------------------------------------------------------------
+
+
+def test_date_filter_hook_point_none_start_is_noop() -> None:
+    """A point with start=None is a degenerate window — sv_set and caveats unchanged."""
+    hook = DateFilterHook()
+    pred = _census_predicate()
+    sv_set = ["SV_A", "SV_B"]
+    result = _answer(sv_set)
+    ctx = _ctx_with_dates([ExtractedDate(kind="point", start=None, end=None)])
+
+    with patch("dc_search.hooks.variable_date_coverage") as mock_cov:
+        out = hook.run(pred, result, ctx)
+        assert isinstance(out, AnswerCollection)
+
+    mock_cov.assert_not_called()
     assert out is result
-    assert any("DateFilterHook" in r.message for r in caplog.records)
+    assert "date_filtered" not in out.caveats
+    assert out.sv_set == sv_set
+
+
+def test_date_filter_hook_range_both_none_is_noop() -> None:
+    """A range with both start=None and end=None is a degenerate window — no-op."""
+    hook = DateFilterHook()
+    pred = _census_predicate()
+    sv_set = ["SV_A", "SV_B"]
+    result = _answer(sv_set)
+    ctx = _ctx_with_dates([ExtractedDate(kind="range", start=None, end=None)])
+
+    with patch("dc_search.hooks.variable_date_coverage") as mock_cov:
+        out = hook.run(pred, result, ctx)
+        assert isinstance(out, AnswerCollection)
+
+    mock_cov.assert_not_called()
+    assert out is result
+    assert "date_filtered" not in out.caveats
+
+
+def test_date_filter_hook_since_2015_still_filters() -> None:
+    """Open-ended 'since 2015' (start set, end None) still filters correctly."""
+    hook = DateFilterHook()
+    pred = _census_predicate()
+    # SV_A covers 2010-2012 → disjoint with [2015,+∞) → dropped.
+    result = _answer(["SV_A"])
+    ctx = _ctx_with_dates([ExtractedDate(kind="range", start="2015", end=None)])
+
+    with patch(
+        "dc_search.hooks.variable_date_coverage",
+        return_value=_cov_with_envelope("SV_A", "2010", "2012"),
+    ):
+        out = hook.run(pred, result, ctx)
+        assert isinstance(out, AnswerCollection)
+
+    assert "SV_A" not in out.sv_set
+    assert "date_filtered" in out.caveats
+
+
+def test_date_filter_hook_before_2010_still_filters() -> None:
+    """Open-ended 'before 2010' (start None, end set) still filters correctly."""
+    hook = DateFilterHook()
+    pred = _census_predicate()
+    # SV_A covers 2015-2024 → disjoint with [-∞,2010] → dropped.
+    result = _answer(["SV_A"])
+    ctx = _ctx_with_dates([ExtractedDate(kind="range", start=None, end="2010")])
+
+    with patch(
+        "dc_search.hooks.variable_date_coverage",
+        return_value=_cov_with_envelope("SV_A", "2015", "2024"),
+    ):
+        out = hook.run(pred, result, ctx)
+        assert isinstance(out, AnswerCollection)
+
+    assert "SV_A" not in out.sv_set
+    assert "date_filtered" in out.caveats
+
+
+# ---------------------------------------------------------------------------
+# run() — caveat + date_filter populated when something dropped
+# ---------------------------------------------------------------------------
+
+
+def test_date_filter_hook_sets_date_filter_field() -> None:
+    from dc_search.extraction import ExtractedDate as ED
+
+    hook = DateFilterHook()
+    pred = _census_predicate()
+    result = _answer(["SV_A", "SV_B"])
+    window = ED(kind="range", start="2015", end="2020")
+    ctx = _ctx_with_dates([window])
+
+    from dc_search.retrieval import DateCoverage
+
+    # SV_A in 2010-2012 → drop; SV_B map-absent → keep (no evidence)
+    cov = DateCoverage(envelopes={"SV_A": ("2010", "2012")}, entity_ranges={})
+
+    with (
+        patch("dc_search.hooks.variable_date_coverage", return_value=cov),
+        patch("dc_search.hooks.variable_info_date_ranges", return_value={}),
+    ):
+        out = hook.run(pred, result, ctx)
+        assert isinstance(out, AnswerCollection)
+
+    assert "date_filtered" in out.caveats
+    assert out.date_filter is not None
+    assert out.date_filter.start == "2015"
+    assert out.date_filter.end == "2020"

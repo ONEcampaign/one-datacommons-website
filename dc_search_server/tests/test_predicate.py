@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 
+from dc_search.extraction import ExtractedDate
 from dc_search.predicate import (
     AnswerCollection,
     AskClarification,
@@ -41,6 +42,28 @@ class TestAnswerCollectionInstantiation:
         a = _make_answer(variable_label="life expectancy")
         assert a.variable_label == "life expectancy"
 
+    def test_date_filter_defaults_to_none(self):
+        a = _make_answer()
+        assert a.date_filter is None
+
+    def test_date_filter_accepts_extracted_date(self):
+        window = ExtractedDate(kind="range", start="2015", end="2020")
+        a = _make_answer(date_filter=window)
+        assert a.date_filter is not None
+        assert a.date_filter.start == "2015"
+        assert a.date_filter.end == "2020"
+
+    def test_date_filter_point(self):
+        window = ExtractedDate(kind="point", start="2020", end=None)
+        a = _make_answer(date_filter=window)
+        assert a.date_filter is not None
+        assert a.date_filter.kind == "point"
+
+    def test_date_filtered_caveat_is_valid(self):
+        # "date_filtered" must be accepted by the Caveat type.
+        a = _make_answer(caveats=["date_filtered"])
+        assert "date_filtered" in a.caveats
+
     def test_frozen(self):
         a = _make_answer()
         with pytest.raises(Exception):
@@ -55,6 +78,19 @@ class TestAnswerCollectionInstantiation:
         ask = AskClarification(reason="parse_error", message="Could not parse.")
         assert ask.reason == "parse_error"
         assert ask.proposed_clarifications == []
+
+
+class TestCaveatLiteral:
+    def test_date_filtered_is_valid_caveat(self):
+        """'date_filtered' must be a valid Caveat literal."""
+        # Pydantic validates the literal at model construction time.
+        a = _make_answer(caveats=["date_filtered"])
+        assert "date_filtered" in a.caveats
+
+    def test_all_caveats_coexist(self):
+        """Multiple caveats including date_filtered can appear together."""
+        a = _make_answer(caveats=["date_filtered", "availability_filtered"])
+        assert len(a.caveats) == 2
 
 
 class TestApplyAvailabilityFilter:
