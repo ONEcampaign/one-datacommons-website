@@ -955,6 +955,15 @@ class DateFilterHook:
             return bool(d.start or d.end)
 
         dates = [d for d in ctx.dates if d.kind in ("point", "range") and _has_usable_bound(d)]
+        # TEMP DEBUG (remove after between-range investigation): surface raw vs
+        # usable extracted dates to separate extraction misses from filter behaviour.
+        logger.warning(
+            "DATEFILTER_DEBUG entry raw=%s usable=%s places=%s n_sv=%d",
+            [(d.kind, d.start, d.end) for d in ctx.dates],
+            [(d.kind, d.start, d.end) for d in dates],
+            ctx.place_dcids,
+            len(result.sv_set),
+        )
         if not dates:
             return result
 
@@ -1010,6 +1019,15 @@ class DateFilterHook:
                     keep.append(v)
 
         if len(keep) == len(sv_set):
+            # TEMP DEBUG (remove after between-range investigation): nothing dropped —
+            # show the window + base-DC ranges to tell fail-open from a filter bug.
+            logger.warning(
+                "DATEFILTER_DEBUG no-drop window=%s n_sv=%d n_base=%d base_ranges=%s",
+                (window.kind, window.start, window.end),
+                len(sv_set),
+                len(base),
+                dict(list(base_ranges.items())[:6]),
+            )
             return result  # nothing dropped
 
         caveats = _caveats("date_filtered", base=list(result.caveats))
