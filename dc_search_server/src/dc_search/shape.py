@@ -506,6 +506,7 @@ def build_shape_context(
     retrieval_scores: dict[str, float] | None = None,
     *,
     resolved_places: tuple[tuple[str, str | None, str | None, str], ...] = (),
+    max_shapes: int | None = None,
 ) -> ShapeContext:
     """Group candidates by shape, derive slot taxonomies, extract keyword cues.
 
@@ -535,10 +536,15 @@ def build_shape_context(
             ``max(score for member in shape)`` descending; ties broken by
             member count. Defaults to ``None`` (member-count sort) so
             existing callers and tests remain unaffected.
+        max_shapes: Optional cap on the number of shapes returned, applied
+            after the sort. ``None`` (default) returns all shapes. The
+            candidate/feature pool is unaffected, so materialization still
+            binds against every member of whichever shape the slot-binder
+            elects.
 
     Returns:
-        ShapeContext with shapes (ordered by retrieval score or member count)
-        and keyword cues.
+        ShapeContext with shapes (ordered by retrieval score or member count,
+        truncated to ``max_shapes`` when set) and keyword cues.
     """
     # Step 1: drop candidates with NO grouping signal (both fields empty),
     # UNLESS the candidate is a Topic node — Topics have neither populationType
@@ -606,6 +612,13 @@ def build_shape_context(
         shapes.sort(key=_sort_key, reverse=True)
     else:
         shapes.sort(key=lambda s: len(s.member_dcids), reverse=True)
+
+    # Cap the shapes shown to the slot-binding LLM, applied AFTER the sort so the
+    # highest-scoring shapes survive. Bounds LLM prompt noise; the candidate /
+    # feature pool is untouched, so materialization still binds against the full
+    # membership of whichever shape the LLM elects.
+    if max_shapes is not None:
+        shapes = shapes[:max_shapes]
 
     # Step 5: extract keyword cues.
     keyword_cues = extract_keyword_cues(query)

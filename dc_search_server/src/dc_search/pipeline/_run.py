@@ -226,11 +226,16 @@ async def _retrieve(
     """Resolve indicator candidates and filter to SV/Topic DCIDs."""
     retrieval_query = variable if variable is not None else query
 
-    candidates = await asyncio.to_thread(retrieval.resolve_indicator, query=retrieval_query, k=30)
+    from dc_search.config import load_config
+
+    initial_k = load_config().initial_k
+    candidates = await asyncio.to_thread(
+        retrieval.resolve_indicator, query=retrieval_query, k=initial_k
+    )
 
     sv_dcids = [
         c.dcid for c in candidates if any(t in ("StatisticalVariable", "Topic") for t in c.type_of)
-    ][:30]
+    ][:initial_k]
 
     if not sv_dcids:
         return AskClarification(
@@ -386,8 +391,14 @@ def _build_shape(
     resolved_places: tuple[tuple[str, str | None, str | None, str], ...] = (),
 ) -> ShapeContext | AskClarification:
     """Build shape context (pure, no I/O)."""
+    from dc_search.config import load_config
+
     shape_ctx = build_shape_context(
-        query, feature_list, retrieval_scores=retrieval_scores, resolved_places=resolved_places
+        query,
+        feature_list,
+        retrieval_scores=retrieval_scores,
+        resolved_places=resolved_places,
+        max_shapes=load_config().max_shapes,
     )
     if not shape_ctx.shapes:
         return AskClarification(

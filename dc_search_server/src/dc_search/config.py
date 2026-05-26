@@ -30,6 +30,8 @@ class Config:
     api_key: str | None
     model: str
     resolve_target: str
+    initial_k: int = 80
+    max_shapes: int | None = 10
 
 
 @cache
@@ -57,4 +59,30 @@ def load_config() -> Config:
             f"DC_RESOLVE_TARGET must be one of: {allowed_rt}. Got: {resolve_target!r}."
         )
 
-    return Config(api_url=api_url, api_key=api_key, model=model, resolve_target=resolve_target)
+    # Retrieval candidate feed: top-k SV/Topic candidates fetched and grouped
+    # into shapes. Wider than the shape cap so a constraint value (e.g. a
+    # CRS_DAC recipient) that ranks past the cap still reaches materialization.
+    # Default 80; override with DC_SEARCH_INITIAL_K (e.g. 30 = legacy feed).
+    initial_k = int((os.getenv("DC_SEARCH_INITIAL_K") or "80").strip() or "80")
+    if initial_k < 1:
+        raise ValueError(f"DC_SEARCH_INITIAL_K must be a positive integer. Got: {initial_k}.")
+
+    # Cap on the number of shapes shown to the slot-binding LLM, applied after
+    # the retrieval-score sort. Bounds LLM prompt noise without shrinking the
+    # candidate pool materialization binds against. Default 10; override with
+    # DC_SEARCH_MAX_SHAPES, where 0 disables the cap (no limit).
+    max_shapes_val = int((os.getenv("DC_SEARCH_MAX_SHAPES") or "10").strip() or "10")
+    if max_shapes_val < 0:
+        raise ValueError(
+            f"DC_SEARCH_MAX_SHAPES must be >= 0 (0 disables the cap). Got: {max_shapes_val}."
+        )
+    max_shapes = max_shapes_val or None
+
+    return Config(
+        api_url=api_url,
+        api_key=api_key,
+        model=model,
+        resolve_target=resolve_target,
+        initial_k=initial_k,
+        max_shapes=max_shapes,
+    )

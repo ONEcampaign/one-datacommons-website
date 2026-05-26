@@ -569,3 +569,62 @@ def test_build_shape_context_resolved_places_multiple(
         ("country/USA", "United States", "us", "donor"),
         ("country/TGO", "Togo", "Togo", "recipient"),
     )
+
+
+# ---------------------------------------------------------------------------
+# build_shape_context — max_shapes cap (shapecap10)
+# ---------------------------------------------------------------------------
+
+
+def test_build_shape_context_max_shapes_truncates(
+    sdg_candidates: list[StatVarFeatures],
+) -> None:
+    """max_shapes caps the returned shapes (applied after the sort)."""
+    full = build_shape_context("maternal mortality SDG", sdg_candidates)
+    assert len(full.shapes) >= 2  # each SDG SV is its own shape
+    capped = build_shape_context("maternal mortality SDG", sdg_candidates, max_shapes=1)
+    assert len(capped.shapes) == 1
+    # Truncation-after-sort: the kept shape is the first of the uncapped order.
+    assert capped.shapes[0].member_dcids == full.shapes[0].member_dcids
+
+
+def test_build_shape_context_max_shapes_none_returns_all(
+    sdg_candidates: list[StatVarFeatures],
+) -> None:
+    """max_shapes=None (the default) returns every shape — no behaviour change."""
+    full = build_shape_context("maternal mortality SDG", sdg_candidates)
+    explicit = build_shape_context("maternal mortality SDG", sdg_candidates, max_shapes=None)
+    assert len(explicit.shapes) == len(full.shapes)
+
+
+def test_build_shape_context_max_shapes_above_total_returns_all(
+    sdg_candidates: list[StatVarFeatures],
+) -> None:
+    """A cap larger than the shape count returns all shapes."""
+    full = build_shape_context("maternal mortality SDG", sdg_candidates)
+    capped = build_shape_context("maternal mortality SDG", sdg_candidates, max_shapes=999)
+    assert len(capped.shapes) == len(full.shapes)
+
+
+def test_build_shape_context_max_shapes_keeps_highest_scored() -> None:
+    """With retrieval_scores, the cap keeps the top-scored shapes, not arbitrary ones."""
+    low = StatVarFeatures(
+        dcid="sdg/LOW",
+        name="low",
+        population_type=["SDG_LOW"],
+        measured_property=["value"],
+    )
+    high = StatVarFeatures(
+        dcid="sdg/HIGH",
+        name="high",
+        population_type=["SDG_HIGH"],
+        measured_property=["value"],
+    )
+    ctx = build_shape_context(
+        "q",
+        [low, high],
+        retrieval_scores={"sdg/LOW": 0.10, "sdg/HIGH": 0.99},
+        max_shapes=1,
+    )
+    assert len(ctx.shapes) == 1
+    assert ctx.shapes[0].member_dcids == ("sdg/HIGH",)

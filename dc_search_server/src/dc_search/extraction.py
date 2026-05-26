@@ -57,8 +57,10 @@ class ExtractedDate(BaseModel):
 class QueryExtraction(BaseModel):
     variables: list[str] = Field(
         description=(
-            "One entry per distinct thematic measure, as a short noun phrase suitable "
-            'for indicator search. Split conjunctive queries — "life expectancy and '
+            "One entry per distinct thematic measure, as a short noun phrase in ENGLISH "
+            "suitable for indicator search. If the query is in another language, "
+            'translate the measure to its standard English term ("esperanza de vida" → '
+            '"life expectancy"). Split conjunctive queries — "life expectancy and '
             'population" yields two entries. Fold any qualifier directly into the '
             'phrase: "GDP per capita" (not "GDP"), "population as % of total", '
             '"inflation-adjusted GDP". Never merge two distinct measures into one entry.'
@@ -67,9 +69,11 @@ class QueryExtraction(BaseModel):
     entities: list[str] = Field(
         default_factory=list,
         description=(
-            "Place names or named regions exactly as written in the query — do not "
-            'normalise, translate, or expand abbreviations ("US" stays "US"). Empty '
-            "list when the query names no place."
+            "Place names or named regions, rendered in ENGLISH. If the query is in "
+            'another language, translate each place name to its common English name '
+            '("España" → "Spain", "Allemagne" → "Germany", "Costa de Marfil" → '
+            '"Ivory Coast"). When the place name is already English, keep it as '
+            "written. Empty list when the query names no place."
         ),
     )
     dates: list[ExtractedDate] = Field(
@@ -98,8 +102,18 @@ Today's date is [[TODAY]]. Your own knowledge cutoff predates this, so resolve a
 relative or open-ended time reference ("current", "now", "recent", "over the last
 decade", "since") against today's date above — not your own sense of the current year.
 
+The query may be written in any language. ALWAYS emit the `variables` and `entities`
+fields in English — the downstream indicator search and place resolver are English-only.
+Translate foreign-language measures and place names into their standard English form;
+preserve proper nouns that have no distinct English equivalent. Dates are
+language-independent (emit ISO year strings regardless of the query language).
+
 Example — "GDP per capita in Kenya and Uganda since 2010":
 {"variables": ["GDP per capita"], "entities": ["Kenya", "Uganda"],
+ "dates": [{"kind": "range", "start": "2010", "end": null}]}
+
+Example (non-English) — "esperanza de vida en España y Alemania desde 2010":
+{"variables": ["life expectancy"], "entities": ["Spain", "Germany"],
  "dates": [{"kind": "range", "start": "2010", "end": null}]}
 """
 
