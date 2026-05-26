@@ -226,6 +226,18 @@ _PLACE_STOPLIST_FUNCTION: frozenset[str] = frozenset(
         "with",
         "without",
         "as",
+        # Temporal / relational connectives in date phrasings ("X between 2005
+        # and 2015"). Without these the token fallback resolves the connective to
+        # a homograph place — e.g. "between" -> Between, GA (geoId/1307640) —
+        # which silently breaks downstream date filtering.
+        "between",
+        "since",
+        "before",
+        "after",
+        "during",
+        "over",
+        "until",
+        "through",
     }
 )
 

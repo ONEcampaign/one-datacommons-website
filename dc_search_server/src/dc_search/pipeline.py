@@ -277,16 +277,22 @@ async def _short_circuit_topic(
 async def _resolve_place_dcids(query: str, entities: list[str] | None) -> list[str]:
     """Resolve place names to DCIDs for the availability re-rank step.
 
-    Uses LLM-extracted entity names (default endpoint) when available, falling
-    back to the deterministic extract_place_tokens path for the simple endpoint
-    or when extraction returned no entities. LLM-extracted strings are
+    Uses LLM-extracted entity names (default endpoint); an empty list means the
+    LLM found no place and is trusted as-is (no token fallback). Only the simple
+    endpoint (``entities is None``, no LLM extraction) falls back to the
+    deterministic extract_place_tokens path. LLM-extracted strings are
     Pydantic-validated list[str] before reaching this function; the mixer's
     /v2/resolve endpoint handles arbitrary name strings safely (name lookup,
     not query injection).
     """
-    if entities:
-        # Default endpoint — use LLM-extracted entity names; resolve to DCIDs
-        # via mixer in a single batched HTTP call.
+    if entities is not None:
+        # Default endpoint — the LLM authoritatively parsed place names. Trust it,
+        # including an empty list (query named no place): do NOT fall back to the
+        # token path, which brute-forces stopwords like "between" into a homograph
+        # place (e.g. the town Between, GA) and silently breaks date filtering.
+        if not entities:
+            return []
+        # Resolve LLM-extracted entity names to DCIDs via mixer in one batched call.
         resolved = await asyncio.to_thread(retrieval.resolve_places_batch, names=tuple(entities))
         # Iterate entities in order so result ordering is deterministic and
         # matches the input list (resolved.values() iteration order depends on
@@ -302,7 +308,7 @@ async def _resolve_place_dcids(query: str, entities: list[str] | None) -> list[s
         if n_unresolved:
             logger.debug("resolve_place_dcids: %d entity/entities unresolved", n_unresolved)
         return place_dcids
-    # Simple endpoint, or extraction yielded no entities — deterministic fallback.
+    # Simple endpoint (no LLM extraction ran) — deterministic token fallback.
     return await asyncio.to_thread(shape_module.extract_place_tokens, query)
 
 
