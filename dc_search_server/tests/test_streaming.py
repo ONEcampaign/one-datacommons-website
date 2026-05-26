@@ -22,6 +22,7 @@ from dc_search.events import (
     Done,
     Error,
     Interpretation,
+    Places,
     Result,
     Stage,
     Start,
@@ -115,6 +116,7 @@ def _patch_all(monkeypatch: pytest.MonkeyPatch, *, retrieval_candidates=None) ->
     )
     monkeypatch.setattr(_retrieval, "variables_for_entities_batch", lambda *, entity_dcids: {})
     monkeypatch.setattr(_retrieval, "resolve_places_batch", lambda *, names: {})
+    monkeypatch.setattr(_retrieval, "place_names_batch", lambda *, dcids: {})
     monkeypatch.setattr(_shape_mod, "extract_place_tokens", lambda query: [])
 
     async def _mock_bind(shape_context, *, model=None):
@@ -219,7 +221,11 @@ async def test_stream_default_event_order(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 async def test_stream_simple_event_order(monkeypatch: pytest.MonkeyPatch) -> None:
-    """start → stage("retrieving") → result → done; exactly one terminal."""
+    """start → stage("retrieving") → {places?, result} → done; exactly one terminal.
+
+    A Places event may appear before or after the Result (interleaved), but the
+    overall structure is preserved: Start, Stage, then results/places, then Done.
+    """
     from dc_search import pipeline
 
     _patch_all(monkeypatch)
@@ -232,8 +238,9 @@ async def test_stream_simple_event_order(monkeypatch: pytest.MonkeyPatch) -> Non
     assert isinstance(events[1], Stage)
     assert events[1].stage == "retrieving"
 
-    assert isinstance(events[2], Result)
-    assert events[2].index == 0
+    result_events = [e for e in events if isinstance(e, Result)]
+    assert len(result_events) == 1
+    assert result_events[0].index == 0
 
     terminals = [e for e in events if isinstance(e, (Done, Error))]
     assert len(terminals) == 1
@@ -264,13 +271,13 @@ async def test_stream_default_partial_failure(monkeypatch: pytest.MonkeyPatch) -
     call_count = 0
     original_run_one = _pipeline._run_one_variable
 
-    async def _sometimes_fail(variable, query, *, entities=None, dates=None, slot_bind_usages):
+    async def _sometimes_fail(variable, query, *, place_dcids, dates=None, slot_bind_usages):
         nonlocal call_count
         call_count += 1
         if variable == "life expectancy":
             raise RuntimeError("simulated branch failure")
         return await original_run_one(
-            variable, query, entities=entities, dates=dates, slot_bind_usages=slot_bind_usages
+            variable, query, place_dcids=place_dcids, dates=dates, slot_bind_usages=slot_bind_usages
         )
 
     monkeypatch.setattr(_pipeline, "_run_one_variable", _sometimes_fail)
@@ -306,7 +313,10 @@ async def test_stream_default_partial_failure(monkeypatch: pytest.MonkeyPatch) -
 
 async def test_stream_default_zero_variable_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
     """extraction returns [] → start → interpretation(expected_results=1, variables=[]) →
-    result(index=0) → done; done.telemetry.llm_usage[0].step == "extract".
+    places → result(index=0) → done; done.telemetry.llm_usage[0].step == "extract".
+
+    A Places event is emitted on the zero-variable path (R-B).  The overall
+    structure is still start → interpretation → {places, result} → done.
     """
     import dc_search.extraction as _ext
     from dc_search import pipeline
@@ -326,13 +336,21 @@ async def test_stream_default_zero_variable_fallback(monkeypatch: pytest.MonkeyP
     assert interp.variables == []
     assert interp.expected_results == 1
 
-    result = events[2]
-    assert isinstance(result, Result)
-    assert result.index == 0
+    # Places appears after Interpretation (R-B ordering guarantee).
+    result_events = [e for e in events if isinstance(e, Result)]
+    places_events = [e for e in events if isinstance(e, Places)]
+    assert len(result_events) == 1, f"Expected one Result, got {result_events}"
+    assert result_events[0].index == 0
+    assert len(places_events) == 1, f"Expected one Places, got {places_events}"
 
-    done = events[3]
-    assert isinstance(done, Done)
-    assert done.telemetry.llm_usage[0].step == "extract"
+    # Interpretation must precede Places.
+    interp_idx = events.index(interp)
+    places_idx = events.index(places_events[0])
+    assert interp_idx < places_idx, "Interpretation must precede Places"
+
+    done_events = [e for e in events if isinstance(e, Done)]
+    assert len(done_events) == 1
+    assert done_events[0].telemetry.llm_usage[0].step == "extract"
 
 
 # ---------------------------------------------------------------------------
@@ -358,7 +376,7 @@ async def test_drain_preserves_order(monkeypatch: pytest.MonkeyPatch) -> None:
     # Stub _run_one_variable to complete in reverse order (2 first, 0 last).
     delays = {"var_0": 0.06, "var_1": 0.04, "var_2": 0.01}
 
-    async def _delayed_run(variable, query, *, entities=None, dates=None, slot_bind_usages):
+    async def _delayed_run(variable, query, *, place_dcids, dates=None, slot_bind_usages):
         delay = delays.get(variable or "", 0.01)
         await asyncio.sleep(delay)
         slot_bind_usages.append(_USAGE)
@@ -604,7 +622,7 @@ async def test_disconnect_cancels_fanout(monkeypatch: pytest.MonkeyPatch) -> Non
     # Track which variables saw CancelledError.
     cancelled_vars: list[str] = []
 
-    async def _patched_run_one(variable, query, *, entities=None, dates=None, slot_bind_usages):
+    async def _patched_run_one(variable, query, *, place_dcids, dates=None, slot_bind_usages):
         try:
             if variable == "slow":
                 await asyncio.sleep(10)  # hangs until cancelled
@@ -718,7 +736,7 @@ async def test_stream_default_soft_deadline(monkeypatch: pytest.MonkeyPatch) -> 
 
     cancelled_vars: list[str] = []
 
-    async def _patched_run_one(variable, query, *, entities=None, dates=None, slot_bind_usages):
+    async def _patched_run_one(variable, query, *, place_dcids, dates=None, slot_bind_usages):
         try:
             if variable == "slow":
                 await asyncio.sleep(10)
@@ -758,7 +776,7 @@ async def test_stream_simple_soft_deadline(monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setattr(_pipeline, "_ROUTE_TIMEOUT_S", 0.05)
     _patch_all(monkeypatch)
 
-    async def _slow_run_one(variable, query, *, entities=None, dates=None, slot_bind_usages):
+    async def _slow_run_one(variable, query, *, place_dcids, dates=None, slot_bind_usages):
         await asyncio.sleep(10)
         slot_bind_usages.append(_USAGE)
         return _pipeline._VariableResult(outcome=_ANSWER, n_candidates=1, n_shapes=1)
@@ -780,6 +798,141 @@ async def test_stream_simple_soft_deadline(monkeypatch: pytest.MonkeyPatch) -> N
 # ---------------------------------------------------------------------------
 # Case 13: outcome_kind matches answer type + pydantic round-trip discriminator
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# New feature tests: Places event ordering + perf-neutrality
+# ---------------------------------------------------------------------------
+
+
+async def test_stream_default_places_event_present_and_after_interpretation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """stream_default emits a Places event; it appears after the Interpretation event."""
+    import dc_search.extraction as _ext
+    from dc_search import pipeline
+
+    async def _mock_extract(query, *, model=None):
+        return (_make_extraction(["life expectancy"]), _EXTRACT_USAGE)
+
+    monkeypatch.setattr(_ext, "extract", _mock_extract)
+    _patch_all(monkeypatch)
+
+    events = await _collect(pipeline.stream_default(_QUERY))
+
+    interpretation_events = [e for e in events if isinstance(e, Interpretation)]
+    places_events = [e for e in events if isinstance(e, Places)]
+
+    assert len(interpretation_events) == 1, "Expected exactly one Interpretation event"
+    assert len(places_events) == 1, "Expected exactly one Places event"
+
+    interp_idx = events.index(interpretation_events[0])
+    places_idx = events.index(places_events[0])
+    assert interp_idx < places_idx, (
+        f"Interpretation (idx={interp_idx}) must precede Places (idx={places_idx})"
+    )
+
+
+async def test_perf_interpretation_before_places_under_slow_resolve(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """(R-J a) Interpretation index < Places index even under a SLOW _resolve_place_dcids mock.
+
+    Guards the perf-neutrality guarantee: the interpretation event is yielded
+    BEFORE place_task is even started, so no place-resolution latency can delay it.
+    """
+    import dc_search.extraction as _ext
+    import dc_search.pipeline as _pipeline
+
+    async def _mock_extract(query, *, model=None):
+        return (_make_extraction(["life expectancy"]), _EXTRACT_USAGE)
+
+    monkeypatch.setattr(_ext, "extract", _mock_extract)
+    _patch_all(monkeypatch)
+
+    # SLOW place resolution — sleeps before returning
+    async def _slow_resolve_place_dcids(query, entities):
+        await asyncio.sleep(0.2)
+        return []
+
+    monkeypatch.setattr(_pipeline, "_resolve_place_dcids", _slow_resolve_place_dcids)
+
+    events = await _collect(_pipeline.stream_default(_QUERY))
+
+    interpretation_events = [e for e in events if isinstance(e, Interpretation)]
+    places_events = [e for e in events if isinstance(e, Places)]
+
+    assert len(interpretation_events) == 1
+    assert len(places_events) == 1
+
+    interp_idx = events.index(interpretation_events[0])
+    places_idx = events.index(places_events[0])
+    assert interp_idx < places_idx, (
+        "Interpretation must precede Places even when place resolution is slow"
+    )
+
+
+async def test_perf_result_emitted_while_place_task_pending(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """(R-J b) A Result event is emitted while place_event_task is still pending.
+
+    Guards the B1 regression: place_names_batch latency must NOT block result
+    emission.  With a slow place_names_batch and a fast _run_one_variable, at
+    least one Result should appear before the Places event.
+    """
+    import dc_search.extraction as _ext
+    import dc_search.pipeline as _pipeline
+    import dc_search.retrieval as _retrieval
+
+    async def _mock_extract(query, *, model=None):
+        return (_make_extraction(["life expectancy"]), _EXTRACT_USAGE)
+
+    monkeypatch.setattr(_ext, "extract", _mock_extract)
+    _patch_all(monkeypatch)
+
+    # Fast variable pipeline (near-instant)
+    async def _fast_run_one(variable, query, *, place_dcids, dates=None, slot_bind_usages):
+        slot_bind_usages.append(_USAGE)
+        answer = _ANSWER.model_copy(update={"variable_label": variable})
+        return _pipeline._VariableResult(outcome=answer, n_candidates=1, n_shapes=1)
+
+    monkeypatch.setattr(_pipeline, "_run_one_variable", _fast_run_one)
+
+    # SLOW name fetch — so Places arrives after Results
+    def _slow_place_names_batch(*, dcids):
+        import time
+
+        time.sleep(0.3)  # blocking sleep to simulate slow name fetch
+        return {d: (None, None) for d in dcids}
+
+    monkeypatch.setattr(_retrieval, "place_names_batch", _slow_place_names_batch)
+
+    # Give the dcid resolution something to return so place_event_task actually runs
+    import dc_search.retrieval as _ret2
+    from dc_search.retrieval import PlaceCandidate
+
+    monkeypatch.setattr(
+        _ret2,
+        "resolve_places_batch",
+        lambda *, names: {n: (PlaceCandidate(dcid=f"dcid/{n}"),) for n in names},
+    )
+
+    events = await _collect(_pipeline.stream_default(_QUERY))
+
+    result_events = [e for e in events if isinstance(e, Result)]
+    places_events = [e for e in events if isinstance(e, Places)]
+
+    assert len(result_events) >= 1, "At least one Result must be emitted"
+    # Either Places arrived after some Results, or was dropped (slow enough to miss deadline).
+    # The key assertion: the first Result must appear at or before the Places event (or Places
+    # was not emitted at all due to deadline), confirming results are not blocked by Places.
+    if places_events:
+        first_result_idx = events.index(result_events[0])
+        places_idx = events.index(places_events[0])
+        assert first_result_idx <= places_idx, (
+            "Result must not be blocked by Places: first Result should appear before or with Places"
+        )
 
 
 def test_result_outcome_kind_matches_answer() -> None:
@@ -819,3 +972,129 @@ def test_result_outcome_kind_matches_answer() -> None:
         f"Expected AskClarification after round-trip, got {type(reparsed2.answer)}"
     )
     assert reparsed2.outcome_kind == "clarification"
+
+
+# ---------------------------------------------------------------------------
+# F3: simple-endpoint timeout cancels place tasks (no orphaned tasks)
+# ---------------------------------------------------------------------------
+
+
+async def test_stream_simple_timeout_cancels_place_tasks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """stream_simple timeout path cancels dcid_task + place_event_task — no orphans.
+
+    Mirrors case-10 / case-12 but exercises the specific path where both
+    _run_one_variable AND place_names_batch block, so place_event_task is still
+    pending when the route deadline fires.
+    """
+    import dc_search.pipeline as _pipeline
+    import dc_search.retrieval as _retrieval
+
+    monkeypatch.setattr(_pipeline, "_ROUTE_TIMEOUT_S", 0.05)
+    _patch_all(monkeypatch)
+
+    # _run_one_variable blocks indefinitely.
+    async def _slow_run_one(variable, query, *, place_dcids, dates=None, slot_bind_usages):
+        await asyncio.sleep(10)
+        return _pipeline._VariableResult(outcome=_ANSWER, n_candidates=1, n_shapes=1)
+
+    monkeypatch.setattr(_pipeline, "_run_one_variable", _slow_run_one)
+
+    # place_names_batch also blocks — ensures place_event_task is pending at timeout.
+    def _blocking_place_names(*, dcids):
+        import time
+
+        time.sleep(10)
+        return {d: (None, None) for d in dcids}
+
+    monkeypatch.setattr(_retrieval, "place_names_batch", _blocking_place_names)
+
+    # Give resolve_places_batch a non-empty result so dcid_task has work to do
+    # and place_event_task proceeds past the empty-place check to the name fetch.
+    from dc_search.retrieval import PlaceCandidate
+
+    monkeypatch.setattr(
+        _retrieval,
+        "resolve_places_batch",
+        lambda *, names: {n: (PlaceCandidate(dcid=f"dcid/{n}"),) for n in names},
+    )
+
+    events = await _collect(_pipeline.stream_simple(_QUERY))
+
+    terminals = [e for e in events if isinstance(e, (Done, Error))]
+    assert len(terminals) == 1
+    done = terminals[0]
+    assert isinstance(done, Done)
+    assert done.timed_out is True
+
+    # Give the event loop a tick so cancelled tasks can finalise.
+    await asyncio.sleep(0.1)
+
+    current = asyncio.current_task()
+    pending = {t for t in asyncio.all_tasks() if t is not current and not t.done()}
+    assert not pending, f"Orphaned tasks remain after stream_simple timeout: {pending}"
+
+
+# ---------------------------------------------------------------------------
+# F4: zero-variable path — Result emitted while place_event_task still pending
+# ---------------------------------------------------------------------------
+
+
+async def test_zero_variable_result_not_blocked_by_place_task(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """(F4) On the zero-variable fallback path, a Result is emitted while
+    place_event_task is still pending (slow place_names_batch).
+
+    Guards that the zero-variable path uses the same FIRST_COMPLETED interleave
+    as the normal path, so the single result is not serialized behind the name fetch.
+    """
+    import dc_search.extraction as _ext
+    import dc_search.pipeline as _pipeline
+    import dc_search.retrieval as _retrieval
+
+    async def _mock_extract(query, *, model=None):
+        return (_make_extraction([]), _EXTRACT_USAGE)
+
+    monkeypatch.setattr(_ext, "extract", _mock_extract)
+    _patch_all(monkeypatch)
+
+    # Fast _run_one_variable — completes near-instantly.
+    async def _fast_run_one(variable, query, *, place_dcids, dates=None, slot_bind_usages):
+        slot_bind_usages.append(_USAGE)
+        return _pipeline._VariableResult(outcome=_ANSWER, n_candidates=1, n_shapes=1)
+
+    monkeypatch.setattr(_pipeline, "_run_one_variable", _fast_run_one)
+
+    # SLOW name fetch — place_event_task will still be pending when the result arrives.
+    def _slow_place_names(*, dcids):
+        import time
+
+        time.sleep(0.3)
+        return {d: (None, None) for d in dcids}
+
+    monkeypatch.setattr(_retrieval, "place_names_batch", _slow_place_names)
+
+    # Non-empty resolve_places_batch so place_event_task reaches the name fetch.
+    from dc_search.retrieval import PlaceCandidate
+
+    monkeypatch.setattr(
+        _retrieval,
+        "resolve_places_batch",
+        lambda *, names: {n: (PlaceCandidate(dcid=f"dcid/{n}"),) for n in names},
+    )
+
+    events = await _collect(_pipeline.stream_default(_QUERY))
+
+    result_events = [e for e in events if isinstance(e, Result)]
+    places_events = [e for e in events if isinstance(e, Places)]
+
+    assert len(result_events) == 1, f"Expected one Result, got {result_events}"
+    # Either Places arrived after Result, or was dropped — either way, Result was not blocked.
+    if places_events:
+        result_idx = events.index(result_events[0])
+        places_idx = events.index(places_events[0])
+        assert result_idx <= places_idx, (
+            "Result must not be blocked by Places on the zero-variable path"
+        )

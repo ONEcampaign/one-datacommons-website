@@ -24,6 +24,60 @@ if TYPE_CHECKING:
     from dc_search.retrieval import StatVarFeatures
 
 # ---------------------------------------------------------------------------
+# Enriched variable models (public wire surface)
+# ---------------------------------------------------------------------------
+
+
+class DateRange(BaseModel):
+    """Observation coverage window [earliest, latest] at resolved place(s).
+
+    Both fields are ISO-style strings (e.g. ``"2010"``, ``"2023-06-01"``) or
+    ``None`` when one bound is unknown.  ``None`` for the whole object when no
+    place is resolved or coverage is unavailable (e.g. base-DC vars in v1).
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    earliest: str | None = None
+    latest: str | None = None
+
+
+class ResolvedVariable(BaseModel):
+    """One resolved statistical variable with display and availability metadata."""
+
+    model_config = ConfigDict(frozen=True)
+
+    dcid: str
+    name: str | None = None
+    description: str | None = None
+    unit: str | None = None
+    measured_property: str | None = None
+    population_type: str | None = None
+    stat_type: str | None = None
+    measurement_denominator: str | None = None
+    score: float | None = None
+    matched_sentence: str | None = Field(
+        default=None,
+        description="The retrieval sentence this variable matched (why it surfaced).",
+    )
+    available_at_place: bool | None = Field(
+        default=None,
+        description=(
+            "Tri-state: None = no place resolved (availability inapplicable); "
+            "True = has data at resolved place(s); False = resolved but no data. "
+            "Union across multiple places."
+        ),
+    )
+    date_range: DateRange | None = Field(
+        default=None,
+        description=(
+            "Observation coverage [earliest, latest] at resolved place(s), union "
+            "across places. None when no place resolved or unknown (e.g. base-DC vars in v1)."
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Core types
 # ---------------------------------------------------------------------------
 
@@ -64,7 +118,13 @@ class AnswerCollection(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     predicate: Predicate
-    sv_set: list[str]
+    sv_set: list[str] = Field(default_factory=list, exclude=True, repr=False)
+    """Internal working set of SV DCIDs the hook chain filters/caps/unions.
+
+    Excluded from serialized JSON; the public surface is ``variables``.
+    Callers may still pass ``sv_set=[...]`` at construction time — the field is
+    retained for all hook reads/writes.
+    """
     svg_dcids: tuple[str, ...] = ()
     collection_dcid: str | None = None
     confidence: Confidence
@@ -82,6 +142,18 @@ class AnswerCollection(BaseModel):
     None when no date filtering occurred or the simple endpoint was used.
     Populated alongside the ``"date_filtered"`` caveat.
     """
+    variables: list[ResolvedVariable] = Field(default_factory=list)
+    """Enriched per-variable objects projected from ``sv_set`` after the hook chain.
+
+    This is the public wire surface (``sv_set`` is excluded from JSON).
+    Populated by ``_build_variables`` in ``hooks.py``; empty until that step runs.
+    """
+    topic_name: str | None = None
+    """Display name for the topic on the topic short-circuit path; ``None`` otherwise."""
+    topic_description: str | None = None
+    """Display description for the topic on the topic short-circuit path; ``None`` otherwise."""
+    answer_kind: Literal["variables", "topic"] = "variables"
+    """Distinguishes topic short-circuit answers (``"topic"``) from ordinary SV answers."""
 
 
 class AskClarification(BaseModel):

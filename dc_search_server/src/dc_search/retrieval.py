@@ -1185,6 +1185,61 @@ def topic_metadata_batch(*, dcids: tuple[str, ...]) -> dict[str, TopicMetadata]:
     return result
 
 
+# Module-level LRU cache for place_names_batch results.
+_place_names_cache: cachetools.LRUCache = cachetools.LRUCache(maxsize=2048)
+
+
+def place_names_batch(*, dcids: tuple[str, ...]) -> dict[str, tuple[str | None, str | None]]:
+    """Batch-fetch (name, primary type) for place DCIDs; cached, fail-open.
+
+    Issues one ``client.node.fetch`` call with ``expression="->[name,typeOf]"``.
+    Caching is by sorted tuple to maximise reuse across calls. Falls back to
+    ``(None, None)`` for any DCID where properties are missing or the call fails.
+
+    Args:
+        dcids: Tuple of place DCIDs to look up.
+
+    Returns:
+        Mapping from DCID to ``(name, typeOf)`` for every requested DCID.
+        Missing or errored entries are included as ``(None, None)`` so callers
+        can safely look up any requested DCID without a ``KeyError``.
+    """
+    result: dict[str, tuple[str | None, str | None]] = {d: (None, None) for d in dcids}
+    if not dcids:
+        return result
+
+    # Sort for stable cache key so different orderings of the same set hit the cache.
+    cache_key = tuple(sorted(dcids))
+    with _cache_lock:
+        cached = _place_names_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    try:
+        client = get_client()
+        raw = client.node.fetch(
+            node_dcids=list(dcids),
+            expression="->[name,typeOf]",
+        ).to_dict()
+    except Exception:
+        return result
+
+    for dcid in dcids:
+        arcs = _node_arcs(raw, dcid)
+        if not arcs:
+            continue
+        name_vals = _arc_values(arcs, "name")
+        type_vals = _arc_values(arcs, "typeOf")
+        result[dcid] = (
+            name_vals[0] if name_vals else None,
+            type_vals[0] if type_vals else None,
+        )
+
+    with _cache_lock:
+        _place_names_cache[cache_key] = result
+    return result
+
+
 # Module-level cache for per-group info. Both ``variable_group`` (single) and
 # ``variable_groups_batch`` (many) consult and populate this dict so the two
 # functions share one source of truth — calling either warms the cache for the

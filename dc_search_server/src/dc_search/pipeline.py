@@ -31,9 +31,19 @@ from pydantic import BaseModel, ConfigDict
 from dc_search import extraction, retrieval, slot_binding
 from dc_search import hooks as hooks_module
 from dc_search import shape as shape_module
-from dc_search.events import Done, DoneTelemetry, Event, Interpretation, Result, Stage, Start
+from dc_search.events import (
+    Done,
+    DoneTelemetry,
+    Event,
+    Interpretation,
+    Places,
+    Result,
+    Stage,
+    Start,
+)
 from dc_search.extraction import ExtractedDate
 from dc_search.hooks import HookContext
+from dc_search.interpretation import PlaceAlternative, QueryInterpretation, ResolvedPlace
 from dc_search.predicate import AnswerCollection, AskClarification, Predicate
 from dc_search.shape import ShapeContext, build_shape_context
 from dc_search.telemetry import TelemetryLLMUsage, Usage
@@ -73,6 +83,11 @@ class PipelineResult(BaseModel):
     terminated_by: Literal["answer", "ask", "no_candidates", "error"]
     llm_usage: list[TelemetryLLMUsage]
     truncated: bool = False
+    interpretation: QueryInterpretation | None = None
+    """Buffered query interpretation assembled from Interpretation + Places events.
+
+    ``None`` when neither event was emitted (simple-endpoint degenerate case).
+    """
 
 
 # ---------------------------------------------------------------------------
@@ -211,6 +226,145 @@ def _resolve_union_availability_checked(
     return avail, retrieval.dc_call_was_degraded()
 
 
+def _resolve_union_availability_with_ranges(
+    place_dcids: list[str],
+    candidate_sv_dcids: tuple[str, ...] = (),
+) -> tuple[frozenset[str], dict[str, tuple[str | None, str | None]], bool]:
+    """Like ``_resolve_union_availability_checked`` but also returns per-DCID date ranges.
+
+    For custom-DC vars that appear in the coverage map's ``entity_ranges``, unions
+    the ``(earliest, latest)`` strings across ``place_dcids`` via string-comparison
+    min/max (ISO-style: lexicographic ordering preserves temporal ordering).
+    Base-DC vars (absent from ``cov.envelopes``) are left out of the ranges dict —
+    callers should treat a missing entry as ``date_range=None``.
+
+    Returns:
+        ``(availability_frozenset, dcid_to_range, degraded)`` — the range dict maps
+        custom-DC SV DCID to ``(earliest, latest)``; absent entries mean no range known.
+    """
+    retrieval.reset_dc_call_degraded()
+
+    ranges: dict[str, tuple[str | None, str | None]] = {}
+
+    if not place_dcids or not candidate_sv_dcids:
+        avail = _resolve_union_availability(place_dcids, candidate_sv_dcids)
+        return avail, ranges, retrieval.dc_call_was_degraded()
+
+    cov = retrieval.variable_date_coverage(
+        variable_dcids=candidate_sv_dcids,
+        entity_dcids=tuple(place_dcids),
+    )
+
+    # Custom vars: union entity_ranges over all resolved places.
+    custom_present: set[str] = set()
+    for v in candidate_sv_dcids:
+        if v not in cov.envelopes:
+            continue  # base-DC var — skip range extraction
+        lo: str | None = None
+        hi: str | None = None
+        present_at_any = False
+        for e in place_dcids:
+            er = cov.entity_ranges.get((v, e))
+            if er is None:
+                continue
+            present_at_any = True
+            er_lo, er_hi = er
+            if er_lo is not None:
+                lo = er_lo if (lo is None or er_lo < lo) else lo
+            if er_hi is not None:
+                hi = er_hi if (hi is None or er_hi > hi) else hi
+        if present_at_any:
+            custom_present.add(v)
+            ranges[v] = (lo, hi)
+
+    # Base-DC vars: live observation check (no range data).
+    base_candidates = tuple(v for v in candidate_sv_dcids if v not in cov.envelopes)
+    base_present: frozenset[str] = (
+        retrieval.presence_for_entities(
+            variable_dcids=base_candidates,
+            entity_dcids=tuple(place_dcids),
+        )
+        if base_candidates
+        else frozenset()
+    )
+
+    avail = frozenset(custom_present | base_present)
+    return avail, ranges, retrieval.dc_call_was_degraded()
+
+
+# ---------------------------------------------------------------------------
+# Place resolution helpers (query-global, run once per request)
+# ---------------------------------------------------------------------------
+
+
+async def _build_resolved_places(
+    entities: list[str] | None,
+    dcid_task: asyncio.Task[list[str]],
+) -> list[ResolvedPlace]:
+    """Await ``dcid_task`` then fetch canonical names; assemble ``ResolvedPlace`` objects.
+
+    Fail-open: a name-fetch failure leaves ``name``/``type`` as ``None`` on the
+    affected places.  Returns ``[]`` when no places resolved.
+
+    The ``alternatives`` field is populated from the other ``resolve_places_batch``
+    candidates (rank-1 is selected as primary; the rest become alternatives).
+    """
+    try:
+        place_dcids = await dcid_task
+    except Exception:
+        return []
+
+    if not place_dcids:
+        return []
+
+    # --- canonical names for resolved DCIDs ---
+    try:
+        names_map = await asyncio.to_thread(retrieval.place_names_batch, dcids=tuple(place_dcids))
+    except Exception:
+        names_map = {}
+
+    # --- alternatives: re-use the resolve_places_batch result (already called) ---
+    # We call it again here via asyncio.to_thread; caching in retrieval.py means
+    # this hits the LRU cache and costs essentially nothing.
+    # Skip when entities is None (simple endpoint) or empty — no alternatives available.
+    ent_list: list[str] = entities if entities is not None else []
+    resolved_all: dict = {}
+    if ent_list:
+        try:
+            resolved_all = await asyncio.to_thread(
+                retrieval.resolve_places_batch, names=tuple(ent_list)
+            )
+        except Exception:
+            resolved_all = {}
+
+    out: list[ResolvedPlace] = []
+    for i, dcid in enumerate(place_dcids):
+        name_entry = names_map.get(dcid, (None, None))
+        canonical_name, place_type = name_entry
+
+        # Derive input_name: for the default endpoint entities[i] is available.
+        input_name: str = ent_list[i] if i < len(ent_list) else dcid
+
+        # Build alternatives from the batch (all candidates other than the primary).
+        alt_candidates = resolved_all.get(input_name, ())
+        alternatives: list[PlaceAlternative] = [
+            PlaceAlternative(dcid=c.dcid, name=None, type=c.dominant_type)
+            for c in alt_candidates
+            if c.dcid != dcid
+        ]
+
+        out.append(
+            ResolvedPlace(
+                input_name=input_name,
+                dcid=dcid,
+                name=canonical_name,
+                type=place_type,
+                alternatives=alternatives,
+            )
+        )
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Per-step private helpers
 # ---------------------------------------------------------------------------
@@ -246,18 +400,19 @@ async def _retrieve(
 
 async def _short_circuit_topic(
     candidates: tuple,
-    query: str,
     retrieval_scores: dict[str, float],
     variable: str | None,
-    entities: list[str] | None = None,
+    place_dcids: list[str],
     dates: list[ExtractedDate] | None = None,
 ) -> AnswerCollection | AskClarification | None:
-    """Step 2 — topic-dominance short-circuit; returns answer or None to continue."""
+    """Step 2 — topic-dominance short-circuit; returns answer or None to continue.
+
+    ``place_dcids`` is pre-resolved by the caller (shared ``dcid_task``).
+    """
     dominant_dcid = _dominant_topic_dcid(candidates)
     if dominant_dcid is None:
         return None
 
-    place_dcids: list[str] = await _resolve_place_dcids(query, entities)
     union_avail: frozenset[str] = frozenset()
     avail_degraded = False
     if place_dcids:
@@ -280,8 +435,26 @@ async def _short_circuit_topic(
     answer = await asyncio.to_thread(
         hooks_module.materialize_many, (topic_predicate,), [], ctx=topic_ctx
     )
-    if variable is not None and isinstance(answer, AnswerCollection):
-        answer = answer.model_copy(update={"variable_label": variable})
+    if isinstance(answer, AnswerCollection):
+        # Fetch topic metadata here (distinct from _enrich_topic_metadata, which
+        # runs on the non-short-circuit path). Fail-open: leave
+        # topic_name/topic_description None on failure.
+        try:
+            topic_meta = await asyncio.to_thread(
+                retrieval.topic_metadata_batch, dcids=(dominant_dcid,)
+            )
+            meta = topic_meta.get(dominant_dcid)
+        except Exception:
+            meta = None
+        answer = answer.model_copy(
+            update={
+                "answer_kind": "topic",
+                "topic_name": meta.name if meta else None,
+                "topic_description": meta.description if meta else None,
+            }
+        )
+        if variable is not None:
+            answer = answer.model_copy(update={"variable_label": variable})
     return answer
 
 
@@ -325,26 +498,27 @@ async def _resolve_place_dcids(query: str, entities: list[str] | None) -> list[s
 
 async def _rerank_by_availability(
     sv_dcids: list[str],
-    query: str,
-    entities: list[str] | None = None,
-) -> tuple[list[str], list[str], frozenset[str], bool]:
+    place_dcids: list[str],
+) -> tuple[list[str], frozenset[str], dict[str, tuple[str | None, str | None]], bool]:
     """Step 3 — availability re-rank.
 
-    Returns (reranked_sv_dcids, place_dcids, union_avail, availability_degraded).
+    ``place_dcids`` is pre-resolved by the caller (shared ``dcid_task``).
+
+    Returns ``(reranked_sv_dcids, union_avail, dcid_to_date_range, availability_degraded)``.
     """
-    place_dcids: list[str] = await _resolve_place_dcids(query, entities)
     union_avail: frozenset[str] = frozenset()
+    dcid_to_date_range: dict[str, tuple[str | None, str | None]] = {}
     avail_degraded = False
     if place_dcids:
-        union_avail, avail_degraded = await asyncio.to_thread(
-            _resolve_union_availability_checked, place_dcids, tuple(sv_dcids)
+        union_avail, dcid_to_date_range, avail_degraded = await asyncio.to_thread(
+            _resolve_union_availability_with_ranges, place_dcids, tuple(sv_dcids)
         )
         if union_avail:
             sv_dcids = sorted(
                 sv_dcids,
                 key=lambda d: _availability_sort_key(d, union_avail),
             )
-    return sv_dcids, place_dcids, union_avail, avail_degraded
+    return sv_dcids, union_avail, dcid_to_date_range, avail_degraded
 
 
 async def _fetch_features(sv_dcids: list[str]) -> list:
@@ -408,6 +582,8 @@ async def _materialize(
     variable: str | None,
     dates: list[ExtractedDate] | None = None,
     availability_degraded: bool = False,
+    dcid_to_sentence: dict[str, str] | None = None,
+    dcid_to_date_range: dict[str, tuple[str | None, str | None]] | None = None,
 ) -> AnswerCollection | AskClarification:
     """Step 8 — materialize via hooks (to_thread offloads blocking mixer HTTP calls)."""
     hook_ctx = HookContext(
@@ -417,6 +593,8 @@ async def _materialize(
         raw_candidates=tuple(feature_list),
         dates=dates or [],
         availability_degraded=availability_degraded,
+        dcid_to_sentence=dcid_to_sentence or {},
+        dcid_to_date_range=dcid_to_date_range or {},
     )
     answer = await asyncio.to_thread(
         hooks_module.materialize_many, predicates, feature_list, ctx=hook_ctx
@@ -435,23 +613,21 @@ async def _run_one_variable(
     variable: str | None,
     query: str,
     *,
-    entities: list[str] | None = None,
+    place_dcids: list[str],
     dates: list[ExtractedDate] | None = None,
     slot_bind_usages: list[Usage],
 ) -> _VariableResult:
     """Shared pipeline core: retrieve → shape → bind → materialize.
 
-    Called by ``run_simple`` (variable=None, entities=None) and by each fan-out
-    branch in ``run_default`` (variable=measure string, entities=extraction
-    result entities).
+    Called by ``run_simple`` (variable=None) and by each fan-out branch in
+    ``run_default`` (variable=measure string).
 
     Args:
         variable: Extracted variable phrase for retrieval scoping.  None for the
             simple endpoint (uses original query verbatim).
         query: Original user query, forwarded to the LLM for context.
-        entities: LLM-extracted place names from ``extraction.extract`` (default
-            endpoint).  ``None`` triggers the deterministic ``extract_place_tokens``
-            fallback (simple endpoint or extraction returned no entities).
+        place_dcids: Already-resolved place DCIDs from the shared ``dcid_task``
+            (resolution happens once per query, not once per variable).
         dates: Extracted date references from the default endpoint's extraction
             step.  None (simple endpoint) becomes an empty list at the
             HookContext layer.
@@ -470,16 +646,21 @@ async def _run_one_variable(
     candidates, sv_dcids, retrieval_scores = retrieve_out
     n_candidates = len(sv_dcids)
 
-    # Step 2 — topic-dominance short-circuit.
+    # Build dcid_to_sentence map from retrieval candidates.
+    dcid_to_sentence: dict[str, str] = {
+        c.dcid: c.sentence for c in candidates if getattr(c, "sentence", None)
+    }
+
+    # Step 2 — topic-dominance short-circuit (receives pre-resolved place_dcids).
     topic_answer = await _short_circuit_topic(
-        candidates, query, retrieval_scores, variable, entities=entities, dates=dates
+        candidates, retrieval_scores, variable, place_dcids=place_dcids, dates=dates
     )
     if topic_answer is not None:
         return _VariableResult(outcome=topic_answer, n_candidates=n_candidates)
 
-    # Step 3 — availability re-rank.
-    sv_dcids, place_dcids, union_avail, avail_degraded = await _rerank_by_availability(
-        sv_dcids, query, entities
+    # Step 3 — availability re-rank (returns date ranges alongside the rerank).
+    sv_dcids, union_avail, dcid_to_date_range, avail_degraded = await _rerank_by_availability(
+        sv_dcids, place_dcids
     )
 
     # Step 4 — feature fetch.
@@ -513,6 +694,8 @@ async def _run_one_variable(
         variable,
         dates=dates,
         availability_degraded=avail_degraded,
+        dcid_to_sentence=dcid_to_sentence,
+        dcid_to_date_range=dcid_to_date_range,
     )
     return _VariableResult(outcome=answer, n_candidates=n_candidates, n_shapes=n_shapes)
 
@@ -520,6 +703,20 @@ async def _run_one_variable(
 # ---------------------------------------------------------------------------
 # Streaming helpers
 # ---------------------------------------------------------------------------
+
+
+async def _cancel_and_drain(*tasks: asyncio.Task) -> None:
+    """Cancel every task then await them, swallowing results/exceptions.
+
+    Used in the generators' ``finally`` blocks so no fan-out / place task
+    outlives the response (the consumer's cancellation unwinds the generator,
+    whose ``finally`` lands here).  Cancelling is idempotent — a task already
+    owned by another (e.g. ``dcid_task`` awaited inside ``place_event_task``)
+    is cancelled defensively here too.
+    """
+    for t in tasks:
+        t.cancel()
+    await asyncio.gather(*tasks, return_exceptions=True)
 
 
 def _slot_usages(usages: list[Usage]) -> list[TelemetryLLMUsage]:
@@ -625,8 +822,11 @@ def _build_done(
 async def stream_default(query: str) -> AsyncIterator[Event]:
     """Yield typed events for the default (multi-variable) pipeline.
 
-    Order: start → interpretation → result* (fastest-first) → done.
-    Falls back to simple semantics (still default-mode events) on zero variables.
+    Order: start → interpretation → {places, result*  interleaved} → done.
+    The hard guarantees are: interpretation precedes places; places never blocks
+    result emission.  Falls back to simple semantics (still default-mode events)
+    on zero variables.
+
     Soft-deadline: yields a terminal Done(timed_out=True) with partials if the
     25s budget is exhausted. Never yields Error (see pipeline.py error note).
     """
@@ -637,6 +837,8 @@ async def stream_default(query: str) -> AsyncIterator[Event]:
 
     truncated = len(extraction_result.variables) > MAX_VARIABLES
     variables = extraction_result.variables[:MAX_VARIABLES]
+    extracted_entities: list[str] = extraction_result.entities
+    extracted_dates: list[ExtractedDate] = extraction_result.dates
 
     extract_entry = TelemetryLLMUsage(
         step="extract",
@@ -647,46 +849,93 @@ async def stream_default(query: str) -> AsyncIterator[Event]:
     )
 
     if not variables:
-        # Zero-variable fallback: emit coherent default-mode stream mirroring simple semantics.
+        # Zero-variable fallback: emit a coherent default-mode stream.
         yield Interpretation(
             variables=[],
-            entities=extraction_result.entities,
-            dates=extraction_result.dates,
+            entities=extracted_entities,
+            dates=extracted_dates,
             expected_results=1,
             truncated=truncated,
         )
+        # Start both tasks after Interpretation is yielded (perf-neutrality).
+        dcid_task: asyncio.Task[list[str]] = asyncio.create_task(
+            _resolve_place_dcids(query, extracted_entities)
+        )
+        place_event_task: asyncio.Task[list[ResolvedPlace]] = asyncio.create_task(
+            _build_resolved_places(extracted_entities, dcid_task)
+        )
         slot_bind_usages: list[Usage] = []
-        vr = await _run_one_variable(None, query, slot_bind_usages=slot_bind_usages)
-        vr.index = 0
-        yield _result_event(0, None, vr.outcome)
+
+        async def _run_zero_variable() -> _VariableResult:
+            place_dcids_resolved = await dcid_task
+            return await _run_one_variable(
+                None, query, place_dcids=place_dcids_resolved, slot_bind_usages=slot_bind_usages
+            )
+
+        run_task: asyncio.Task[_VariableResult] = asyncio.create_task(_run_zero_variable())
+
+        # vr is initialized before the try so _build_done never hits a NameError
+        # if run_task fails before producing a result.
+        vr: _VariableResult | None = None
+        # Interleave Places with the single result via FIRST_COMPLETED — same
+        # pattern as the normal path, so the result is not serialized behind the
+        # name fetch.
+        pending: set[asyncio.Task] = {run_task, place_event_task}
+        run_done = False
+        try:
+            while pending:
+                done_set, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+                for d in done_set:
+                    if d is place_event_task:
+                        yield Places(places=d.result())
+                    else:
+                        vr = d.result()
+                        vr.index = 0
+                        yield _result_event(0, None, vr.outcome)
+                        run_done = True
+        finally:
+            await _cancel_and_drain(run_task, place_event_task, dcid_task)
+
+        collected_zero = [vr] if vr is not None else []
         yield _build_done(
             t0,
-            [vr],
+            collected_zero,
             [extract_entry, *_slot_usages(slot_bind_usages)],
             truncated=truncated,
+            timed_out=not run_done,
         )
         return
 
+    # Normal path: variables present.
+    # Yield Interpretation FIRST, unconditionally, for perf-neutrality: nothing
+    # downstream (place resolution, fan-out) can delay it.
     yield Interpretation(
         variables=variables,
-        entities=extraction_result.entities,
-        dates=extraction_result.dates,
+        entities=extracted_entities,
+        dates=extracted_dates,
         expected_results=len(variables),
         truncated=truncated,
     )
 
-    slot_bind_usages: list[Usage] = []
-    extracted_entities: list[str] = extraction_result.entities
-    extracted_dates: list[ExtractedDate] = extraction_result.dates
+    slot_bind_usages = []
     deadline = t0 + _ROUTE_TIMEOUT_S
+
+    # DCID-only resolution task — the fan-out branches await this. No name fetch.
+    dcid_task = asyncio.create_task(_resolve_place_dcids(query, extracted_entities))
+
+    # Places-event task — awaits dcid_task, then does the name fetch + assembly.
+    # Only the Places event depends on this; fan-out never awaits it. Fail-open → [].
+    place_event_task = asyncio.create_task(_build_resolved_places(extracted_entities, dcid_task))
 
     async def per_variable(index: int, v: str) -> _VariableResult:
         async with _FANOUT_SEM:
             try:
+                # Await the SHARED dcid_task — free once resolved, resolves once.
+                place_dcids_resolved = await dcid_task
                 vr = await _run_one_variable(
                     v,
                     query,
-                    entities=extracted_entities,
+                    place_dcids=place_dcids_resolved,
                     dates=extracted_dates,
                     slot_bind_usages=slot_bind_usages,
                 )
@@ -703,31 +952,31 @@ async def stream_default(query: str) -> AsyncIterator[Event]:
             vr.variable_label = v
             return vr
 
-    tasks = [asyncio.create_task(per_variable(i, v)) for i, v in enumerate(variables)]
+    result_tasks = [asyncio.create_task(per_variable(i, v)) for i, v in enumerate(variables)]
 
+    # Interleave Places with results via FIRST_COMPLETED so neither blocks the other.
+    pending: set[asyncio.Task] = set(result_tasks) | {place_event_task}
     collected: list[_VariableResult] = []
     try:
-        for fut in asyncio.as_completed(tasks):
+        while pending:
             remaining = deadline - time.perf_counter()
             if remaining <= 0:
-                break  # budget already spent → timeout path
-            try:
-                # wait_for raises TimeoutError to bound the await, but because
-                # as_completed yields wrapper awaitables (not the original tasks),
-                # wait_for does NOT cancel the underlying per_variable task on timeout.
-                # The finally block below is the single cancellation source for BOTH
-                # the timeout break and the client-disconnect CancelledError paths.
-                vr = await asyncio.wait_for(fut, timeout=remaining)
-            except asyncio.TimeoutError:
-                break  # a branch is hung past the budget
-            collected.append(vr)
-            yield _result_event(vr.index, vr.variable_label, vr.outcome)
+                break
+            done, pending = await asyncio.wait(
+                pending, timeout=remaining, return_when=asyncio.FIRST_COMPLETED
+            )
+            if not done:  # timed out this slice
+                break
+            for d in done:
+                if d is place_event_task:
+                    # build is fail-open → never raises; safe to call .result()
+                    yield Places(places=d.result())
+                else:
+                    vr = d.result()
+                    collected.append(vr)
+                    yield _result_event(vr.index, vr.variable_label, vr.outcome)
     finally:
-        # Cancel + await any branch still pending (timeout OR client-disconnect
-        # CancelledError arriving here). No orphaned tasks, no leaked in-flight work.
-        for t in tasks:
-            t.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
+        await _cancel_and_drain(*result_tasks, place_event_task, dcid_task)
 
     timed_out = len(collected) < len(variables)
     yield _build_done(
@@ -742,25 +991,60 @@ async def stream_default(query: str) -> AsyncIterator[Event]:
 async def stream_simple(query: str) -> AsyncIterator[Event]:
     """Yield typed events for the simple (single-variable) pipeline.
 
-    Order: start → stage("retrieving") → result → done.
+    Order: start → stage("retrieving") → {places, result  interleaved} → done.
     """
     t0 = time.perf_counter()
     yield Start(query=query, mode="simple")
     yield Stage(stage="retrieving")
 
     slot_bind_usages: list[Usage] = []
-    task = asyncio.create_task(_run_one_variable(None, query, slot_bind_usages=slot_bind_usages))
+    deadline = t0 + _ROUTE_TIMEOUT_S
+
+    # entities=None → simple endpoint token fallback inside _resolve_place_dcids.
+    dcid_task: asyncio.Task[list[str]] = asyncio.create_task(_resolve_place_dcids(query, None))
+    place_event_task: asyncio.Task[list[ResolvedPlace]] = asyncio.create_task(
+        _build_resolved_places(None, dcid_task)
+    )
+
+    async def _run_simple_variable() -> _VariableResult:
+        place_dcids_resolved = await dcid_task
+        return await _run_one_variable(
+            None, query, place_dcids=place_dcids_resolved, slot_bind_usages=slot_bind_usages
+        )
+
+    run_task: asyncio.Task[_VariableResult] = asyncio.create_task(_run_simple_variable())
+
+    pending: set[asyncio.Task] = {run_task, place_event_task}
+    collected: list[_VariableResult] = []
+    run_done = False
     try:
-        vr = await asyncio.wait_for(task, timeout=_ROUTE_TIMEOUT_S)  # may raise → propagates
-    except asyncio.TimeoutError:
-        task.cancel()
-        await asyncio.gather(task, return_exceptions=True)
+        while pending:
+            remaining = deadline - time.perf_counter()
+            if remaining <= 0:
+                break
+            done, pending = await asyncio.wait(
+                pending, timeout=remaining, return_when=asyncio.FIRST_COMPLETED
+            )
+            if not done:  # timed out this slice
+                break
+            for d in done:
+                if d is place_event_task:
+                    yield Places(places=d.result())
+                else:
+                    vr = d.result()
+                    vr.index = 0
+                    collected.append(vr)
+                    yield _result_event(0, None, vr.outcome)
+                    run_done = True
+    finally:
+        await _cancel_and_drain(run_task, place_event_task, dcid_task)
+
+    if not run_done:
+        # Timed out before the run task completed.
         yield _build_done(t0, [], _slot_usages(slot_bind_usages), truncated=False, timed_out=True)
         return
-    vr.index = 0
 
-    yield _result_event(0, None, vr.outcome)
-    yield _build_done(t0, [vr], _slot_usages(slot_bind_usages), truncated=False)
+    yield _build_done(t0, collected, _slot_usages(slot_bind_usages), truncated=False)
 
 
 # ---------------------------------------------------------------------------
@@ -771,21 +1055,38 @@ async def stream_simple(query: str) -> AsyncIterator[Event]:
 async def _drain(stream: AsyncIterator[Event], query: str) -> PipelineResult:
     """Collect a stream into a PipelineResult, re-sorting results by index.
 
-    Ignores start/interpretation/stage; gathers Result events; reads the terminal
-    Done for telemetry. The generator never yields Error (errors propagate as
-    exceptions so the route's handlers map them to 504/503), so a Done is always
-    the terminal event. A Done(timed_out=True) is treated like any other Done.
+    Captures Interpretation and Places events to assemble QueryInterpretation.
+    Gathers Result events; reads the terminal Done for telemetry. The generator
+    never yields Error (errors propagate as exceptions so the route's handlers
+    map them to 504/503), so a Done is always the terminal event. A
+    Done(timed_out=True) is treated like any other Done.
     """
     results: list[Result] = []
     done: Done | None = None
+    interp_evt: Interpretation | None = None
+    places_evt: Places | None = None
     async for event in stream:  # exceptions propagate (preserve 504/503)
         if isinstance(event, Result):
             results.append(event)
+        elif isinstance(event, Interpretation):
+            interp_evt = event
+        elif isinstance(event, Places):
+            places_evt = event
         elif isinstance(event, Done):
             done = event
     assert done is not None  # generators always end with Done (no Error from generator)
-    results.sort(key=lambda r: r.index)  # undo as_completed reordering
+    results.sort(key=lambda r: r.index)  # undo FIRST_COMPLETED reordering
     answers = [r.answer for r in results if isinstance(r.answer, AnswerCollection)]
+
+    # Assemble QueryInterpretation from the two signal events.
+    interpretation: QueryInterpretation | None = None
+    if interp_evt is not None or places_evt is not None:
+        interpretation = QueryInterpretation(
+            variables=interp_evt.variables if interp_evt else [],
+            places=places_evt.places if places_evt else [],
+            dates=interp_evt.dates if interp_evt else [],
+        )
+
     return PipelineResult(
         query=query,
         answers=answers,
@@ -796,6 +1097,7 @@ async def _drain(stream: AsyncIterator[Event], query: str) -> PipelineResult:
         terminated_by=done.telemetry.terminated_by,
         llm_usage=done.telemetry.llm_usage,
         truncated=done.telemetry.truncated,
+        interpretation=interpretation,
     )
 
 

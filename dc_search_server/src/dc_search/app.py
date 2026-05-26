@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 
 from dc_search import config, llm, pipeline, retrieval
 from dc_search.events import Done, Error, Event, serialize_sse
+from dc_search.interpretation import QueryInterpretation
 from dc_search.pipeline import PipelineResult
 from dc_search.predicate import AnswerCollection, AskClarification
 from dc_search.telemetry import TelemetryLLMUsage
@@ -71,6 +72,14 @@ class SearchResponse(BaseModel):
     )
     elapsed_s: float
     telemetry: TelemetryBlock
+    interpretation: QueryInterpretation | None = Field(
+        default=None,
+        description=(
+            "Buffered query interpretation assembled from the ``interpretation`` and "
+            "``places`` SSE events.  ``None`` for simple-endpoint responses when no "
+            "interpretation event was emitted."
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -93,6 +102,7 @@ def _to_response(result: PipelineResult) -> SearchResponse:
         ask=result.ask,
         elapsed_s=result.elapsed_s,
         telemetry=telemetry,
+        interpretation=result.interpretation,
     )
 
 

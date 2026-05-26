@@ -326,3 +326,81 @@ def test_module_import():
     import dc_search.retrieval as r
 
     assert r is not None
+
+
+# ---------------------------------------------------------------------------
+# place_names_batch — parse, cache, fail-open
+# ---------------------------------------------------------------------------
+
+
+def _make_place_node_response(dcid_to_name_type: dict) -> dict:
+    """Build a minimal v2/node response for place_names_batch."""
+    data: dict = {}
+    for dcid, (name, type_of) in dcid_to_name_type.items():
+        arcs: dict = {}
+        if name is not None:
+            arcs["name"] = {"nodes": [{"value": name}]}
+        if type_of is not None:
+            arcs["typeOf"] = {"nodes": [{"dcid": type_of}]}
+        data[dcid] = {"arcs": arcs}
+    return {"data": data}
+
+
+def test_place_names_batch_empty_returns_empty():
+    """Empty dcids input returns empty dict without API call."""
+    result = retrieval.place_names_batch(dcids=())
+    assert result == {}
+
+
+def test_place_names_batch_parses_name_and_typeof(mock_dc_client):
+    """place_names_batch parses name + typeOf from a mocked client.node.fetch."""
+    mock_dc_client.node.fetch.return_value.to_dict.return_value = _make_place_node_response(
+        {
+            "country/KEN": ("Kenya", "Country"),
+            "country/UGA": ("Uganda", "Country"),
+        }
+    )
+    result = retrieval.place_names_batch(dcids=("country/KEN", "country/UGA"))
+
+    assert result["country/KEN"] == ("Kenya", "Country")
+    assert result["country/UGA"] == ("Uganda", "Country")
+
+
+def test_place_names_batch_missing_node_seeds_none(mock_dc_client):
+    """A DCID not present in the response is still present in the result as (None, None)."""
+    mock_dc_client.node.fetch.return_value.to_dict.return_value = _make_place_node_response(
+        {"country/KEN": ("Kenya", "Country")}
+    )
+    result = retrieval.place_names_batch(dcids=("country/KEN", "country/MISSING"))
+
+    assert result["country/KEN"] == ("Kenya", "Country")
+    assert result["country/MISSING"] == (None, None)
+
+
+def test_place_names_batch_cache_hit_avoids_second_fetch(mock_dc_client):
+    """Cache hit: second call with same dcids skips client.node.fetch."""
+    mock_dc_client.node.fetch.return_value.to_dict.return_value = _make_place_node_response(
+        {"country/KEN": ("Kenya", "Country")}
+    )
+    first = retrieval.place_names_batch(dcids=("country/KEN",))
+    second = retrieval.place_names_batch(dcids=("country/KEN",))
+
+    assert first == second
+    assert mock_dc_client.node.fetch.call_count == 1, "Cache hit should skip the second fetch call"
+
+
+def test_place_names_batch_transient_error_returns_all_none(mock_dc_client):
+    """A transient client error → fail-open: all requested DCIDs map to (None, None)."""
+    mock_dc_client.node.fetch.side_effect = RuntimeError("mixer unavailable")
+
+    result = retrieval.place_names_batch(dcids=("country/KEN", "country/UGA"))
+
+    assert result["country/KEN"] == (None, None)
+    assert result["country/UGA"] == (None, None)
+
+
+def test_place_names_batch_is_lru_cache():
+    """_place_names_cache is a cachetools.LRUCache (mirrors other retrieval caches)."""
+    import cachetools
+
+    assert isinstance(retrieval._place_names_cache, cachetools.LRUCache)

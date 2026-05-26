@@ -16,12 +16,14 @@ from typing import Annotated, Any, Literal
 from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag
 
 from dc_search.extraction import ExtractedDate
+from dc_search.interpretation import ResolvedPlace
 from dc_search.predicate import AnswerCollection, AskClarification
 from dc_search.telemetry import TelemetryLLMUsage
 
 __all__ = [
     "Start",
     "Interpretation",
+    "Places",
     "Stage",
     "Result",
     "Done",
@@ -66,6 +68,16 @@ class Interpretation(BaseModel):
     dates: list[ExtractedDate]
     expected_results: int  # == len(variables) post-cap (1 for the fallback)
     truncated: bool
+
+
+class Places(BaseModel):
+    """Resolved places (default + simple); emitted after interpretation, concurrent
+    with variable fan-out.  Lightweight — does not gate the interpretation event.
+    """
+
+    model_config = ConfigDict(frozen=True)
+    type: Literal["places"] = "places"
+    places: list[ResolvedPlace]
 
 
 class Stage(BaseModel):
@@ -139,7 +151,7 @@ class Error(BaseModel):
 
 
 Event = Annotated[
-    Start | Interpretation | Stage | Result | Done | Error,
+    Start | Interpretation | Places | Stage | Result | Done | Error,
     Field(discriminator="type"),
 ]
 

@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from dc_search import retrieval
 from dc_search.extraction import ExtractedDate
 from dc_search.hooks import (
@@ -1562,3 +1564,195 @@ def test_date_filter_hook_sets_date_filter_field() -> None:
     assert out.date_filter is not None
     assert out.date_filter.start == "2015"
     assert out.date_filter.end == "2020"
+
+
+# ===========================================================================
+# _build_variables projector tests
+# ===========================================================================
+
+
+def _make_ctx_for_build_vars(
+    candidates: list,
+    *,
+    place_dcids: tuple = (),
+    place_availability: frozenset | None = None,
+    retrieval_scores: dict | None = None,
+    dcid_to_sentence: dict | None = None,
+    dcid_to_date_range: dict | None = None,
+) -> HookContext:
+    return HookContext(
+        place_dcids=place_dcids,
+        place_availability=place_availability,
+        retrieval_scores=retrieval_scores or {},
+        raw_candidates=tuple(candidates),
+        dcid_to_sentence=dcid_to_sentence or {},
+        dcid_to_date_range=dcid_to_date_range or {},
+    )
+
+
+def _sv(dcid: str, **kwargs) -> StatVarFeatures:
+    defaults = {
+        "dcid": dcid,
+        "name": f"Name of {dcid}",
+        "population_type": ["Person"],
+        "measured_property": ["count"],
+        "stat_type": ["measuredValue"],
+    }
+    defaults.update(kwargs)
+    return StatVarFeatures(**defaults)
+
+
+class TestBuildVariables:
+    def test_maps_feature_fields(self):
+        """_build_variables populates name/description/unit/measured_property etc."""
+        from dc_search.hooks import _build_variables
+
+        sv = StatVarFeatures(
+            dcid="LifeExpectancy_Person",
+            name="Life Expectancy",
+            description="Life expectancy at birth.",
+            population_type=["Person"],
+            measured_property=["lifeExpectancy"],
+            stat_type=["measuredValue"],
+            unit=["years"],
+        )
+        ctx = _make_ctx_for_build_vars([sv])
+        result = _build_variables(["LifeExpectancy_Person"], ctx)
+
+        assert len(result) == 1
+        rv = result[0]
+        assert rv.dcid == "LifeExpectancy_Person"
+        assert rv.name == "Life Expectancy"
+        assert rv.description == "Life expectancy at birth."
+        assert rv.population_type == "Person"
+        assert rv.measured_property == "lifeExpectancy"
+        assert rv.stat_type == "measuredValue"
+        assert rv.unit == "years"
+
+    def test_available_at_place_none_when_no_place_dcids(self):
+        """available_at_place is None when place_dcids is empty."""
+        from dc_search.hooks import _build_variables
+
+        sv = _sv("SV_A")
+        ctx = _make_ctx_for_build_vars(
+            [sv],
+            place_dcids=(),  # no place resolved
+            place_availability=frozenset({"SV_A"}),  # availability computed but place empty
+        )
+        result = _build_variables(["SV_A"], ctx)
+        assert result[0].available_at_place is None
+
+    def test_available_at_place_none_when_place_availability_is_none(self):
+        """B4 regression: available_at_place is None when place_availability is None
+        even with non-empty place_dcids (places resolved but availability not computed)."""
+        from dc_search.hooks import _build_variables
+
+        sv = _sv("SV_A")
+        ctx = _make_ctx_for_build_vars(
+            [sv],
+            place_dcids=("country/KEN",),  # place resolved
+            place_availability=None,  # availability NOT computed
+        )
+        result = _build_variables(["SV_A"], ctx)
+        assert result[0].available_at_place is None, (
+            "B4: available_at_place must be None when place_availability is None, "
+            "even with non-empty place_dcids"
+        )
+
+    def test_available_at_place_true_when_in_availability(self):
+        """available_at_place=True when dcid is in place_availability."""
+        from dc_search.hooks import _build_variables
+
+        sv = _sv("SV_A")
+        ctx = _make_ctx_for_build_vars(
+            [sv],
+            place_dcids=("country/KEN",),
+            place_availability=frozenset({"SV_A", "SV_B"}),
+        )
+        result = _build_variables(["SV_A"], ctx)
+        assert result[0].available_at_place is True
+
+    def test_available_at_place_false_when_not_in_availability(self):
+        """available_at_place=False when dcid is NOT in place_availability."""
+        from dc_search.hooks import _build_variables
+
+        sv = _sv("SV_A")
+        ctx = _make_ctx_for_build_vars(
+            [sv],
+            place_dcids=("country/KEN",),
+            place_availability=frozenset({"SV_OTHER"}),
+        )
+        result = _build_variables(["SV_A"], ctx)
+        assert result[0].available_at_place is False
+
+    def test_date_range_projected_from_dcid_to_date_range(self):
+        """date_range is a DateRange object projected from ctx.dcid_to_date_range."""
+        from dc_search.hooks import _build_variables
+        from dc_search.predicate import DateRange
+
+        sv = _sv("SV_A")
+        ctx = _make_ctx_for_build_vars(
+            [sv],
+            dcid_to_date_range={"SV_A": ("2010", "2024")},
+        )
+        result = _build_variables(["SV_A"], ctx)
+        dr = result[0].date_range
+        assert dr is not None
+        assert isinstance(dr, DateRange)
+        assert dr.earliest == "2010"
+        assert dr.latest == "2024"
+
+    def test_date_range_none_when_not_in_map(self):
+        """date_range is None when dcid is absent from dcid_to_date_range."""
+        from dc_search.hooks import _build_variables
+
+        sv = _sv("SV_A")
+        ctx = _make_ctx_for_build_vars([sv], dcid_to_date_range={})
+        result = _build_variables(["SV_A"], ctx)
+        assert result[0].date_range is None
+
+    def test_missing_feature_yields_dcid_only(self):
+        """A DCID not in raw_candidates yields a DCID-only ResolvedVariable with None fields."""
+        from dc_search.hooks import _build_variables
+
+        # raw_candidates is empty — DCID not in feature map
+        ctx = _make_ctx_for_build_vars([])
+        result = _build_variables(["UNKNOWN_SV"], ctx)
+
+        assert len(result) == 1
+        rv = result[0]
+        assert rv.dcid == "UNKNOWN_SV"
+        assert rv.name is None
+        assert rv.description is None
+        assert rv.population_type is None
+        assert rv.available_at_place is None
+        assert rv.date_range is None
+
+    def test_score_from_retrieval_scores(self):
+        """score is populated from ctx.retrieval_scores."""
+        from dc_search.hooks import _build_variables
+
+        sv = _sv("SV_A")
+        ctx = _make_ctx_for_build_vars([sv], retrieval_scores={"SV_A": 0.9})
+        result = _build_variables(["SV_A"], ctx)
+        assert result[0].score == pytest.approx(0.9)
+
+    def test_matched_sentence_from_dcid_to_sentence(self):
+        """matched_sentence is populated from ctx.dcid_to_sentence."""
+        from dc_search.hooks import _build_variables
+
+        sv = _sv("SV_A")
+        ctx = _make_ctx_for_build_vars([sv], dcid_to_sentence={"SV_A": "life expectancy"})
+        result = _build_variables(["SV_A"], ctx)
+        assert result[0].matched_sentence == "life expectancy"
+
+    def test_multiple_svs_preserves_order(self):
+        """Output order matches sv_set order."""
+        from dc_search.hooks import _build_variables
+
+        sv_a = _sv("SV_A")
+        sv_b = _sv("SV_B")
+        ctx = _make_ctx_for_build_vars([sv_a, sv_b])
+        result = _build_variables(["SV_B", "SV_A"], ctx)
+        assert result[0].dcid == "SV_B"
+        assert result[1].dcid == "SV_A"

@@ -39,7 +39,9 @@ from dc_search.predicate import (
     AskClarification,
     Caveat,
     Confidence,
+    DateRange,
     Predicate,
+    ResolvedVariable,
     _apply_availability_filter,
     _build_crs_svg_dcid,
     _filter_by_predicate,
@@ -134,6 +136,12 @@ class HookContext:
     """Candidate features as received by the materializer."""
     dates: list[ExtractedDate] = dataclasses_field(default_factory=list)
     """Extracted date references; empty list when not provided (simple endpoint)."""
+    dcid_to_sentence: dict[str, str] = dataclasses_field(default_factory=dict)
+    """Maps SV DCID → retrieval sentence that surfaced it; empty when not populated."""
+    dcid_to_date_range: dict[str, tuple[str | None, str | None]] = dataclasses_field(
+        default_factory=dict
+    )
+    """Maps SV DCID → (earliest, latest) observation dates; absent when unknown."""
     availability_degraded: bool = False
     """True when the availability re-rank fetch failed open (transient mixer error).
 
@@ -1146,6 +1154,50 @@ def materialize_via_hooks(
 
 
 # ---------------------------------------------------------------------------
+# Variables projector — runs once after the hook chain
+# ---------------------------------------------------------------------------
+
+
+def _build_variables(sv_set: list[str], ctx: HookContext) -> list[ResolvedVariable]:
+    """Project each surviving DCID in ``sv_set`` to an enriched ``ResolvedVariable``.
+
+    Pure function; reads from ``ctx`` maps populated by the pipeline before
+    hooks run.  Best-effort: a missing ``StatVarFeatures`` entry yields a
+    DCID-only ``ResolvedVariable`` with ``None`` enrichment fields.
+    """
+    feat_by_dcid = {f.dcid: f for f in ctx.raw_candidates}
+    out: list[ResolvedVariable] = []
+    for dcid in sv_set:
+        f = feat_by_dcid.get(dcid)
+        # None unless places resolved AND availability actually computed.
+        if not ctx.place_dcids or ctx.place_availability is None:
+            avail = None
+        else:
+            avail = dcid in ctx.place_availability
+        rng = ctx.dcid_to_date_range.get(dcid)  # internal tuple | None
+        date_range = DateRange(earliest=rng[0], latest=rng[1]) if rng else None
+        out.append(
+            ResolvedVariable(
+                dcid=dcid,
+                name=f.name if f else None,
+                description=f.description if f else None,
+                unit=(f.unit[0] if f and f.unit else None),
+                measured_property=(f.measured_property[0] if f and f.measured_property else None),
+                population_type=(f.population_type[0] if f and f.population_type else None),
+                stat_type=(f.stat_type[0] if f and f.stat_type else None),
+                measurement_denominator=(
+                    f.measurement_denominator[0] if f and f.measurement_denominator else None
+                ),
+                score=ctx.retrieval_scores.get(dcid),
+                matched_sentence=ctx.dcid_to_sentence.get(dcid),
+                available_at_place=avail,
+                date_range=date_range,
+            )
+        )
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Multi-predicate materializer — fan-out entry point
 # ---------------------------------------------------------------------------
 
@@ -1202,7 +1254,10 @@ def materialize_many(
     from the explode).
     """
     if len(predicates) == 1:
-        return materialize_via_hooks(predicates[0], candidates, ctx=ctx)
+        result = materialize_via_hooks(predicates[0], candidates, ctx=ctx)
+        if isinstance(result, AnswerCollection):  # I3 guard
+            result = result.model_copy(update={"variables": _build_variables(result.sv_set, ctx)})
+        return result
 
     # Pre-warm _vgroups_cache so each sub-predicate's CrsDacSvgExpansionHook
     # hits the cache instead of issuing a separate RTT — two bulk /v2/node
@@ -1268,4 +1323,5 @@ def materialize_many(
         collection_dcid=accumulated[0].collection_dcid,
         confidence=merged_confidence,
         caveats=unioned_caveats,
+        variables=_build_variables(unioned_svs, ctx),
     )

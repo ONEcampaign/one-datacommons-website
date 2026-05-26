@@ -127,6 +127,11 @@ def _patch_all(monkeypatch, *, retrieval_candidates=None, extra_patches=None):
         "resolve_places_batch",
         lambda *, names: {},
     )
+    monkeypatch.setattr(
+        _retrieval,
+        "place_names_batch",
+        lambda *, dcids: {},
+    )
 
     # Place extraction → no places (clean availability path).
     # Pipeline accesses shape_module.extract_place_tokens via module attribute,
@@ -355,11 +360,11 @@ async def test_run_default_truncates_at_max_variables(monkeypatch):
 
     original_run_one = _pipeline._run_one_variable
 
-    async def _capturing_run_one(variable, query, *, entities=None, dates=None, slot_bind_usages):
+    async def _capturing_run_one(variable, query, *, place_dcids, dates=None, slot_bind_usages):
         if variable is not None:
             processed.append(variable)
         return await original_run_one(
-            variable, query, entities=entities, dates=dates, slot_bind_usages=slot_bind_usages
+            variable, query, place_dcids=place_dcids, dates=dates, slot_bind_usages=slot_bind_usages
         )
 
     monkeypatch.setattr(_pipeline, "_run_one_variable", _capturing_run_one)
@@ -381,6 +386,7 @@ async def test_run_default_truncates_at_max_variables(monkeypatch):
 async def test_run_default_fan_out_is_concurrent(monkeypatch):
     import dc_search.extraction as _ext
     import dc_search.pipeline as _pipeline
+    import dc_search.retrieval as _retrieval
 
     DELAY = 0.05
     N_VARS = 6
@@ -391,8 +397,11 @@ async def test_run_default_fan_out_is_concurrent(monkeypatch):
         return (_make_extraction(six_vars), _EXTRACT_USAGE)
 
     monkeypatch.setattr(_ext, "extract", _mock_extract)
+    # Stub place resolution so dcid_task / place_event_task don't hit the network.
+    monkeypatch.setattr(_retrieval, "resolve_places_batch", lambda *, names: {})
+    monkeypatch.setattr(_retrieval, "place_names_batch", lambda *, dcids: {})
 
-    async def _slow_run_one(variable, query, *, entities=None, dates=None, slot_bind_usages):
+    async def _slow_run_one(variable, query, *, place_dcids, dates=None, slot_bind_usages):
         await asyncio.sleep(DELAY)
         slot_bind_usages.append(_USAGE)
         answer = _ANSWER.model_copy(update={"variable_label": variable if variable else None})
@@ -788,3 +797,336 @@ def test_resolve_union_availability_custom_in_envelope_but_absent_at_place_not_i
     assert "SV_CUSTOM" not in result
     # SV_CUSTOM is in the map → not base-DC → presence_for_entities not called
     mock_presence.assert_not_called()
+
+
+# ===========================================================================
+# _build_resolved_places: alternatives + fail-open on name error
+# ===========================================================================
+
+
+@pytest.mark.asyncio
+async def test_build_resolved_places_populates_alternatives(monkeypatch):
+    """_build_resolved_places: alternatives list is populated from extra
+    resolve_places_batch candidates (rank-1 is primary; the rest become alternatives)."""
+    import dc_search.retrieval as _retrieval
+    from dc_search.interpretation import PlaceAlternative
+    from dc_search.pipeline import _build_resolved_places
+    from dc_search.retrieval import PlaceCandidate
+
+    # Two candidates for "Kenya": country/KEN (primary) and nuts/KEN (alternative)
+    def _mock_resolve_batch(*, names):
+        return {
+            "Kenya": (
+                PlaceCandidate(dcid="country/KEN"),
+                PlaceCandidate(dcid="nuts/KEN"),
+            )
+        }
+
+    monkeypatch.setattr(_retrieval, "resolve_places_batch", _mock_resolve_batch)
+    monkeypatch.setattr(
+        _retrieval,
+        "place_names_batch",
+        lambda *, dcids: {"country/KEN": ("Kenya", "Country")},
+    )
+
+    async def _resolved():
+        return ["country/KEN"]
+
+    dcid_task = asyncio.create_task(_resolved())
+    places = await _build_resolved_places(["Kenya"], dcid_task)
+
+    assert len(places) == 1
+    rp = places[0]
+    assert rp.dcid == "country/KEN"
+    assert rp.name == "Kenya"
+    assert rp.type == "Country"
+    assert len(rp.alternatives) == 1
+    assert isinstance(rp.alternatives[0], PlaceAlternative)
+    assert rp.alternatives[0].dcid == "nuts/KEN"
+
+
+@pytest.mark.asyncio
+async def test_build_resolved_places_fail_open_on_name_error(monkeypatch):
+    """_build_resolved_places returns places with name=None when name fetch fails."""
+    import dc_search.retrieval as _retrieval
+    from dc_search.pipeline import _build_resolved_places
+
+    monkeypatch.setattr(_retrieval, "resolve_places_batch", lambda *, names: {})
+
+    # place_names_batch raises — fail-open → name=None
+    def _raise(*, dcids):
+        raise RuntimeError("name fetch failed")
+
+    monkeypatch.setattr(_retrieval, "place_names_batch", _raise)
+
+    async def _resolved():
+        return ["country/KEN"]
+
+    dcid_task = asyncio.create_task(_resolved())
+    places = await _build_resolved_places(["Kenya"], dcid_task)
+
+    assert len(places) == 1
+    assert places[0].dcid == "country/KEN"
+    assert places[0].name is None
+
+
+# ===========================================================================
+# Union date range: _resolve_union_availability_with_ranges
+# ===========================================================================
+
+
+def test_resolve_union_availability_with_ranges_two_places():
+    """Two resolved places → date_range is unioned (min earliest / max latest)."""
+    from unittest.mock import patch
+
+    import dc_search.pipeline as _pipeline
+    import dc_search.retrieval as _retrieval
+
+    cov = _make_date_coverage(
+        envelopes={"SV_CUSTOM": ("2005", "2024")},
+        entity_ranges={
+            ("SV_CUSTOM", "country/KEN"): ("2010", "2020"),
+            ("SV_CUSTOM", "country/UGA"): ("2008", "2022"),
+        },
+    )
+
+    with patch.object(_retrieval, "variable_date_coverage", return_value=cov):
+        _, ranges, _ = _pipeline._resolve_union_availability_with_ranges(
+            ["country/KEN", "country/UGA"],
+            candidate_sv_dcids=("SV_CUSTOM",),
+        )
+
+    # Union: min(2010, 2008) = 2008; max(2020, 2022) = 2022
+    assert "SV_CUSTOM" in ranges
+    lo, hi = ranges["SV_CUSTOM"]
+    assert lo == "2008", f"Expected earliest='2008', got {lo!r}"
+    assert hi == "2022", f"Expected latest='2022', got {hi!r}"
+
+
+def test_resolve_union_availability_with_ranges_base_dc_var_no_range():
+    """Base-DC var (absent from envelopes) → not in ranges dict (date_range=None)."""
+    from unittest.mock import patch
+
+    import dc_search.pipeline as _pipeline
+    import dc_search.retrieval as _retrieval
+
+    cov = _make_date_coverage(envelopes={}, entity_ranges={})
+
+    with (
+        patch.object(_retrieval, "variable_date_coverage", return_value=cov),
+        patch.object(
+            _retrieval,
+            "presence_for_entities",
+            return_value=frozenset({"BASE_SV"}),
+        ),
+    ):
+        _, ranges, _ = _pipeline._resolve_union_availability_with_ranges(
+            ["country/KEN"],
+            candidate_sv_dcids=("BASE_SV",),
+        )
+
+    assert "BASE_SV" not in ranges, "Base-DC vars must not appear in the ranges dict"
+
+
+# ===========================================================================
+# _drain: interpretation assembly
+# ===========================================================================
+
+
+@pytest.mark.asyncio
+async def test_drain_assembles_interpretation_from_interpretation_and_places_events():
+    """_drain assembles QueryInterpretation from Interpretation + Places events."""
+    from dc_search.events import Done, DoneTelemetry, Interpretation, Places, Result, Start
+    from dc_search.extraction import ExtractedDate
+    from dc_search.interpretation import QueryInterpretation, ResolvedPlace
+    from dc_search.pipeline import _drain
+
+    resolved_place = ResolvedPlace(input_name="Kenya", dcid="country/KEN", name="Kenya")
+    extracted_date = ExtractedDate(kind="point", start="2020", end=None)
+
+    async def _fake_stream():
+        yield Start(query="test", mode="default")
+        yield Interpretation(
+            variables=["life expectancy"],
+            entities=["Kenya"],
+            dates=[extracted_date],
+            expected_results=1,
+            truncated=False,
+        )
+        yield Places(places=[resolved_place])
+        yield Result(
+            index=0,
+            variable_label="life expectancy",
+            outcome_kind="answer",
+            answer=_ANSWER,
+        )
+        yield Done(
+            telemetry=DoneTelemetry(
+                llm_usage=[],
+                n_candidates=1,
+                n_shapes=1,
+                terminated_by="answer",
+                truncated=False,
+            ),
+            elapsed_s=0.1,
+            terminated_by="answer",
+            truncated=False,
+        )
+
+    result = await _drain(_fake_stream(), "test")
+
+    assert result.interpretation is not None
+    assert isinstance(result.interpretation, QueryInterpretation)
+    assert result.interpretation.variables == ["life expectancy"]
+    assert len(result.interpretation.places) == 1
+    assert result.interpretation.places[0].dcid == "country/KEN"
+    assert len(result.interpretation.dates) == 1
+    assert result.interpretation.dates[0].start == "2020"
+
+
+@pytest.mark.asyncio
+async def test_drain_degenerate_interpretation_simple_endpoint():
+    """Simple endpoint: _drain assembles interpretation with empty variables/dates
+    but Places populated (degenerate interpretation per R-C)."""
+    from dc_search.events import Done, DoneTelemetry, Places, Result, Stage, Start
+    from dc_search.interpretation import QueryInterpretation, ResolvedPlace
+    from dc_search.pipeline import _drain
+
+    resolved_place = ResolvedPlace(input_name="Kenya", dcid="country/KEN")
+
+    async def _fake_simple_stream():
+        yield Start(query="test", mode="simple")
+        yield Stage(stage="retrieving")
+        yield Places(places=[resolved_place])
+        yield Result(
+            index=0,
+            variable_label=None,
+            outcome_kind="answer",
+            answer=_ANSWER,
+        )
+        yield Done(
+            telemetry=DoneTelemetry(
+                llm_usage=[],
+                n_candidates=1,
+                n_shapes=1,
+                terminated_by="answer",
+                truncated=False,
+            ),
+            elapsed_s=0.1,
+            terminated_by="answer",
+            truncated=False,
+        )
+
+    result = await _drain(_fake_simple_stream(), "test")
+
+    assert result.interpretation is not None
+    assert isinstance(result.interpretation, QueryInterpretation)
+    # Simple endpoint: no Interpretation event → variables and dates are empty
+    assert result.interpretation.variables == []
+    assert result.interpretation.dates == []
+    # Places event was present → places populated
+    assert len(result.interpretation.places) == 1
+    assert result.interpretation.places[0].dcid == "country/KEN"
+
+
+@pytest.mark.asyncio
+async def test_drain_no_interpretation_when_no_events():
+    """_drain returns interpretation=None when neither Interpretation nor Places event emitted."""
+    from dc_search.events import Done, DoneTelemetry, Result, Start
+    from dc_search.pipeline import _drain
+
+    async def _bare_stream():
+        yield Start(query="test", mode="simple")
+        yield Result(
+            index=0,
+            variable_label=None,
+            outcome_kind="answer",
+            answer=_ANSWER,
+        )
+        yield Done(
+            telemetry=DoneTelemetry(
+                llm_usage=[],
+                n_candidates=1,
+                n_shapes=1,
+                terminated_by="answer",
+                truncated=False,
+            ),
+            elapsed_s=0.1,
+            terminated_by="answer",
+            truncated=False,
+        )
+
+    result = await _drain(_bare_stream(), "test")
+    assert result.interpretation is None
+
+
+# ===========================================================================
+# answer_kind on topic short-circuit path
+# ===========================================================================
+
+
+@pytest.mark.asyncio
+async def test_topic_short_circuit_answer_has_topic_kind(monkeypatch):
+    """Topic-dominance path: answer_kind=="topic" + topic_name populated."""
+    import dc_search.retrieval as _retrieval
+    from dc_search.retrieval import IndicatorCandidate, TopicMetadata
+
+    _patch_all(monkeypatch)
+
+    topic_cand = IndicatorCandidate(
+        dcid="dc/topic/Health",
+        type_of=["Topic"],
+        score=1.0,
+    )
+    non_topic_cand = IndicatorCandidate(
+        dcid="LifeExpectancy_Person",
+        type_of=["StatisticalVariable"],
+        score=0.3,
+    )
+    monkeypatch.setattr(
+        _retrieval, "resolve_indicator", lambda *, query, k: (topic_cand, non_topic_cand)
+    )
+
+    monkeypatch.setattr(
+        _retrieval,
+        "topic_metadata_batch",
+        lambda *, dcids: {
+            "dc/topic/Health": TopicMetadata(
+                dcid="dc/topic/Health",
+                name="Health",
+                description="Health indicators.",
+            )
+        },
+    )
+
+    from dc_search import pipeline
+
+    result = await pipeline.run_simple("health indicators in Kenya")
+
+    assert result.terminated_by == "answer"
+    assert len(result.answers) == 1
+    a = result.answers[0]
+    assert a.answer_kind == "topic"
+    assert a.topic_name == "Health"
+    assert a.topic_description == "Health indicators."
+
+
+@pytest.mark.asyncio
+async def test_ordinary_answer_has_variables_kind(monkeypatch):
+    """Non-topic answer has answer_kind=="variables" (the default)."""
+    import dc_search.extraction as _ext
+
+    _patch_all(monkeypatch)
+
+    async def _mock_extract(query, *, model=None):
+        return (_make_extraction(["life expectancy"]), _EXTRACT_USAGE)
+
+    monkeypatch.setattr(_ext, "extract", _mock_extract)
+
+    from dc_search import pipeline
+
+    result = await pipeline.run_default(_QUERY)
+
+    assert result.terminated_by == "answer"
+    for a in result.answers:
+        assert a.answer_kind == "variables"
