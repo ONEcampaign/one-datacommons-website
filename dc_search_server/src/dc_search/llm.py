@@ -39,15 +39,20 @@ MODEL: str = os.getenv("DC_SEARCH_MODEL", "gemini-flash-lite-latest")
 # ---------------------------------------------------------------------------
 # Explicit context caching
 # ---------------------------------------------------------------------------
-# Large, stable system prompts (e.g. slot-binding's ~1.4k-token instruction) are
-# cached server-side via the Gemini explicit-cache API and referenced by name,
+# Large, stable system prompts (e.g. slot-binding's ~1.4k-token instruction) can
+# be cached server-side via the Gemini explicit-cache API and referenced by name,
 # so their tokens bill at the cached rate. This is a best-effort optimization:
 # every helper degrades to passing the prompt inline, so a disabled flag, a
 # below-minimum prompt (the API floor is 1024 tokens), or any API error never
 # breaks a request. Explicit caching is also our workaround for Gemini 3's
 # implicit cache not engaging for structured-output calls.
+#
+# OFF by default: at current query volume the per-hour cache-storage charge
+# (one resource per gunicorn worker) outweighs the per-call token savings, and
+# the latency benefit for a ~1.4k-token prefix is negligible. Opt in per
+# deployment with DC_SEARCH_LLM_CACHE=1 once sustained volume justifies it.
 
-_CACHE_ENABLED: bool = os.getenv("DC_SEARCH_LLM_CACHE", "1").lower() not in ("0", "false", "no")
+_CACHE_ENABLED: bool = os.getenv("DC_SEARCH_LLM_CACHE", "0").lower() in ("1", "true", "yes")
 _CACHE_TTL_S: int = int(os.getenv("DC_SEARCH_LLM_CACHE_TTL_S", "3600"))
 
 
