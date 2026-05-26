@@ -12,6 +12,9 @@ Data flow::
     run_default(query)
         → extraction.extract(query)        [LLM #1]
         → [per variable] _run_one_variable(v, query)   [LLM #2 each]
+
+The generators ``stream_default`` / ``stream_simple`` are the canonical
+implementations; ``run_default`` / ``run_simple`` are thin buffered drains.
 """
 
 from __future__ import annotations
@@ -19,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Literal
 
@@ -27,6 +31,7 @@ from pydantic import BaseModel, ConfigDict
 from dc_search import extraction, retrieval, slot_binding
 from dc_search import hooks as hooks_module
 from dc_search import shape as shape_module
+from dc_search.events import Done, DoneTelemetry, Event, Interpretation, Result, Stage, Start
 from dc_search.extraction import ExtractedDate
 from dc_search.hooks import HookContext
 from dc_search.predicate import AnswerCollection, AskClarification, Predicate
@@ -45,6 +50,9 @@ _FANOUT_SEM: asyncio.Semaphore = asyncio.Semaphore(8)
 
 # Maximum number of extracted variables before fan-out is capped.
 MAX_VARIABLES: int = 6
+
+# Soft deadline for both generators (matches app.py's route-level wait_for).
+_ROUTE_TIMEOUT_S: float = 25.0
 
 # ---------------------------------------------------------------------------
 # Public surface
@@ -79,6 +87,9 @@ class _VariableResult:
     outcome: AnswerCollection | AskClarification
     n_candidates: int = 0
     n_shapes: int = 0
+    # Set by the fan-out wrapper after the await; used by _build_done + _result_event.
+    index: int = 0
+    variable_label: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -507,21 +518,13 @@ async def _run_one_variable(
 
 
 # ---------------------------------------------------------------------------
-# Public orchestrators
+# Streaming helpers
 # ---------------------------------------------------------------------------
 
 
-async def run_simple(query: str) -> PipelineResult:
-    """Run the single-variable pipeline (simple endpoint).
-
-    One retrieval → one LLM slot-bind → materialize.  No extraction LLM call.
-    """
-    t0 = time.perf_counter()
-    slot_bind_usages: list[Usage] = []
-    vr = await _run_one_variable(None, query, slot_bind_usages=slot_bind_usages)
-    elapsed = time.perf_counter() - t0
-
-    llm_usage: list[TelemetryLLMUsage] = [
+def _slot_usages(usages: list[Usage]) -> list[TelemetryLLMUsage]:
+    """Map raw Usage records to TelemetryLLMUsage entries with step="slot_bind"."""
+    return [
         TelemetryLLMUsage(
             step="slot_bind",
             input_tokens=u.input_tokens,
@@ -529,46 +532,109 @@ async def run_simple(query: str) -> PipelineResult:
             model=u.model,
             latency_s=u.latency_s,
         )
-        for u in slot_bind_usages
+        for u in usages
     ]
 
-    if isinstance(vr.outcome, AskClarification):
-        terminated: Literal["answer", "ask", "no_candidates", "error"]
-        terminated = "no_candidates" if vr.outcome.reason == "no_candidates" else "ask"
-        return PipelineResult(
-            query=query,
-            answers=[],
-            ask=vr.outcome,
-            elapsed_s=elapsed,
-            n_candidates=vr.n_candidates,
-            n_shapes=vr.n_shapes,
-            terminated_by=terminated,
-            llm_usage=llm_usage,
+
+def _result_event(
+    index: int,
+    label: str | None,
+    outcome: AnswerCollection | AskClarification,
+) -> Result:
+    """Build a Result event, deriving outcome_kind from the outcome type.
+
+    All three call sites (fallback, fan-out, simple) go through here so
+    outcome_kind and answer are always in lockstep.
+    """
+    outcome_kind: Literal["answer", "clarification"] = (
+        "answer" if isinstance(outcome, AnswerCollection) else "clarification"
+    )
+    return Result(index=index, variable_label=label, outcome_kind=outcome_kind, answer=outcome)
+
+
+def _build_done(
+    t0: float,
+    var_results: list[_VariableResult],
+    llm_usage: list[TelemetryLLMUsage],
+    *,
+    truncated: bool,
+    timed_out: bool = False,
+) -> Done:
+    """Assemble the terminal Done event from collected branch results.
+
+    Mirrors the original run_default and run_simple terminated_by ladders for
+    BOTH single-element (simple/fallback) and multi-element (default)
+    var_results, so the buffered drain reproduces PipelineResult exactly.
+
+    Steps (spec):
+    1. Sort var_results by index so first-AskClarification selection is deterministic.
+    2. Collect AnswerCollection outcomes.
+    3. ask = None if answers, else first AskClarification in sorted order.
+    4. terminated_by ladder: no reason=="error" special-case (all non-no_candidates → "ask").
+    5. Sum n_candidates / n_shapes.
+    6. Compute elapsed.
+    7. Build DoneTelemetry.
+    8. Return Done with top-level terminated_by/truncated from same locals.
+    """
+    sorted_results = sorted(var_results, key=lambda vr: vr.index)
+
+    answers = [vr.outcome for vr in sorted_results if isinstance(vr.outcome, AnswerCollection)]
+    ask: AskClarification | None = None
+    if not answers:
+        ask = next(
+            (vr.outcome for vr in sorted_results if isinstance(vr.outcome, AskClarification)),
+            None,
         )
 
-    return PipelineResult(
-        query=query,
-        answers=[vr.outcome],
-        ask=None,
-        elapsed_s=elapsed,
-        n_candidates=vr.n_candidates,
-        n_shapes=vr.n_shapes,
-        terminated_by="answer",
+    # Ladder copied verbatim from today's run_default (no reason=="error" branch).
+    terminated_by: Literal["answer", "ask", "no_candidates", "error"]
+    if ask is not None and ask.reason == "no_candidates":
+        terminated_by = "no_candidates"
+    elif ask is not None:
+        terminated_by = "ask"
+    else:
+        terminated_by = "answer"
+
+    n_candidates = sum(vr.n_candidates for vr in var_results)
+    n_shapes = sum(vr.n_shapes for vr in var_results)
+
+    elapsed = time.perf_counter() - t0
+
+    telemetry = DoneTelemetry(
         llm_usage=llm_usage,
+        n_candidates=n_candidates,
+        n_shapes=n_shapes,
+        terminated_by=terminated_by,
+        truncated=truncated,
+    )
+    return Done(
+        telemetry=telemetry,
+        elapsed_s=elapsed,
+        terminated_by=terminated_by,
+        truncated=truncated,
+        timed_out=timed_out,
+        ask=ask,
     )
 
 
-async def run_default(query: str) -> PipelineResult:
-    """Run the multi-variable pipeline (default endpoint).
+# ---------------------------------------------------------------------------
+# Streaming generators
+# ---------------------------------------------------------------------------
 
-    Extraction LLM call → fan-out per variable → aggregate results.
-    Falls back to ``run_simple`` semantics when extraction yields zero variables.
+
+async def stream_default(query: str) -> AsyncIterator[Event]:
+    """Yield typed events for the default (multi-variable) pipeline.
+
+    Order: start → interpretation → result* (fastest-first) → done.
+    Falls back to simple semantics (still default-mode events) on zero variables.
+    Soft-deadline: yields a terminal Done(timed_out=True) with partials if the
+    25s budget is exhausted. Never yields Error (see pipeline.py error note).
     """
     t0 = time.perf_counter()
+    yield Start(query=query, mode="default")
 
-    extraction_result, extract_usage = await extraction.extract(query)
+    extraction_result, extract_usage = await extraction.extract(query)  # may raise → propagates
 
-    # Cap variables before fan-out to bound resource exhaustion.
     truncated = len(extraction_result.variables) > MAX_VARIABLES
     variables = extraction_result.variables[:MAX_VARIABLES]
 
@@ -581,93 +647,168 @@ async def run_default(query: str) -> PipelineResult:
     )
 
     if not variables:
-        # Edge case: extraction returned nothing → fall back to simple semantics.
-        simple_result = await run_simple(query)
-        return simple_result.model_copy(
-            update={
-                "llm_usage": [extract_entry, *simple_result.llm_usage],
-                "truncated": truncated,
-            }
+        # Zero-variable fallback: emit coherent default-mode stream mirroring simple semantics.
+        yield Interpretation(
+            variables=[],
+            entities=extraction_result.entities,
+            dates=extraction_result.dates,
+            expected_results=1,
+            truncated=truncated,
         )
+        slot_bind_usages: list[Usage] = []
+        vr = await _run_one_variable(None, query, slot_bind_usages=slot_bind_usages)
+        vr.index = 0
+        yield _result_event(0, None, vr.outcome)
+        yield _build_done(
+            t0,
+            [vr],
+            [extract_entry, *_slot_usages(slot_bind_usages)],
+            truncated=truncated,
+        )
+        return
 
-    # Fan out — module-level semaphore bounds per-worker concurrency.
-    slot_bind_usages: list[Usage] = []
-    # Same entity list used for every variable's availability re-rank — entities
-    # are place names from the query, shared across all extracted variables.
-    extracted_entities: list[str] = extraction_result.entities
-
-    extracted_dates: list[ExtractedDate] = extraction_result.dates
-
-    async def per_variable(v: str) -> _VariableResult:
-        async with _FANOUT_SEM:
-            return await _run_one_variable(
-                v,
-                query,
-                entities=extracted_entities,
-                dates=extracted_dates,
-                slot_bind_usages=slot_bind_usages,
-            )
-
-    raw_results = await asyncio.gather(
-        *(per_variable(v) for v in variables), return_exceptions=True
+    yield Interpretation(
+        variables=variables,
+        entities=extraction_result.entities,
+        dates=extraction_result.dates,
+        expected_results=len(variables),
+        truncated=truncated,
     )
-    var_results: list[_VariableResult] = []
-    for item in raw_results:
-        if isinstance(item, BaseException):
-            logger.warning("per_variable raised an exception", exc_info=item)
-            var_results.append(
-                _VariableResult(
+
+    slot_bind_usages: list[Usage] = []
+    extracted_entities: list[str] = extraction_result.entities
+    extracted_dates: list[ExtractedDate] = extraction_result.dates
+    deadline = t0 + _ROUTE_TIMEOUT_S
+
+    async def per_variable(index: int, v: str) -> _VariableResult:
+        async with _FANOUT_SEM:
+            try:
+                vr = await _run_one_variable(
+                    v,
+                    query,
+                    entities=extracted_entities,
+                    dates=extracted_dates,
+                    slot_bind_usages=slot_bind_usages,
+                )
+            except Exception as exc:
+                # Per-branch failure — mirror gather(return_exceptions=True) semantics.
+                logger.warning("per_variable raised", exc_info=exc)
+                vr = _VariableResult(
                     outcome=AskClarification(
                         reason="error",
                         message="One sub-query failed; partial results returned.",
                     )
                 )
-            )
-        else:
-            var_results.append(item)
+            vr.index = index
+            vr.variable_label = v
+            return vr
 
-    answers = [vr.outcome for vr in var_results if isinstance(vr.outcome, AnswerCollection)]
-    ask: AskClarification | None = None
-    if not answers:
-        ask = next(
-            (vr.outcome for vr in var_results if isinstance(vr.outcome, AskClarification)),
-            None,
-        )
+    tasks = [asyncio.create_task(per_variable(i, v)) for i, v in enumerate(variables)]
 
-    total_candidates = sum(vr.n_candidates for vr in var_results)
-    total_shapes = sum(vr.n_shapes for vr in var_results)
+    collected: list[_VariableResult] = []
+    try:
+        for fut in asyncio.as_completed(tasks):
+            remaining = deadline - time.perf_counter()
+            if remaining <= 0:
+                break  # budget already spent → timeout path
+            try:
+                # wait_for raises TimeoutError to bound the await, but because
+                # as_completed yields wrapper awaitables (not the original tasks),
+                # wait_for does NOT cancel the underlying per_variable task on timeout.
+                # The finally block below is the single cancellation source for BOTH
+                # the timeout break and the client-disconnect CancelledError paths.
+                vr = await asyncio.wait_for(fut, timeout=remaining)
+            except asyncio.TimeoutError:
+                break  # a branch is hung past the budget
+            collected.append(vr)
+            yield _result_event(vr.index, vr.variable_label, vr.outcome)
+    finally:
+        # Cancel + await any branch still pending (timeout OR client-disconnect
+        # CancelledError arriving here). No orphaned tasks, no leaked in-flight work.
+        for t in tasks:
+            t.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
 
-    elapsed = time.perf_counter() - t0
+    timed_out = len(collected) < len(variables)
+    yield _build_done(
+        t0,
+        collected,
+        [extract_entry, *_slot_usages(slot_bind_usages)],
+        truncated=truncated,
+        timed_out=timed_out,
+    )
 
-    llm_usage: list[TelemetryLLMUsage] = [
-        extract_entry,
-        *[
-            TelemetryLLMUsage(
-                step="slot_bind",
-                input_tokens=u.input_tokens,
-                output_tokens=u.output_tokens,
-                model=u.model,
-                latency_s=u.latency_s,
-            )
-            for u in slot_bind_usages
-        ],
-    ]
 
-    if ask is not None and ask.reason == "no_candidates":
-        terminated_by: Literal["answer", "ask", "no_candidates", "error"] = "no_candidates"
-    elif ask is not None:
-        terminated_by = "ask"
-    else:
-        terminated_by = "answer"
+async def stream_simple(query: str) -> AsyncIterator[Event]:
+    """Yield typed events for the simple (single-variable) pipeline.
 
+    Order: start → stage("retrieving") → result → done.
+    """
+    t0 = time.perf_counter()
+    yield Start(query=query, mode="simple")
+    yield Stage(stage="retrieving")
+
+    slot_bind_usages: list[Usage] = []
+    task = asyncio.create_task(_run_one_variable(None, query, slot_bind_usages=slot_bind_usages))
+    try:
+        vr = await asyncio.wait_for(task, timeout=_ROUTE_TIMEOUT_S)  # may raise → propagates
+    except asyncio.TimeoutError:
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+        yield _build_done(t0, [], _slot_usages(slot_bind_usages), truncated=False, timed_out=True)
+        return
+    vr.index = 0
+
+    yield _result_event(0, None, vr.outcome)
+    yield _build_done(t0, [vr], _slot_usages(slot_bind_usages), truncated=False)
+
+
+# ---------------------------------------------------------------------------
+# Buffered drain
+# ---------------------------------------------------------------------------
+
+
+async def _drain(stream: AsyncIterator[Event], query: str) -> PipelineResult:
+    """Collect a stream into a PipelineResult, re-sorting results by index.
+
+    Ignores start/interpretation/stage; gathers Result events; reads the terminal
+    Done for telemetry. The generator never yields Error (errors propagate as
+    exceptions so the route's handlers map them to 504/503), so a Done is always
+    the terminal event. A Done(timed_out=True) is treated like any other Done.
+    """
+    results: list[Result] = []
+    done: Done | None = None
+    async for event in stream:  # exceptions propagate (preserve 504/503)
+        if isinstance(event, Result):
+            results.append(event)
+        elif isinstance(event, Done):
+            done = event
+    assert done is not None  # generators always end with Done (no Error from generator)
+    results.sort(key=lambda r: r.index)  # undo as_completed reordering
+    answers = [r.answer for r in results if isinstance(r.answer, AnswerCollection)]
     return PipelineResult(
         query=query,
         answers=answers,
-        ask=ask,
-        elapsed_s=elapsed,
-        n_candidates=total_candidates,
-        n_shapes=total_shapes,
-        terminated_by=terminated_by,
-        llm_usage=llm_usage,
-        truncated=truncated,
+        ask=done.ask,
+        elapsed_s=done.elapsed_s,
+        n_candidates=done.telemetry.n_candidates,
+        n_shapes=done.telemetry.n_shapes,
+        terminated_by=done.telemetry.terminated_by,
+        llm_usage=done.telemetry.llm_usage,
+        truncated=done.telemetry.truncated,
     )
+
+
+# ---------------------------------------------------------------------------
+# Public orchestrators
+# ---------------------------------------------------------------------------
+
+
+async def run_simple(query: str) -> PipelineResult:
+    """Buffered simple pipeline — a drain over stream_simple (unchanged contract)."""
+    return await _drain(stream_simple(query), query)
+
+
+async def run_default(query: str) -> PipelineResult:
+    """Buffered default pipeline — a drain over stream_default (unchanged contract)."""
+    return await _drain(stream_default(query), query)
