@@ -24,7 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 
-from dc_search import config, llm, pipeline, retrieval
+from dc_search import config, llm, pipeline, retrieval, slot_binding
 from dc_search.events import Done, Error, Event, serialize_sse
 from dc_search.interpretation import QueryInterpretation
 from dc_search.pipeline import PipelineResult
@@ -279,6 +279,9 @@ async def lifespan(app: FastAPI):
     # them at import time can bind the internal httpx.AsyncClient to the wrong loop.
     _ = llm.get_client()
     _ = retrieval.get_client()
+    # Pre-create the slot-bind system-prompt cache so the first request hits it
+    # (best-effort; swallows failures internally).
+    await slot_binding.warm_system_cache()
     # Validate DC_API_URL allowlist at startup; raises ValueError on bad config.
     _ = config.load_config()
     yield

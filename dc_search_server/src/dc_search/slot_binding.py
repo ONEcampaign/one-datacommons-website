@@ -230,6 +230,15 @@ def get_last_usage() -> Usage | None:
     return _last_usage_var.get()
 
 
+async def warm_system_cache() -> None:
+    """Pre-create the slot-bind system-prompt cache so the first request hits it.
+
+    Best-effort — ``llm.get_system_cache`` swallows failures, so this is safe to
+    call from app startup even when caching is disabled or the API is unreachable.
+    """
+    await llm.get_system_cache(system=_SYSTEM_PROMPT)
+
+
 # ---------------------------------------------------------------------------
 # User-message builder
 # ---------------------------------------------------------------------------
@@ -477,6 +486,10 @@ async def bind(
 
     model_label = model or llm.MODEL
 
+    # Serve the large, stable system prompt from an explicit context cache.
+    # Best-effort: None (disabled / below-minimum / API error) → passed inline.
+    cache_name = await llm.get_system_cache(system=_SYSTEM_PROMPT, model=model_label)
+
     try:
         parsed, usage = await llm.generate_structured(
             prompt=user_message,
@@ -484,6 +497,7 @@ async def bind(
             schema=_Output,
             model=model_label,
             thinking=False,
+            cached_content=cache_name,
         )
         # Set ContextVars INSIDE try, BEFORE any branch decision so token
         # telemetry is preserved even when the clarification path is taken.

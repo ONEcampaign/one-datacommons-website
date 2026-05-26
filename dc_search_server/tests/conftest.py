@@ -4,6 +4,11 @@ import os
 
 os.environ.setdefault("GOOGLE_API_KEY", "test-key-not-used-by-mock")
 os.environ.setdefault("GEMINI_API_KEY", "test-key-not-used-by-mock")
+# Disable explicit LLM caching by default so unit tests never reach the network
+# via get_system_cache (the fake key would otherwise trigger a real caches.create).
+# Set before dc_search.llm is imported so its module-level _CACHE_ENABLED reads False.
+# test_llm.py re-enables it per-test to cover the enabled path.
+os.environ.setdefault("DC_SEARCH_LLM_CACHE", "0")
 
 from unittest.mock import MagicMock
 

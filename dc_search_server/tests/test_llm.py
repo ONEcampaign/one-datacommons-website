@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import time
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from google.genai import errors as genai_errors
 from pydantic import BaseModel
 
 from dc_search import llm
@@ -322,3 +324,182 @@ async def test_generate_structured_raises_on_none_parsed(monkeypatch):
             schema=_Schema,
             model="gemini-flash-lite-latest",
         )
+
+
+# ---------------------------------------------------------------------------
+# Explicit context caching
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _reset_cache_state(monkeypatch):
+    """Isolate the module-level cache registry/flags between tests."""
+    llm._system_caches.clear()
+    monkeypatch.setattr(llm, "_CACHE_ENABLED", True)
+    monkeypatch.setattr(llm, "_CACHE_TTL_S", 3600)
+    yield
+    llm._system_caches.clear()
+
+
+def _mock_cache(name: str) -> MagicMock:
+    cache = MagicMock()
+    cache.name = name  # MagicMock(name=...) sets repr, not .name — assign explicitly.
+    return cache
+
+
+@pytest.mark.asyncio
+async def test_get_system_cache_creates_and_reuses(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    mock_client = MagicMock()
+    mock_client.aio.caches.create = AsyncMock(return_value=_mock_cache("cachedContents/abc"))
+    llm._CLIENT = mock_client
+
+    name1 = await llm.get_system_cache(system="big stable prompt", model="gemini-flash-lite-latest")
+    name2 = await llm.get_system_cache(system="big stable prompt", model="gemini-flash-lite-latest")
+
+    assert name1 == "cachedContents/abc"
+    assert name2 == "cachedContents/abc"
+    # Second call reuses the live entry — no second create.
+    assert mock_client.aio.caches.create.await_count == 1
+    # The create carried the system prompt and a ttl.
+    cfg = mock_client.aio.caches.create.await_args.kwargs["config"]
+    assert cfg.system_instruction == "big stable prompt"
+    assert cfg.ttl == "3600s"
+
+
+@pytest.mark.asyncio
+async def test_get_system_cache_disabled_returns_none(monkeypatch):
+    monkeypatch.setattr(llm, "_CACHE_ENABLED", False)
+    mock_client = MagicMock()
+    mock_client.aio.caches.create = AsyncMock(return_value=_mock_cache("cachedContents/x"))
+    llm._CLIENT = mock_client
+
+    assert await llm.get_system_cache(system="p", model="m") is None
+    mock_client.aio.caches.create.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_get_system_cache_returns_none_on_create_failure(monkeypatch):
+    """Below-minimum prompts / API errors degrade to None (caller passes inline)."""
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    mock_client = MagicMock()
+    mock_client.aio.caches.create = AsyncMock(
+        side_effect=genai_errors.ClientError(400, {"error": {"message": "too small"}})
+    )
+    llm._CLIENT = mock_client
+
+    assert await llm.get_system_cache(system="tiny", model="m") is None
+
+
+@pytest.mark.asyncio
+async def test_invalidate_system_cache_forces_recreate(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    mock_client = MagicMock()
+    mock_client.aio.caches.create = AsyncMock(
+        side_effect=[_mock_cache("cachedContents/one"), _mock_cache("cachedContents/two")]
+    )
+    llm._CLIENT = mock_client
+
+    first = await llm.get_system_cache(system="p", model="m")
+    llm.invalidate_system_cache(system="p", model="m")
+    second = await llm.get_system_cache(system="p", model="m")
+
+    assert first == "cachedContents/one"
+    assert second == "cachedContents/two"
+    assert mock_client.aio.caches.create.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_generate_structured_uses_cached_content(monkeypatch):
+    """When cached_content is set, it is passed and system_instruction is omitted."""
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    mock_response = _make_mock_response(_Schema(value="x", count=0))
+    mock_client = MagicMock()
+    mock_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
+    llm._CLIENT = mock_client
+
+    await llm.generate_structured(
+        prompt="p",
+        system="inline system",
+        schema=_Schema,
+        model="gemini-flash-lite-latest",
+        cached_content="cachedContents/abc",
+    )
+
+    config = mock_client.aio.models.generate_content.call_args.kwargs["config"]
+    assert config.cached_content == "cachedContents/abc"
+    assert config.system_instruction is None
+
+
+@pytest.mark.asyncio
+async def test_generate_structured_inline_system_without_cache(monkeypatch):
+    """Without cached_content, the system instruction is passed inline."""
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    mock_response = _make_mock_response(_Schema(value="x", count=0))
+    mock_client = MagicMock()
+    mock_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
+    llm._CLIENT = mock_client
+
+    await llm.generate_structured(
+        prompt="p", system="inline system", schema=_Schema, model="gemini-flash-lite-latest"
+    )
+
+    config = mock_client.aio.models.generate_content.call_args.kwargs["config"]
+    assert config.cached_content is None
+    assert config.system_instruction == "inline system"
+
+
+@pytest.mark.asyncio
+async def test_generate_structured_retries_inline_on_cache_404(monkeypatch):
+    """A 404 (expired/missing cache) drops the cache and retries inline once."""
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr(llm, "MODEL", "gemini-flash-lite-latest")
+    # Seed a live cache entry so we can assert it gets invalidated.
+    key = llm._cache_key("inline system", "gemini-flash-lite-latest")
+    llm._system_caches[key] = llm._CacheEntry(
+        name="cachedContents/stale", expires_at=time.monotonic() + 9999
+    )
+
+    ok = _make_mock_response(_Schema(value="ok", count=1))
+    mock_client = MagicMock()
+    mock_client.aio.models.generate_content = AsyncMock(
+        side_effect=[genai_errors.ClientError(404, {"error": {"message": "cache gone"}}), ok]
+    )
+    llm._CLIENT = mock_client
+
+    parsed, _ = await llm.generate_structured(
+        prompt="p",
+        system="inline system",
+        schema=_Schema,
+        model="gemini-flash-lite-latest",
+        cached_content="cachedContents/stale",
+    )
+
+    assert parsed.value == "ok"
+    assert mock_client.aio.models.generate_content.await_count == 2
+    # Retry was inline: cache dropped, system passed directly.
+    retry_config = mock_client.aio.models.generate_content.await_args_list[1].kwargs["config"]
+    assert retry_config.cached_content is None
+    assert retry_config.system_instruction == "inline system"
+    assert key not in llm._system_caches
+
+
+@pytest.mark.asyncio
+async def test_generate_structured_reraises_non_404_client_error(monkeypatch):
+    """A 400 (not a cache problem) propagates without an inline retry."""
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    mock_client = MagicMock()
+    mock_client.aio.models.generate_content = AsyncMock(
+        side_effect=genai_errors.ClientError(400, {"error": {"message": "bad request"}})
+    )
+    llm._CLIENT = mock_client
+
+    with pytest.raises(genai_errors.ClientError):
+        await llm.generate_structured(
+            prompt="p",
+            system="inline system",
+            schema=_Schema,
+            model="gemini-flash-lite-latest",
+            cached_content="cachedContents/abc",
+        )
+    assert mock_client.aio.models.generate_content.await_count == 1

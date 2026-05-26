@@ -114,6 +114,23 @@ async def test_bind_crs_dac_fully_bound(crs_dac_shape_context: ShapeContext) -> 
     assert result.usage.model_requests >= 1
 
 
+@pytest.mark.asyncio
+async def test_bind_threads_cache_name_into_llm_call(
+    crs_dac_shape_context: ShapeContext,
+) -> None:
+    """bind passes the explicit-cache name from get_system_cache to generate_structured."""
+    gen_mock = _make_generate_structured(0, {"DevelopmentFinanceScheme": "ODAGrants"})
+    cache_mock = AsyncMock(return_value="cachedContents/slot-bind")
+
+    with (
+        patch("dc_search.slot_binding.llm.generate_structured", gen_mock),
+        patch("dc_search.slot_binding.llm.get_system_cache", cache_mock),
+    ):
+        await bind(crs_dac_shape_context)
+
+    assert gen_mock.await_args.kwargs["cached_content"] == "cachedContents/slot-bind"
+
+
 # ---------------------------------------------------------------------------
 # Test 2: wildcard recipient (intentional null)
 # ---------------------------------------------------------------------------
