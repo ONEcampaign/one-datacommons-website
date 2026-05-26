@@ -807,6 +807,72 @@ def variable_info_date_ranges(
     return result
 
 
+# Module-level cache for facet-select observation ranges. Cleared by tests.
+_observation_facet_ranges_cache: cachetools.LRUCache = cachetools.LRUCache(maxsize=1024)
+
+
+def observation_facet_ranges(
+    *,
+    variable_dcids: tuple[str, ...],
+    entity_dcids: tuple[str, ...],
+) -> tuple[frozenset[str], dict[str, tuple[str | None, str | None]]]:
+    """Presence + true date span per variable via a facet-select observation query.
+
+    Returns (present_vars, {var_dcid: (earliest, latest)}) where ranges are unioned
+    across entities (min earliest / max latest, ISO-lexicographic). Lightweight:
+    no observation values are returned. Cached, fail-open → (frozenset(), {}).
+    """
+    if not variable_dcids or not entity_dcids:
+        return frozenset(), {}
+
+    cache_key = (tuple(sorted(variable_dcids)), tuple(sorted(entity_dcids)))
+    with _cache_lock:
+        cached = _observation_facet_ranges_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    try:
+        client = get_client()
+        raw: dict[str, Any] = client.api.post(
+            {
+                "select": ["variable", "entity", "facet"],
+                "variable": {"dcids": list(variable_dcids)},
+                "entity": {"dcids": list(entity_dcids)},
+            },
+            endpoint="observation",
+        )
+    except Exception:
+        logger.warning(
+            "observation_facet_ranges: transient error; fail-open",
+            exc_info=True,
+        )
+        _dc_call_degraded.set(True)
+        return frozenset(), {}
+
+    present, pair_ranges = _parse_observation(raw, variable_dcids)
+
+    # Union (var, entity) pair ranges into per-var ranges across all entities.
+    per_var: dict[str, tuple[str | None, str | None]] = {}
+    for sv in present:
+        lo: str | None = None
+        hi: str | None = None
+        for ent in entity_dcids:
+            er = pair_ranges.get((sv, ent))
+            if er is None:
+                continue
+            er_lo, er_hi = er
+            if er_lo is not None:
+                lo = er_lo if (lo is None or er_lo < lo) else lo
+            if er_hi is not None:
+                hi = er_hi if (hi is None or er_hi > hi) else hi
+        per_var[sv] = (lo, hi)
+
+    result = (present, per_var)
+    with _cache_lock:
+        _observation_facet_ranges_cache[cache_key] = result
+    return result
+
+
 # Module-level cache for observation date ranges. Cleared by tests.
 _observation_dates_cache: cachetools.LRUCache = cachetools.LRUCache(maxsize=1024)
 

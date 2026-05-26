@@ -34,6 +34,7 @@ def _clear_module_caches() -> None:
             "_coverage_cache",
             "_variable_info_dates_cache",
             "_observation_dates_cache",
+            "_observation_facet_ranges_cache",
             "_vgroups_cache",
             "_topic_arc_cache",
             "_place_names_cache",

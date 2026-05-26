@@ -903,8 +903,8 @@ def test_resolve_union_availability_with_ranges_two_places():
     assert hi == "2022", f"Expected latest='2022', got {hi!r}"
 
 
-def test_resolve_union_availability_with_ranges_base_dc_var_no_range():
-    """Base-DC var (absent from envelopes) → not in ranges dict (date_range=None)."""
+def test_resolve_union_availability_with_ranges_base_dc_var_gets_range():
+    """Base-DC var (absent from envelopes) → observation_facet_ranges populates date_range."""
     from unittest.mock import patch
 
     import dc_search.pipeline as _pipeline
@@ -916,16 +916,75 @@ def test_resolve_union_availability_with_ranges_base_dc_var_no_range():
         patch.object(_retrieval, "variable_date_coverage", return_value=cov),
         patch.object(
             _retrieval,
-            "presence_for_entities",
-            return_value=frozenset({"BASE_SV"}),
+            "observation_facet_ranges",
+            return_value=(frozenset({"BASE_SV"}), {"BASE_SV": ("1960", "2024")}),
         ),
     ):
-        _, ranges, _ = _pipeline._resolve_union_availability_with_ranges(
+        avail, ranges, _ = _pipeline._resolve_union_availability_with_ranges(
             ["country/KEN"],
             candidate_sv_dcids=("BASE_SV",),
         )
 
-    assert "BASE_SV" not in ranges, "Base-DC vars must not appear in the ranges dict"
+    assert "BASE_SV" in avail
+    assert "BASE_SV" in ranges, "Base-DC vars should now appear in the ranges dict"
+    assert ranges["BASE_SV"] == ("1960", "2024")
+
+
+def test_resolve_union_availability_with_ranges_base_dc_no_data_empty_range():
+    """Base-DC var with no data → present=frozenset(), ranges={} from observation_facet_ranges."""
+    from unittest.mock import patch
+
+    import dc_search.pipeline as _pipeline
+    import dc_search.retrieval as _retrieval
+
+    cov = _make_date_coverage(envelopes={}, entity_ranges={})
+
+    with (
+        patch.object(_retrieval, "variable_date_coverage", return_value=cov),
+        patch.object(
+            _retrieval,
+            "observation_facet_ranges",
+            return_value=(frozenset(), {}),
+        ),
+    ):
+        avail, ranges, _ = _pipeline._resolve_union_availability_with_ranges(
+            ["country/KEN"],
+            candidate_sv_dcids=("BASE_SV",),
+        )
+
+    assert "BASE_SV" not in avail
+    assert "BASE_SV" not in ranges
+
+
+def test_resolve_union_availability_with_ranges_base_dc_observation_facet_ranges_called():
+    """_resolve_union_availability_with_ranges calls observation_facet_ranges (not
+    presence_for_entities) for base-DC vars."""
+    from unittest.mock import patch
+
+    import dc_search.pipeline as _pipeline
+    import dc_search.retrieval as _retrieval
+
+    cov = _make_date_coverage(envelopes={}, entity_ranges={})
+
+    with (
+        patch.object(_retrieval, "variable_date_coverage", return_value=cov),
+        patch.object(
+            _retrieval,
+            "observation_facet_ranges",
+            return_value=(frozenset({"BASE_SV"}), {"BASE_SV": ("2000", "2020")}),
+        ) as mock_facet,
+        patch.object(_retrieval, "presence_for_entities") as mock_presence,
+    ):
+        _pipeline._resolve_union_availability_with_ranges(
+            ["country/KEN", "country/UGA"],
+            candidate_sv_dcids=("BASE_SV",),
+        )
+
+    mock_facet.assert_called_once_with(
+        variable_dcids=("BASE_SV",),
+        entity_dcids=("country/KEN", "country/UGA"),
+    )
+    mock_presence.assert_not_called()
 
 
 # ===========================================================================

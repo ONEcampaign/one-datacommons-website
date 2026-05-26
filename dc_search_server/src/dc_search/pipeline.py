@@ -235,12 +235,13 @@ def _resolve_union_availability_with_ranges(
     For custom-DC vars that appear in the coverage map's ``entity_ranges``, unions
     the ``(earliest, latest)`` strings across ``place_dcids`` via string-comparison
     min/max (ISO-style: lexicographic ordering preserves temporal ordering).
-    Base-DC vars (absent from ``cov.envelopes``) are left out of the ranges dict —
-    callers should treat a missing entry as ``date_range=None``.
+    For base-DC vars (absent from ``cov.envelopes``), issues a facet-select
+    observation query to get the true place-specific span, and merges those
+    ranges into the result.
 
     Returns:
         ``(availability_frozenset, dcid_to_range, degraded)`` — the range dict maps
-        custom-DC SV DCID to ``(earliest, latest)``; absent entries mean no range known.
+        SV DCID to ``(earliest, latest)``; absent entries mean no range known.
     """
     retrieval.reset_dc_call_degraded()
 
@@ -277,16 +278,17 @@ def _resolve_union_availability_with_ranges(
             custom_present.add(v)
             ranges[v] = (lo, hi)
 
-    # Base-DC vars: live observation check (no range data).
+    # Base-DC vars: facet-select observation query for presence + true date spans.
     base_candidates = tuple(v for v in candidate_sv_dcids if v not in cov.envelopes)
-    base_present: frozenset[str] = (
-        retrieval.presence_for_entities(
+    base_present, base_ranges = (
+        retrieval.observation_facet_ranges(
             variable_dcids=base_candidates,
             entity_dcids=tuple(place_dcids),
         )
         if base_candidates
-        else frozenset()
+        else (frozenset(), {})
     )
+    ranges.update(base_ranges)
 
     avail = frozenset(custom_present | base_present)
     return avail, ranges, retrieval.dc_call_was_degraded()

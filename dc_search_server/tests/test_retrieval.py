@@ -24,6 +24,8 @@ def clear_caches():
     retrieval._coverage_cache.clear()
     retrieval._variable_info_dates_cache.clear()
     retrieval._observation_dates_cache.clear()
+    retrieval._observation_facet_ranges_cache.clear()
+    retrieval._place_names_cache.clear()
     retrieval._vgroups_cache.clear()
     retrieval._topic_arc_cache.clear()
     retrieval._resolve_indicator_cache_lru.clear()
@@ -404,3 +406,142 @@ def test_place_names_batch_is_lru_cache():
     import cachetools
 
     assert isinstance(retrieval._place_names_cache, cachetools.LRUCache)
+
+
+# ---------------------------------------------------------------------------
+# observation_facet_ranges — parse, union, cache, fail-open
+# ---------------------------------------------------------------------------
+
+_FACET_RESPONSE_MULTI = {
+    "byVariable": {
+        "Count_Person": {
+            "byEntity": {
+                "country/KEN": {
+                    "orderedFacets": [
+                        {
+                            "facetId": "facet1",
+                            "obsCount": 65,
+                            "earliestDate": "1960",
+                            "latestDate": "2020",
+                            "observations": [],
+                        },
+                        {
+                            "facetId": "facet2",
+                            "obsCount": 10,
+                            "earliestDate": "1990",
+                            "latestDate": "2024",
+                            "observations": [],
+                        },
+                    ]
+                },
+                "country/UGA": {
+                    "orderedFacets": [
+                        {
+                            "facetId": "facet3",
+                            "obsCount": 30,
+                            "earliestDate": "1970",
+                            "latestDate": "2022",
+                            "observations": [],
+                        }
+                    ]
+                },
+            }
+        }
+    }
+}
+
+
+def test_observation_facet_ranges_parses_presence_and_ranges(mock_dc_client):
+    """Parses presence + per-var ranges; unions across facets and entities."""
+    mock_dc_client.api.post.return_value = _FACET_RESPONSE_MULTI
+
+    present, ranges = retrieval.observation_facet_ranges(
+        variable_dcids=("Count_Person",),
+        entity_dcids=("country/KEN", "country/UGA"),
+    )
+
+    # Variable is present.
+    assert "Count_Person" in present
+
+    # Per-var range unions across both entities and all facets:
+    #   KEN: min(1960, 1990)=1960  max(2020, 2024)=2024
+    #   UGA: min(1970)=1970  max(2022)=2022
+    #   union: min(1960, 1970)=1960  max(2024, 2022)=2024
+    lo, hi = ranges["Count_Person"]
+    assert lo == "1960", f"Expected earliest='1960', got {lo!r}"
+    assert hi == "2024", f"Expected latest='2024', got {hi!r}"
+
+
+def test_observation_facet_ranges_absent_var_not_present(mock_dc_client):
+    """Variable with no orderedFacets is absent from the present set and ranges."""
+    mock_dc_client.api.post.return_value = {
+        "byVariable": {
+            "Count_Person": {
+                "byEntity": {"country/KEN": {"orderedFacets": []}},
+            }
+        }
+    }
+
+    present, ranges = retrieval.observation_facet_ranges(
+        variable_dcids=("Count_Person",),
+        entity_dcids=("country/KEN",),
+    )
+
+    assert "Count_Person" not in present
+    assert "Count_Person" not in ranges
+
+
+def test_observation_facet_ranges_fail_open_on_exception(mock_dc_client):
+    """Transient error → fail-open: returns (frozenset(), {}) and sets degraded flag."""
+    mock_dc_client.api.post.side_effect = RuntimeError("mixer unavailable")
+    retrieval.reset_dc_call_degraded()
+
+    present, ranges = retrieval.observation_facet_ranges(
+        variable_dcids=("Count_Person",),
+        entity_dcids=("country/KEN",),
+    )
+
+    assert present == frozenset()
+    assert ranges == {}
+    assert retrieval.dc_call_was_degraded()
+
+
+def test_observation_facet_ranges_empty_inputs_return_empty():
+    """Empty variable_dcids or entity_dcids → (frozenset(), {}) without API call."""
+    import dc_search.retrieval as _r
+
+    with patch("dc_search.retrieval.get_client") as mock_gc:
+        present1, ranges1 = _r.observation_facet_ranges(
+            variable_dcids=(),
+            entity_dcids=("country/KEN",),
+        )
+        present2, ranges2 = _r.observation_facet_ranges(
+            variable_dcids=("Count_Person",),
+            entity_dcids=(),
+        )
+    mock_gc.assert_not_called()
+    assert present1 == frozenset() and ranges1 == {}
+    assert present2 == frozenset() and ranges2 == {}
+
+
+def test_observation_facet_ranges_cache_hit_avoids_second_call(mock_dc_client):
+    """Second call with same args returns cached result without a second API call."""
+    mock_dc_client.api.post.return_value = _FACET_RESPONSE_MULTI
+
+    first_present, first_ranges = retrieval.observation_facet_ranges(
+        variable_dcids=("Count_Person",),
+        entity_dcids=("country/KEN", "country/UGA"),
+    )
+    second_present, second_ranges = retrieval.observation_facet_ranges(
+        variable_dcids=("Count_Person",),
+        entity_dcids=("country/KEN", "country/UGA"),
+    )
+
+    assert first_present == second_present
+    assert first_ranges == second_ranges
+    assert mock_dc_client.api.post.call_count == 1, "Cache hit should skip the second API call"
+
+
+def test_observation_facet_ranges_cache_is_lru():
+    """_observation_facet_ranges_cache is a cachetools.LRUCache."""
+    assert isinstance(retrieval._observation_facet_ranges_cache, cachetools.LRUCache)
