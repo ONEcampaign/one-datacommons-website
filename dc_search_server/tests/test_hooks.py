@@ -769,30 +769,8 @@ def test_materialize_many_caveat_dedup() -> None:
 
 
 # ---------------------------------------------------------------------------
-# PlaceAvailabilityHook skip rule tests
+# PlaceAvailabilityHook applies — guard removal
 # ---------------------------------------------------------------------------
-
-
-def test_place_availability_hook_skip_when_place_bound() -> None:
-    """PlaceAvailabilityHook.applies returns False when ctx.place_dcids are all
-    bound as constraint values on the predicate."""
-    hook = PlaceAvailabilityHook()
-    predicate = Predicate(
-        population_type="DevelopmentFinance",
-        measured_property="DevelopmentFinanceFlow",
-        constraints={
-            "DevelopmentFinanceRecipient": "country/KEN",
-            "DevelopmentFinancePurpose": "DAC/COVID19control",
-        },
-    )
-    ctx = HookContext(
-        place_dcids=("country/KEN",),
-        place_availability=frozenset({"ONE/CRS_DAC/COVID19control-ODAGrants-KEN"}),
-        retrieval_scores={},
-        raw_candidates=(),
-    )
-
-    assert hook.applies(predicate, (), ctx) is False
 
 
 def test_place_availability_hook_runs_when_place_unbound() -> None:
@@ -812,6 +790,207 @@ def test_place_availability_hook_runs_when_place_unbound() -> None:
     )
 
     assert hook.applies(predicate, (), ctx) is True
+
+
+def test_place_availability_hook_applies_when_place_is_constraint_value() -> None:
+    """PlaceAvailabilityHook.applies returns True even when ctx.place_dcids are bound
+    as constraint values — the old skip guard has been removed.
+
+    ctx.place_dcids is now always the donor (entity) set; it never contains
+    constraint-bound places, so the guard was dead code.
+    """
+    hook = PlaceAvailabilityHook()
+    predicate = Predicate(
+        population_type="DevelopmentFinance",
+        measured_property="DevelopmentFinanceFlow",
+        constraints={
+            "DevelopmentFinanceRecipient": "country/KEN",
+            "DevelopmentFinancePurpose": "DAC/COVID19control",
+        },
+    )
+    ctx = HookContext(
+        place_dcids=("country/USA",),  # donor, not a constraint value
+        place_availability=frozenset({"ONE/CRS_DAC/COVID19control-ODAGrants-KEN"}),
+        retrieval_scores={},
+        raw_candidates=(),
+    )
+
+    assert hook.applies(predicate, (), ctx) is True
+
+
+# ===========================================================================
+# Piece D — SVG recovery for empty sv_set
+# ===========================================================================
+
+_NGA_SV = "ONE/CRS_DAC/Malariacontrol-ODAGrants-NGA"
+
+_NGA_VG_WITH_CHILD_VARS = VariableGroupInfo(
+    dcid="ONE/g/DevelopmentFinance_DevelopmentFinancePurpose-DACMalariacontrol_DevelopmentFinanceRecipient-CountryNGA_DevelopmentFinanceScheme-ODAGrants",
+    name="Malaria grants to Nigeria",
+    parents=[],
+    child_groups=[],
+    child_vars=[{"dcid": _NGA_SV, "name": "Malaria control grants NGA"}],
+)
+
+_NGA_GROUP_1 = "ONE/g/DevelopmentFinance_NGA_group1"
+_NGA_VG_WITH_CHILD_GROUPS = VariableGroupInfo(
+    dcid="ONE/g/DevelopmentFinance_DevelopmentFinancePurpose-DACMalariacontrol_DevelopmentFinanceRecipient-CountryNGA_DevelopmentFinanceScheme-ODAGrants",
+    name="Malaria grants to Nigeria",
+    parents=[],
+    child_groups=[{"dcid": _NGA_GROUP_1, "name": "NGA group 1"}],
+    child_vars=[],
+)
+
+_NGA_PREDICATE = Predicate(
+    population_type="DevelopmentFinance",
+    measured_property="DevelopmentFinanceFlow",
+    constraints={
+        "DevelopmentFinancePurpose": "DAC/Malariacontrol",
+        "DevelopmentFinanceRecipient": "country/NGA",
+        "DevelopmentFinanceScheme": "ODAGrants",
+    },
+)
+
+_NGA_FEATURES = StatVarFeatures(
+    dcid=_NGA_SV,
+    name="Health [Grants to Nigeria]",
+    population_type=["DevelopmentFinance"],
+    measured_property=["DevelopmentFinanceFlow"],
+    stat_type=["measuredValue"],
+)
+
+
+def test_crs_dac_piece_d_recovers_via_child_vars() -> None:
+    """Piece D: empty sv_set + variable_group returns child_vars → recovery succeeds.
+
+    The hook should return an AnswerCollection (not AskClarification) with:
+    - The recovered DCID in sv_set
+    - Features/names present in variables (stat_var_features_batch was called)
+    - svg_dcids set
+    - confidence high
+    """
+    # Empty candidates — recipient NGA not in retrieved pool
+    ctx = _make_ctx([])
+
+    with (
+        patch("dc_search.hooks.variable_group", return_value=_NGA_VG_WITH_CHILD_VARS),
+        patch(
+            "dc_search.hooks.stat_var_features_batch",
+            return_value={_NGA_SV: _NGA_FEATURES},
+        ) as mock_feat,
+    ):
+        result = materialize_via_hooks(_NGA_PREDICATE, [], ctx=ctx)
+
+    assert isinstance(result, AnswerCollection), f"Expected AnswerCollection, got {result}"
+    assert _NGA_SV in result.sv_set
+    assert result.svg_dcids
+    assert result.confidence == "high"
+    mock_feat.assert_called_once()
+    # variables carry names from the fetched features
+    assert any(v.name is not None for v in result.variables), (
+        "Piece D variables should have names from stat_var_features_batch"
+    )
+    name_found = any("Nigeria" in (v.name or "") for v in result.variables)
+    assert name_found, (
+        f"Expected 'Nigeria' in variable names, got {[v.name for v in result.variables]}"
+    )
+
+
+def test_crs_dac_piece_d_recovers_via_child_groups() -> None:
+    """Piece D: empty sv_set + variable_group has child_groups → child_vars_of_groups called."""
+    ctx = _make_ctx([])
+
+    with (
+        patch("dc_search.hooks.variable_group", return_value=_NGA_VG_WITH_CHILD_GROUPS),
+        patch(
+            "dc_search.hooks.registry.child_vars_of_groups",
+            return_value={_NGA_GROUP_1: [_NGA_SV]},
+        ),
+        patch(
+            "dc_search.hooks.stat_var_features_batch",
+            return_value={_NGA_SV: _NGA_FEATURES},
+        ) as mock_feat,
+    ):
+        result = materialize_via_hooks(_NGA_PREDICATE, [], ctx=ctx)
+
+    assert isinstance(result, AnswerCollection), f"Expected AnswerCollection, got {result}"
+    assert _NGA_SV in result.sv_set
+    mock_feat.assert_called_once()
+
+
+def test_crs_dac_piece_d_fails_open_on_variable_group_exception() -> None:
+    """Piece D: variable_group raises → fail-open → under_specified AskClarification."""
+    ctx = _make_ctx([])
+
+    with patch("dc_search.hooks.variable_group", side_effect=RuntimeError("network error")):
+        result = materialize_via_hooks(_NGA_PREDICATE, [], ctx=ctx)
+
+    assert isinstance(result, AskClarification)
+    assert result.reason == "under_specified"
+
+
+def test_crs_dac_piece_d_fails_open_on_empty_group() -> None:
+    """Piece D: variable_group returns empty child_vars and child_groups → under_specified."""
+    ctx = _make_ctx([])
+
+    with patch("dc_search.hooks.variable_group", return_value=_UNVERIFIED_VG):
+        result = materialize_via_hooks(_NGA_PREDICATE, [], ctx=ctx)
+
+    assert isinstance(result, AskClarification)
+    assert result.reason == "under_specified"
+
+
+# ===========================================================================
+# materialize_many — entity-set semantics (ctx.place_dcids used directly)
+# ===========================================================================
+
+
+def test_materialize_many_single_predicate_uses_ctx_place_dcids() -> None:
+    """Single-predicate path passes ctx.place_dcids through as the entity set.
+
+    With place_dcids=("country/USA",) and place_availability covering the SV,
+    available_at_place should be True (donor entity is USA).
+    """
+    predicate = _ken_predicate()
+    avail = frozenset({_KEN_SV})
+    ctx = HookContext(
+        place_dcids=("country/USA",),
+        place_availability=avail,
+        retrieval_scores={},
+        raw_candidates=tuple(_MULTI_CANDIDATES),
+    )
+
+    with patch("dc_search.hooks.variable_group", return_value=_KEN_VG):
+        result = materialize_many((predicate,), _MULTI_CANDIDATES, ctx=ctx)
+
+    assert isinstance(result, AnswerCollection)
+    assert _KEN_SV in result.sv_set
+    ken_var = next((v for v in result.variables if v.dcid == _KEN_SV), None)
+    assert ken_var is not None
+    assert ken_var.available_at_place is True
+
+
+def test_materialize_many_single_predicate_empty_place_dcids_yields_none_avail() -> None:
+    """Single-predicate path with place_dcids=() → available_at_place is None.
+
+    When no donor entity remains (all places were recipients), availability
+    is omitted rather than reported as False.
+    """
+    predicate = _ken_predicate()
+    ctx = HookContext(
+        place_dcids=(),
+        place_availability=frozenset({_KEN_SV}),
+        retrieval_scores={},
+        raw_candidates=tuple(_MULTI_CANDIDATES),
+    )
+
+    with patch("dc_search.hooks.variable_group", return_value=_KEN_VG):
+        result = materialize_many((predicate,), _MULTI_CANDIDATES, ctx=ctx)
+
+    assert isinstance(result, AnswerCollection)
+    ken_var = next((v for v in result.variables if v.dcid == _KEN_SV), None)
+    assert ken_var is not None
+    assert ken_var.available_at_place is None
 
 
 # ===========================================================================

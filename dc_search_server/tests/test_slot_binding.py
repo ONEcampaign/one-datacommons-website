@@ -15,6 +15,7 @@ import pytest
 from dc_search.predicate import AskClarification, Predicate
 from dc_search.shape import ShapeContext, build_shape_context
 from dc_search.slot_binding import (
+    BindResult,
     _explode_constraints,
     _Output,
     _SlotBinding,
@@ -101,18 +102,16 @@ async def test_bind_crs_dac_fully_bound(crs_dac_shape_context: ShapeContext) -> 
     with patch("dc_search.slot_binding.llm.generate_structured", mock):
         result = await bind(crs_dac_shape_context)
 
-    assert isinstance(result, tuple), f"Expected tuple, got {type(result)}"
-    shape, predicates, usage = result
+    assert isinstance(result, BindResult), f"Expected BindResult, got {type(result)}"
+    assert isinstance(result.predicates, tuple) and len(result.predicates) == 1
+    predicate = result.predicates[0]
 
-    assert isinstance(predicates, tuple) and len(predicates) == 1
-    predicate = predicates[0]
-
-    assert shape.population_type == "DevelopmentFinance"
+    assert result.shape.population_type == "DevelopmentFinance"
     assert predicate.constraints["DevelopmentFinancePurpose"] == "DAC/Malariacontrol"
     assert predicate.constraints["DevelopmentFinanceRecipient"] == "country/KEN"
     assert predicate.constraints["DevelopmentFinanceScheme"] == "ODAGrants"
-    assert isinstance(usage, Usage)
-    assert usage.model_requests >= 1
+    assert isinstance(result.usage, Usage)
+    assert result.usage.model_requests >= 1
 
 
 # ---------------------------------------------------------------------------
@@ -135,10 +134,9 @@ async def test_bind_crs_dac_wildcard_recipient(crs_dac_shape_context: ShapeConte
     with patch("dc_search.slot_binding.llm.generate_structured", mock):
         result = await bind(crs_dac_shape_context)
 
-    assert isinstance(result, tuple)
-    _shape, predicates, _usage = result
-    assert isinstance(predicates, tuple) and len(predicates) == 1
-    predicate = predicates[0]
+    assert isinstance(result, BindResult)
+    assert isinstance(result.predicates, tuple) and len(result.predicates) == 1
+    predicate = result.predicates[0]
     assert predicate.constraints.get("DevelopmentFinanceRecipient") is None, (
         "Wildcard recipient must be preserved as None"
     )
@@ -166,10 +164,9 @@ async def test_bind_census_with_constraints(census_shape_context: ShapeContext) 
     with patch("dc_search.slot_binding.llm.generate_structured", mock):
         result = await bind(census_shape_context)
 
-    assert isinstance(result, tuple)
-    _shape, predicates, _usage = result
-    assert isinstance(predicates, tuple) and len(predicates) == 1
-    predicate = predicates[0]
+    assert isinstance(result, BindResult)
+    assert isinstance(result.predicates, tuple) and len(result.predicates) == 1
+    predicate = result.predicates[0]
     assert predicate.constraints.get("gender") == "Female"
 
 
@@ -266,10 +263,9 @@ async def test_bind_normalises_singleton_list(crs_dac_shape_context: ShapeContex
     with patch("dc_search.slot_binding.llm.generate_structured", mock):
         result = await bind(crs_dac_shape_context)
 
-    assert isinstance(result, tuple)
-    _shape, predicates, _usage = result
-    assert isinstance(predicates, tuple) and len(predicates) == 1
-    predicate = predicates[0]
+    assert isinstance(result, BindResult)
+    assert isinstance(result.predicates, tuple) and len(result.predicates) == 1
+    predicate = result.predicates[0]
     assert predicate.constraints["DevelopmentFinanceRecipient"] == "country/KEN", (
         "Singleton list must be collapsed to a scalar string"
     )
@@ -329,13 +325,12 @@ async def test_bind_returns_tuple_of_predicates_multi_value(
     with patch("dc_search.slot_binding.llm.generate_structured", mock):
         result = await bind(crs_dac_shape_context)
 
-    assert isinstance(result, tuple)
-    _shape, predicates, _usage = result
-    assert isinstance(predicates, tuple)
-    assert len(predicates) == 2
-    recipients = {p.constraints["DevelopmentFinanceRecipient"] for p in predicates}
+    assert isinstance(result, BindResult)
+    assert isinstance(result.predicates, tuple)
+    assert len(result.predicates) == 2
+    recipients = {p.constraints["DevelopmentFinanceRecipient"] for p in result.predicates}
     assert recipients == {"country/KEN", "country/TGO"}
-    for p in predicates:
+    for p in result.predicates:
         assert p.constraints["DevelopmentFinancePurpose"] == "DAC/Malariacontrol"
         assert p.constraints["DevelopmentFinanceScheme"] == "ODAGrants"
 
@@ -357,12 +352,11 @@ async def test_bind_returns_singleton_tuple_single_value(
     with patch("dc_search.slot_binding.llm.generate_structured", mock):
         result = await bind(crs_dac_shape_context)
 
-    assert isinstance(result, tuple)
-    _shape, predicates, _usage = result
-    assert isinstance(predicates, tuple)
-    assert len(predicates) == 1
-    assert isinstance(predicates[0], Predicate)
-    assert predicates[0].constraints["DevelopmentFinanceRecipient"] == "country/KEN"
+    assert isinstance(result, BindResult)
+    assert isinstance(result.predicates, tuple)
+    assert len(result.predicates) == 1
+    assert isinstance(result.predicates[0], Predicate)
+    assert result.predicates[0].constraints["DevelopmentFinanceRecipient"] == "country/KEN"
 
 
 # ---------------------------------------------------------------------------
@@ -485,3 +479,277 @@ def test_output_schema_no_additional_properties() -> None:
         "Schema must not contain additionalProperties: true — "
         "google-genai Developer API will reject it"
     )
+
+
+# ---------------------------------------------------------------------------
+# S4 tests: place-role offer + DevelopmentFinance default correction
+# ---------------------------------------------------------------------------
+
+
+def _crs_dac_ctx_with_places(
+    query: str,
+    resolved_places: tuple[tuple[str, str | None, str | None, str], ...],
+    crs_dac_candidates,
+) -> ShapeContext:
+    """Build a CRS_DAC ShapeContext pre-loaded with resolved_places (4-tuples with role)."""
+    return build_shape_context(query, crs_dac_candidates, resolved_places=resolved_places)
+
+
+def _census_ctx_with_places(
+    query: str,
+    resolved_places: tuple[tuple[str, str | None, str | None, str], ...],
+    census_candidates,
+) -> ShapeContext:
+    """Build a Census ShapeContext pre-loaded with resolved_places (4-tuples with role)."""
+    return build_shape_context(query, census_candidates, resolved_places=resolved_places)
+
+
+@pytest.mark.asyncio
+async def test_devfinance_unqualified_place_defaults_to_recipient(
+    crs_dac_candidates,
+) -> None:
+    """Unqualified 'nigeria' (no from/to cue) → NGA bound as recipient.
+
+    defaulted_recipient must be True.
+    """
+    ctx = _crs_dac_ctx_with_places(
+        "malaria grants nigeria",
+        (("country/NGA", "Nigeria", "nigeria", "ambiguous"),),
+        crs_dac_candidates,
+    )
+    # LLM leaves recipient null (no taxonomy match for NGA in retrieved pool).
+    mock = _make_generate_structured(
+        0,
+        {
+            "DevelopmentFinancePurpose": "DAC/Malariacontrol",
+            "DevelopmentFinanceRecipient": None,
+            "DevelopmentFinanceScheme": "ODAGrants",
+        },
+    )
+
+    with patch("dc_search.slot_binding.llm.generate_structured", mock):
+        result = await bind(ctx)
+
+    assert isinstance(result, BindResult)
+    assert result.defaulted_recipient is True
+    assert len(result.predicates) == 1
+    assert result.predicates[0].constraints["DevelopmentFinanceRecipient"] == "country/NGA"
+
+
+@pytest.mark.asyncio
+async def test_devfinance_explicit_to_binds_recipient_no_default(
+    crs_dac_candidates,
+) -> None:
+    """Explicit 'to nigeria' → NGA bound as recipient; defaulted_recipient is False."""
+    ctx = _crs_dac_ctx_with_places(
+        "malaria grants to nigeria",
+        (("country/NGA", "Nigeria", "nigeria", "recipient"),),
+        crs_dac_candidates,
+    )
+    # LLM sets recipient (it saw it in prompt or taxonomy).
+    mock = _make_generate_structured(
+        0,
+        {
+            "DevelopmentFinancePurpose": "DAC/Malariacontrol",
+            "DevelopmentFinanceRecipient": "country/NGA",
+            "DevelopmentFinanceScheme": "ODAGrants",
+        },
+    )
+
+    with patch("dc_search.slot_binding.llm.generate_structured", mock):
+        result = await bind(ctx)
+
+    assert isinstance(result, BindResult)
+    assert result.defaulted_recipient is False
+    assert result.predicates[0].constraints["DevelopmentFinanceRecipient"] == "country/NGA"
+
+
+@pytest.mark.asyncio
+async def test_devfinance_from_place_not_bound_as_recipient(
+    crs_dac_candidates,
+) -> None:
+    """'from the united states' → USA must NOT be bound to recipient slot."""
+    ctx = _crs_dac_ctx_with_places(
+        "malaria grants from the united states",
+        (("country/USA", "United States", "the united states", "donor"),),
+        crs_dac_candidates,
+    )
+    # LLM incorrectly binds USA as recipient (post-correction must clear it).
+    mock = _make_generate_structured(
+        0,
+        {
+            "DevelopmentFinancePurpose": "DAC/Malariacontrol",
+            "DevelopmentFinanceRecipient": "country/USA",
+            "DevelopmentFinanceScheme": "ODAGrants",
+        },
+    )
+
+    with patch("dc_search.slot_binding.llm.generate_structured", mock):
+        result = await bind(ctx)
+
+    assert isinstance(result, BindResult)
+    assert result.defaulted_recipient is False
+    # USA must not be in the recipient slot — it's a donor.
+    assert result.predicates[0].constraints.get("DevelopmentFinanceRecipient") is None
+
+
+@pytest.mark.asyncio
+async def test_devfinance_grants_from_us_to_togo(
+    crs_dac_candidates,
+) -> None:
+    """'grants from us to togo': USA donor (not bound), TGO recipient; defaulted_recipient False.
+
+    This exercises the input_surface anchor — 'us' is the verbatim token and
+    would not match canonical_name 'United States' or DCID slug 'USA'.
+    """
+    ctx = _crs_dac_ctx_with_places(
+        "grants from us to togo",
+        (
+            ("country/USA", "United States", "us", "donor"),
+            ("country/TGO", "Togo", "Togo", "recipient"),
+        ),
+        crs_dac_candidates,
+    )
+    # LLM may bind either or neither; post-correction is deterministic.
+    mock = _make_generate_structured(
+        0,
+        {
+            "DevelopmentFinancePurpose": None,
+            "DevelopmentFinanceRecipient": None,
+            "DevelopmentFinanceScheme": None,
+        },
+    )
+
+    with patch("dc_search.slot_binding.llm.generate_structured", mock):
+        result = await bind(ctx)
+
+    assert isinstance(result, BindResult)
+    assert result.defaulted_recipient is False
+    recipient = result.predicates[0].constraints.get("DevelopmentFinanceRecipient")
+    assert recipient == "country/TGO", f"Expected country/TGO as recipient, got {recipient!r}"
+    # USA must NOT be the recipient — it is the donor entity.
+    assert recipient != "country/USA"
+
+
+@pytest.mark.asyncio
+async def test_non_devfinance_offered_place_slot_untouched(
+    census_candidates,
+) -> None:
+    """Non-DevelopmentFinance shape: offered place + null slot → no correction.
+
+    defaulted_recipient must be False.
+    """
+    # Census shape has no place-typed slot taxonomy — DevelopmentFinanceRecipient etc.
+    # don't appear. Even if we attach resolved_places, the post-correction must not fire.
+    ctx = _census_ctx_with_places(
+        "female population in nigeria",
+        (("country/NGA", "Nigeria", "nigeria", "ambiguous"),),
+        census_candidates,
+    )
+    mock = _make_generate_structured(0, {"gender": "Female"})
+
+    with patch("dc_search.slot_binding.llm.generate_structured", mock):
+        result = await bind(ctx)
+
+    assert isinstance(result, BindResult)
+    assert result.defaulted_recipient is False
+    # Gender slot must be bound as the LLM said, without interference.
+    assert result.predicates[0].constraints.get("gender") == "Female"
+
+
+@pytest.mark.asyncio
+async def test_build_user_message_includes_user_named_places_for_crs_dac(
+    crs_dac_candidates,
+) -> None:
+    """user_named_places block appears in the prompt when a resolved place is on-taxonomy."""
+    from dc_search.slot_binding import get_last_user_message
+
+    ctx = _crs_dac_ctx_with_places(
+        "malaria grants nigeria",
+        (("country/NGA", "Nigeria", "nigeria", "ambiguous"),),
+        crs_dac_candidates,
+    )
+    mock = _make_generate_structured(
+        0,
+        {
+            "DevelopmentFinancePurpose": "DAC/Malariacontrol",
+            "DevelopmentFinanceRecipient": None,
+            "DevelopmentFinanceScheme": "ODAGrants",
+        },
+    )
+
+    with patch("dc_search.slot_binding.llm.generate_structured", mock):
+        await bind(ctx)
+
+    msg = get_last_user_message()
+    assert msg is not None
+    assert "user_named_places" in msg, "user_named_places block must appear in the prompt"
+    assert "country/NGA" in msg
+
+
+@pytest.mark.asyncio
+async def test_build_user_message_omits_user_named_places_for_census(
+    census_candidates,
+) -> None:
+    """user_named_places block is absent when no resolved place matches any slot's taxonomy."""
+    from dc_search.slot_binding import get_last_user_message
+
+    # Census slots (gender, causeOfDeath, medicalCondition) don't have country/* taxonomy.
+    ctx = _census_ctx_with_places(
+        "female population in nigeria",
+        (("country/NGA", "Nigeria", "nigeria", "ambiguous"),),
+        census_candidates,
+    )
+    mock = _make_generate_structured(0, {"gender": "Female"})
+
+    with patch("dc_search.slot_binding.llm.generate_structured", mock):
+        await bind(ctx)
+
+    msg = get_last_user_message()
+    assert msg is not None
+    assert "user_named_places" not in msg, (
+        "user_named_places must not appear when no place is on-taxonomy for Census slots"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Issue 2: defaulted_recipient when the LLM itself returns the offered DCID
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_devfinance_ambiguous_llm_binds_offered_dcid_sets_defaulted_recipient(
+    crs_dac_candidates,
+) -> None:
+    """Ambiguous query: the LLM returns the offered DCID itself → defaulted_recipient True.
+
+    'malaria grants nigeria' has no directional cue → role="ambiguous".
+    The LLM pro-actively binds country/NGA to the recipient slot.  The else
+    branch must still set defaulted_recipient=True because the binding was
+    driven by the unqualified-place offer, not by deterministic directional
+    language — so the interpreted_place_as_recipient caveat must be emitted.
+    """
+    ctx = _crs_dac_ctx_with_places(
+        "malaria grants nigeria",
+        (("country/NGA", "Nigeria", "nigeria", "ambiguous"),),
+        crs_dac_candidates,
+    )
+    # LLM explicitly binds country/NGA (the offered DCID) — current != None case.
+    mock = _make_generate_structured(
+        0,
+        {
+            "DevelopmentFinancePurpose": "DAC/Malariacontrol",
+            "DevelopmentFinanceRecipient": "country/NGA",
+            "DevelopmentFinanceScheme": "ODAGrants",
+        },
+    )
+
+    with patch("dc_search.slot_binding.llm.generate_structured", mock):
+        result = await bind(ctx)
+
+    assert isinstance(result, BindResult)
+    assert result.defaulted_recipient is True, (
+        "defaulted_recipient must be True when the LLM binds the offered DCID on an "
+        "ambiguous (no directional cue) query — the caveat must not be suppressed"
+    )
+    assert result.predicates[0].constraints["DevelopmentFinanceRecipient"] == "country/NGA"

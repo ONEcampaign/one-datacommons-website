@@ -92,6 +92,12 @@ class TestCaveatLiteral:
         a = _make_answer(caveats=["date_filtered", "availability_filtered"])
         assert len(a.caveats) == 2
 
+    def test_interpreted_place_as_recipient_round_trips(self):
+        """'interpreted_place_as_recipient' must be wire-visible via model_dump()."""
+        a = _make_answer(caveats=["interpreted_place_as_recipient"])
+        dumped = a.model_dump()
+        assert "interpreted_place_as_recipient" in dumped["caveats"]
+
 
 class TestApplyAvailabilityFilter:
     def test_none_availability_returns_unchanged(self):

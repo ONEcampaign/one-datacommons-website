@@ -21,7 +21,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from dc_search.extraction import ExtractedDate
 
 if TYPE_CHECKING:
-    from dc_search.retrieval import StatVarFeatures
+    from dc_search.retrieval.indicator import StatVarFeatures
 
 # ---------------------------------------------------------------------------
 # Enriched variable models (public wire surface)
@@ -63,7 +63,9 @@ class ResolvedVariable(BaseModel):
     available_at_place: bool | None = Field(
         default=None,
         description=(
-            "Tri-state: None = no place resolved (availability inapplicable); "
+            "Tri-state: None = no place resolved (availability inapplicable), "
+            "OR every resolved place was bound as a constraint value (recipient) "
+            "so no donor/observation entity remained; "
             "True = has data at resolved place(s); False = resolved but no data. "
             "Union across multiple places."
         ),
@@ -87,6 +89,7 @@ Caveat = Literal[
     "donor_is_observation_facet",
     "denominator_implicit",
     "filtering_degraded",
+    "interpreted_place_as_recipient",
     "partial_result",
     "set_valued_answer",
     "retrieval_weak",

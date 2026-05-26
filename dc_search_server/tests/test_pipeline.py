@@ -18,6 +18,7 @@ from dc_search.hooks import HookContext
 from dc_search.predicate import AnswerCollection, Predicate
 from dc_search.retrieval import IndicatorCandidate, StatVarFeatures
 from dc_search.shape import Shape, ShapeContext
+from dc_search.slot_binding import BindResult
 from dc_search.telemetry import TelemetryLLMUsage, Usage
 
 # ---------------------------------------------------------------------------
@@ -93,7 +94,7 @@ def _make_extraction(variables: list[str]) -> QueryExtraction:
 
 
 def _patch_all(monkeypatch, *, retrieval_candidates=None, extra_patches=None):
-    """Patch all external I/O modules used by pipeline._run_one_variable."""
+    """Patch all external I/O modules used by pipeline._run_one_variable and _run."""
     import dc_search.hooks as _hooks
     import dc_search.retrieval as _retrieval
     import dc_search.shape as _shape_mod
@@ -134,13 +135,13 @@ def _patch_all(monkeypatch, *, retrieval_candidates=None, extra_patches=None):
     )
 
     # Place extraction → no places (clean availability path).
-    # Pipeline accesses shape_module.extract_place_tokens via module attribute,
-    # so patching on the module object here is correct.
     monkeypatch.setattr(_shape_mod, "extract_place_tokens", lambda query: [])
 
-    # bind returns a successful binding by default
+    # bind returns a successful BindResult by default (attribute access per review A1)
     async def _mock_bind(shape_context, *, model=None):
-        return (_SHAPE, (_PREDICATE,), _USAGE)
+        return BindResult(
+            shape=_SHAPE, predicates=(_PREDICATE,), usage=_USAGE, defaulted_recipient=False
+        )
 
     monkeypatch.setattr(_sb, "bind", _mock_bind)
     monkeypatch.setattr(_sb, "get_last_usage", lambda: _USAGE)
@@ -222,7 +223,9 @@ async def test_run_simple_topic_dominance(monkeypatch):
     async def _bind_spy(shape_context, *, model=None):
         nonlocal bind_called
         bind_called = True
-        return (_SHAPE, (_PREDICATE,), _USAGE)
+        return BindResult(
+            shape=_SHAPE, predicates=(_PREDICATE,), usage=_USAGE, defaulted_recipient=False
+        )
 
     monkeypatch.setattr(_sb, "bind", _bind_spy)
 
@@ -356,18 +359,25 @@ async def test_run_default_truncates_at_max_variables(monkeypatch):
 
     monkeypatch.setattr(_ext, "extract", _mock_extract)
 
-    import dc_search.pipeline as _pipeline
+    import dc_search.pipeline._run as _run
 
-    original_run_one = _pipeline._run_one_variable
+    original_run_one = _run._run_one_variable
 
-    async def _capturing_run_one(variable, query, *, place_dcids, dates=None, slot_bind_usages):
+    async def _capturing_run_one(
+        variable, query, *, place_dcids, dates=None, entities=None, slot_bind_usages
+    ):
         if variable is not None:
             processed.append(variable)
         return await original_run_one(
-            variable, query, place_dcids=place_dcids, dates=dates, slot_bind_usages=slot_bind_usages
+            variable,
+            query,
+            place_dcids=place_dcids,
+            dates=dates,
+            entities=entities,
+            slot_bind_usages=slot_bind_usages,
         )
 
-    monkeypatch.setattr(_pipeline, "_run_one_variable", _capturing_run_one)
+    monkeypatch.setattr(_run, "_run_one_variable", _capturing_run_one)
 
     from dc_search import pipeline
 
@@ -386,6 +396,7 @@ async def test_run_default_truncates_at_max_variables(monkeypatch):
 async def test_run_default_fan_out_is_concurrent(monkeypatch):
     import dc_search.extraction as _ext
     import dc_search.pipeline as _pipeline
+    import dc_search.pipeline._run as _run
     import dc_search.retrieval as _retrieval
 
     DELAY = 0.05
@@ -397,17 +408,19 @@ async def test_run_default_fan_out_is_concurrent(monkeypatch):
         return (_make_extraction(six_vars), _EXTRACT_USAGE)
 
     monkeypatch.setattr(_ext, "extract", _mock_extract)
-    # Stub place resolution so dcid_task / place_event_task don't hit the network.
+    # Stub place resolution to avoid network hits.
     monkeypatch.setattr(_retrieval, "resolve_places_batch", lambda *, names: {})
     monkeypatch.setattr(_retrieval, "place_names_batch", lambda *, dcids: {})
 
-    async def _slow_run_one(variable, query, *, place_dcids, dates=None, slot_bind_usages):
+    async def _slow_run_one(
+        variable, query, *, place_dcids, dates=None, entities=None, slot_bind_usages
+    ):
         await asyncio.sleep(DELAY)
         slot_bind_usages.append(_USAGE)
         answer = _ANSWER.model_copy(update={"variable_label": variable if variable else None})
         return _pipeline._VariableResult(outcome=answer, n_candidates=1, n_shapes=1)
 
-    monkeypatch.setattr(_pipeline, "_run_one_variable", _slow_run_one)
+    monkeypatch.setattr(_run, "_run_one_variable", _slow_run_one)
 
     from dc_search import pipeline
 
@@ -1189,3 +1202,753 @@ async def test_ordinary_answer_has_variables_kind(monkeypatch):
     assert result.terminated_by == "answer"
     for a in result.answers:
         assert a.answer_kind == "variables"
+
+
+@pytest.mark.asyncio
+async def test_fan_out_scopes_shape_query_to_variable(monkeypatch):
+    """Multi-variable fan-out feeds slot-binding the per-variable phrase (plus
+    entities), NOT the full multi-variable query — otherwise sibling variables
+    bias shape election toward broad catch-all topics (see the unemployment →
+    dc/topic/Economy regression).
+    """
+    import dc_search.extraction as _ext
+    import dc_search.slot_binding as _sb
+
+    _patch_all(monkeypatch)
+
+    # Extraction splits into two variables with one place; the original query
+    # is deliberately distinct from any single focused phrase.
+    def _extraction() -> QueryExtraction:
+        return QueryExtraction(
+            entities=["Kenya"], dates=[], variables=["life expectancy", "population"]
+        )
+
+    async def _mock_extract(query, *, model=None):
+        return (_extraction(), _EXTRACT_USAGE)
+
+    monkeypatch.setattr(_ext, "extract", _mock_extract)
+
+    seen_queries: list[str] = []
+
+    async def _bind_spy(shape_context, *, model=None):
+        seen_queries.append(shape_context.query)
+        return BindResult(
+            shape=_SHAPE, predicates=(_PREDICATE,), usage=_USAGE, defaulted_recipient=False
+        )
+
+    monkeypatch.setattr(_sb, "bind", _bind_spy)
+
+    from dc_search import pipeline
+
+    await pipeline.run_default("life expectancy and population in Kenya")
+
+    # Each variable is scoped to its own phrase + the extracted place; the full
+    # query never reaches slot-binding.
+    assert set(seen_queries) == {"life expectancy in Kenya", "population in Kenya"}
+    assert "life expectancy and population in Kenya" not in seen_queries
+
+
+@pytest.mark.asyncio
+async def test_topic_short_circuit_enriches_member_variables(monkeypatch):
+    """Topic-dominance short-circuit fetches member features so the expanded
+    variables carry name/description, not bare DCIDs (regression: SDG-topic
+    members rendered as raw `sdg/VC_DTH_*` strings).
+    """
+    import dc_search.hooks as _hooks
+    import dc_search.retrieval as _retrieval
+
+    topic_cand = IndicatorCandidate(dcid="dc/topic/Health", type_of=["Topic"], score=1.0)
+    non_topic_cand = IndicatorCandidate(
+        dcid="LifeExpectancy_Person", type_of=["StatisticalVariable"], score=0.3
+    )
+    _patch_all(monkeypatch, retrieval_candidates=(topic_cand, non_topic_cand))
+
+    members = ["LifeExpectancy_Person", "Count_Person"]
+
+    # materialize_many returns a topic answer with bare members (no variables yet);
+    # the short-circuit is responsible for enriching them.
+    topic_answer = AnswerCollection(
+        predicate=Predicate(
+            population_type=None,
+            measured_property=None,
+            constraints={"relevantTopic": "dc/topic/Health"},
+        ),
+        sv_set=members,
+        confidence="high",
+        caveats=["topic_expanded"],
+    )
+    monkeypatch.setattr(
+        _hooks, "materialize_many", lambda predicates, candidates, *, ctx: topic_answer
+    )
+
+    # Distinct features per member, each with a human-readable name.
+    member_feats = {
+        "LifeExpectancy_Person": StatVarFeatures(
+            dcid="LifeExpectancy_Person", name="Life expectancy"
+        ),
+        "Count_Person": StatVarFeatures(dcid="Count_Person", name="Total population"),
+    }
+    monkeypatch.setattr(_retrieval, "stat_var_features_batch", lambda *, sv_dcids: member_feats)
+
+    from dc_search import pipeline
+
+    result = await pipeline.run_simple("health indicators")
+
+    assert result.terminated_by == "answer"
+    answer = result.answers[0]
+    assert answer.answer_kind == "topic"
+    # Members are enriched: names present, in sv_set order.
+    assert [v.dcid for v in answer.variables] == members
+    assert {v.dcid: v.name for v in answer.variables} == {
+        "LifeExpectancy_Person": "Life expectancy",
+        "Count_Person": "Total population",
+    }
+
+
+# ===========================================================================
+# S6 Characterization tests: place-role-aware CRS_DAC binding
+# ===========================================================================
+
+# Shared CRS_DAC stubs for the three characterization cases.
+
+_CRS_INDICATOR_CAND = IndicatorCandidate(
+    dcid="ONE/CRS_DAC/Malariacontrol-ODAGrants-USA",
+    type_of=["StatisticalVariable"],
+    score=0.9,
+)
+
+_CRS_SHAPE = Shape(
+    population_type="DevelopmentFinance",
+    measured_property="amount",
+    constraint_keys=("DevelopmentFinanceRecipient",),
+    member_dcids=("ONE/CRS_DAC/Malariacontrol-ODAGrants-USA",),
+    slot_taxonomy={"DevelopmentFinanceRecipient": ("country/JOR", "country/TGO", "country/NGA")},
+    is_topic=False,
+)
+
+_CENSUS_SHAPE = Shape(
+    population_type="MortalityEvent",
+    measured_property="count",
+    constraint_keys=(),
+    member_dcids=("Count_MortalityEvent_Person_Malaria",),
+    slot_taxonomy={},
+    is_topic=False,
+)
+
+_CENSUS_PREDICATE = Predicate(
+    population_type="MortalityEvent",
+    measured_property="count",
+    constraints={},
+)
+
+
+def _patch_crs_common(monkeypatch):
+    """Patch infrastructure shared across all three CRS characterization cases.
+
+    Also stubs out variable_date_coverage + observation_facet_ranges so the
+    availability re-rank never hits the network.  Individual tests override
+    variable_date_coverage when they need specific availability data.
+    """
+    import dc_search.retrieval as _retrieval
+    import dc_search.shape as _shape_mod
+
+    monkeypatch.setattr(_retrieval, "resolve_indicator", lambda *, query, k: (_CRS_INDICATOR_CAND,))
+    monkeypatch.setattr(_retrieval, "topic_metadata_batch", lambda *, dcids: {})
+    monkeypatch.setattr(
+        _retrieval, "presence_for_entities", lambda *, variable_dcids, entity_dcids: frozenset()
+    )
+    monkeypatch.setattr(_retrieval, "variables_for_entities_batch", lambda *, entity_dcids: {})
+    monkeypatch.setattr(_shape_mod, "extract_place_tokens", lambda query: [])
+    # Default: empty coverage map — no network calls.
+    monkeypatch.setattr(
+        _retrieval,
+        "variable_date_coverage",
+        lambda *, variable_dcids, entity_dcids: _make_date_coverage(envelopes={}, entity_ranges={}),
+    )
+    # observation_facet_ranges must never reach the real mixer.
+    monkeypatch.setattr(
+        _retrieval,
+        "observation_facet_ranges",
+        lambda *, variable_dcids, entity_dcids: (frozenset(), {}),
+    )
+
+
+@pytest.mark.asyncio
+async def test_default_grants_from_us_to_togo(monkeypatch):
+    """Case 1: 'grants from us to togo' — explicit donor + recipient.
+
+    Donor = country/USA (observation entity); recipient = country/TGO (constraint).
+    Variable name contains "Grants to Togo"; available_at_place is True;
+    interpreted_place_as_recipient NOT in caveats.
+    """
+    import dc_search.extraction as _ext
+    import dc_search.hooks as _hooks
+    import dc_search.retrieval as _retrieval
+    import dc_search.slot_binding as _sb
+
+    _patch_crs_common(monkeypatch)
+
+    # USA and Togo both resolved.
+    monkeypatch.setattr(
+        _retrieval,
+        "resolve_places_batch",
+        lambda *, names: {
+            "us": (_make_place_candidate("country/USA"),),
+            "togo": (_make_place_candidate("country/TGO"),),
+        },
+    )
+    monkeypatch.setattr(
+        _retrieval,
+        "place_names_batch",
+        lambda *, dcids: {
+            "country/USA": ("United States", "Country"),
+            "country/TGO": ("Togo", "Country"),
+        },
+    )
+
+    # Bind: TGO → recipient slot; defaulted_recipient=False (explicit "to togo").
+    recipient_predicate = Predicate(
+        population_type="DevelopmentFinance",
+        measured_property="amount",
+        constraints={"DevelopmentFinanceRecipient": "country/TGO"},
+    )
+
+    async def _mock_bind(shape_context, *, model=None):
+        return BindResult(
+            shape=_CRS_SHAPE,
+            predicates=(recipient_predicate,),
+            usage=_USAGE,
+            defaulted_recipient=False,
+        )
+
+    monkeypatch.setattr(_sb, "bind", _mock_bind)
+    monkeypatch.setattr(_sb, "get_last_usage", lambda: _USAGE)
+
+    # Recovered SV for Togo; USA has data (available_at_place=True).
+    togo_dcid = "ONE/CRS_DAC/Malariacontrol-ODAGrants-TGO"
+    togo_features = StatVarFeatures(
+        dcid=togo_dcid,
+        name="Health [Grants to Togo]",
+        population_type=["DevelopmentFinance"],
+        measured_property=["amount"],
+    )
+
+    # materialize returns the Togo sv (Piece D path).
+    togo_answer = AnswerCollection(
+        predicate=recipient_predicate,
+        sv_set=[togo_dcid],
+        confidence="high",
+    )
+    monkeypatch.setattr(
+        _hooks, "materialize_many", lambda predicates, candidates, *, ctx: togo_answer
+    )
+
+    # stat_var_features_batch returns Togo features (backup fetch in post-materialize).
+    monkeypatch.setattr(
+        _retrieval,
+        "stat_var_features_batch",
+        lambda *, sv_dcids: {d: togo_features for d in sv_dcids},
+    )
+
+    # Availability for USA donor over Togo SV → present.
+    monkeypatch.setattr(
+        _retrieval,
+        "variable_date_coverage",
+        lambda *, variable_dcids, entity_dcids: _make_date_coverage(
+            envelopes={togo_dcid: ("2007", "2024")},
+            entity_ranges={(togo_dcid, "country/USA"): ("2007", "2024")},
+        ),
+    )
+
+    async def _mock_extract(query, *, model=None):
+        return (
+            QueryExtraction(entities=["us", "togo"], variables=["grants"], dates=[]),
+            _EXTRACT_USAGE,
+        )
+
+    monkeypatch.setattr(_ext, "extract", _mock_extract)
+
+    from dc_search import pipeline
+
+    result = await pipeline.run_default("grants from us to togo")
+
+    assert result.terminated_by == "answer"
+    assert len(result.answers) == 1
+    answer = result.answers[0]
+
+    # Explicit assertions (review G5) — not just "matches run_simple".
+    # Predicate carries the TGO recipient constraint.
+    assert answer.predicate.constraints.get("DevelopmentFinanceRecipient") == "country/TGO"
+
+    # Variable name contains "Grants to Togo" (feature fetched for recovered DCID).
+    var_names = [v.name for v in answer.variables if v.name]
+    assert any("Togo" in n for n in var_names), f"Expected a 'Togo' variable; got {var_names}"
+
+    # Donor (USA) named → available_at_place is True.
+    assert any(v.available_at_place is True for v in answer.variables), (
+        "Expected available_at_place=True for country/USA donor"
+    )
+
+    # No ambiguous default → caveat absent.
+    assert "interpreted_place_as_recipient" not in answer.caveats
+
+
+def _make_place_candidate(dcid):
+    """Minimal PlaceCandidate for resolve_places_batch stubs."""
+    from dc_search.retrieval import PlaceCandidate
+
+    return PlaceCandidate(dcid=dcid)
+
+
+@pytest.mark.asyncio
+async def test_default_malaria_grants_nigeria(monkeypatch):
+    """Case 2: 'malaria grants nigeria' — unqualified place → defaulted recipient.
+
+    Recipient = country/NGA (by default, no donor named);
+    available_at_place is None; date_range is None;
+    interpreted_place_as_recipient in caveats;
+    terminated_by == 'answer' (NOT ask/under_specified).
+    """
+    import dc_search.extraction as _ext
+    import dc_search.hooks as _hooks
+    import dc_search.retrieval as _retrieval
+    import dc_search.slot_binding as _sb
+
+    _patch_crs_common(monkeypatch)
+
+    # Only Nigeria resolved.
+    monkeypatch.setattr(
+        _retrieval,
+        "resolve_places_batch",
+        lambda *, names: {"nigeria": (_make_place_candidate("country/NGA"),)},
+    )
+    monkeypatch.setattr(
+        _retrieval,
+        "place_names_batch",
+        lambda *, dcids: {"country/NGA": ("Nigeria", "Country")},
+    )
+
+    # Bind: NGA → recipient slot; defaulted_recipient=True (ambiguous query).
+    nga_predicate = Predicate(
+        population_type="DevelopmentFinance",
+        measured_property="amount",
+        constraints={"DevelopmentFinanceRecipient": "country/NGA"},
+    )
+
+    async def _mock_bind(shape_context, *, model=None):
+        return BindResult(
+            shape=_CRS_SHAPE,
+            predicates=(nga_predicate,),
+            usage=_USAGE,
+            defaulted_recipient=True,
+        )
+
+    monkeypatch.setattr(_sb, "bind", _mock_bind)
+    monkeypatch.setattr(_sb, "get_last_usage", lambda: _USAGE)
+
+    # Recovered SV for Nigeria.
+    nga_dcid = "ONE/CRS_DAC/Malariacontrol-ODAGrants-NGA"
+    nga_features = StatVarFeatures(
+        dcid=nga_dcid,
+        name="Health [Grants to Nigeria]",
+        population_type=["DevelopmentFinance"],
+        measured_property=["amount"],
+    )
+
+    nga_answer = AnswerCollection(
+        predicate=nga_predicate,
+        sv_set=[nga_dcid],
+        confidence="high",
+    )
+    monkeypatch.setattr(
+        _hooks, "materialize_many", lambda predicates, candidates, *, ctx: nga_answer
+    )
+
+    monkeypatch.setattr(
+        _retrieval,
+        "stat_var_features_batch",
+        lambda *, sv_dcids: {d: nga_features for d in sv_dcids},
+    )
+
+    # No donor → variable_date_coverage not called (donor set empty) — safe to leave unreachable.
+    monkeypatch.setattr(
+        _retrieval,
+        "variable_date_coverage",
+        lambda *, variable_dcids, entity_dcids: _make_date_coverage(envelopes={}, entity_ranges={}),
+    )
+
+    async def _mock_extract(query, *, model=None):
+        return (
+            QueryExtraction(entities=["nigeria"], variables=["malaria grants"], dates=[]),
+            _EXTRACT_USAGE,
+        )
+
+    monkeypatch.setattr(_ext, "extract", _mock_extract)
+
+    from dc_search import pipeline
+
+    result = await pipeline.run_default("malaria grants nigeria")
+
+    assert result.terminated_by == "answer", f"Expected 'answer', got {result.terminated_by!r}"
+    assert len(result.answers) == 1
+    answer = result.answers[0]
+
+    # Recipient constraint present.
+    assert answer.predicate.constraints.get("DevelopmentFinanceRecipient") == "country/NGA"
+
+    # Variable name contains "Grants to Nigeria".
+    var_names = [v.name for v in answer.variables if v.name]
+    assert any("Nigeria" in n for n in var_names), f"Expected a 'Nigeria' variable; got {var_names}"
+
+    # No donor named → availability omitted (None).
+    got_avail = [v.available_at_place for v in answer.variables]
+    assert all(a is None for a in got_avail), (
+        f"Expected available_at_place=None for all vars; got {got_avail}"
+    )
+    assert all(v.date_range is None for v in answer.variables), (
+        f"Expected date_range=None for all vars; got {[v.date_range for v in answer.variables]}"
+    )
+
+    # Ambiguous default → caveat present.
+    assert "interpreted_place_as_recipient" in answer.caveats, (
+        f"Expected 'interpreted_place_as_recipient' in caveats; got {answer.caveats}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_default_malaria_deaths_nigeria_census_regression(monkeypatch):
+    """Case 3: 'malaria deaths nigeria' — Census shape, no recipient binding.
+
+    entity country/NGA stays in the donor set; no interpreted_place_as_recipient caveat.
+    """
+    import dc_search.extraction as _ext
+    import dc_search.hooks as _hooks
+    import dc_search.retrieval as _retrieval
+    import dc_search.slot_binding as _sb
+
+    # Use Census indicators for this query.
+    census_cand = IndicatorCandidate(
+        dcid="Count_MortalityEvent_Person_Malaria",
+        type_of=["StatisticalVariable"],
+        score=0.9,
+    )
+    monkeypatch.setattr(_retrieval, "resolve_indicator", lambda *, query, k: (census_cand,))
+    monkeypatch.setattr(_retrieval, "topic_metadata_batch", lambda *, dcids: {})
+    monkeypatch.setattr(
+        _retrieval, "presence_for_entities", lambda *, variable_dcids, entity_dcids: frozenset()
+    )
+    monkeypatch.setattr(_retrieval, "variables_for_entities_batch", lambda *, entity_dcids: {})
+
+    import dc_search.shape as _shape_mod
+
+    monkeypatch.setattr(_shape_mod, "extract_place_tokens", lambda query: [])
+
+    # Nigeria resolved.
+    monkeypatch.setattr(
+        _retrieval,
+        "resolve_places_batch",
+        lambda *, names: {"nigeria": (_make_place_candidate("country/NGA"),)},
+    )
+    monkeypatch.setattr(
+        _retrieval,
+        "place_names_batch",
+        lambda *, dcids: {"country/NGA": ("Nigeria", "Country")},
+    )
+
+    # Census bind: no recipient slot, no defaulted_recipient.
+    async def _mock_bind(shape_context, *, model=None):
+        return BindResult(
+            shape=_CENSUS_SHAPE,
+            predicates=(_CENSUS_PREDICATE,),
+            usage=_USAGE,
+            defaulted_recipient=False,
+        )
+
+    monkeypatch.setattr(_sb, "bind", _mock_bind)
+    monkeypatch.setattr(_sb, "get_last_usage", lambda: _USAGE)
+
+    census_features = StatVarFeatures(
+        dcid="Count_MortalityEvent_Person_Malaria",
+        name="Malaria Deaths",
+        population_type=["MortalityEvent"],
+        measured_property=["count"],
+    )
+    monkeypatch.setattr(
+        _retrieval,
+        "stat_var_features_batch",
+        lambda *, sv_dcids: {d: census_features for d in sv_dcids},
+    )
+
+    census_answer = AnswerCollection(
+        predicate=_CENSUS_PREDICATE,
+        sv_set=["Count_MortalityEvent_Person_Malaria"],
+        confidence="high",
+    )
+
+    # Track what place_dcids reach materialize_many.
+    received_place_dcids: list[tuple[str, ...]] = []
+
+    def _capturing_materialize(predicates, candidates, *, ctx):
+        received_place_dcids.append(ctx.place_dcids)
+        return census_answer
+
+    monkeypatch.setattr(_hooks, "materialize_many", _capturing_materialize)
+
+    monkeypatch.setattr(
+        _retrieval,
+        "variable_date_coverage",
+        lambda *, variable_dcids, entity_dcids: _make_date_coverage(envelopes={}, entity_ranges={}),
+    )
+
+    async def _mock_extract(query, *, model=None):
+        return (
+            QueryExtraction(entities=["nigeria"], variables=["malaria deaths"], dates=[]),
+            _EXTRACT_USAGE,
+        )
+
+    monkeypatch.setattr(_ext, "extract", _mock_extract)
+
+    from dc_search import pipeline
+
+    result = await pipeline.run_default("malaria deaths nigeria")
+
+    assert result.terminated_by == "answer"
+    assert len(result.answers) == 1
+    answer = result.answers[0]
+
+    # NGA must be in the donor set (no recipient binding in Census shape).
+    assert len(received_place_dcids) == 1
+    assert "country/NGA" in received_place_dcids[0], (
+        f"country/NGA must reach materialize as an entity; got {received_place_dcids[0]}"
+    )
+
+    # No ambiguous default → caveat absent.
+    assert "interpreted_place_as_recipient" not in answer.caveats, (
+        f"Unexpected caveat in Census regression: {answer.caveats}"
+    )
+
+
+# ===========================================================================
+# _build_resolved_places_triples: surface↔DCID alignment with unresolved entity
+# ===========================================================================
+
+
+@pytest.mark.asyncio
+async def test_build_resolved_places_triples_alignment_with_unresolved_middle(monkeypatch):
+    """When a middle entity fails to resolve, the surviving 4-tuples carry their OWN
+    entity's surface string — not the adjacent entity's.
+
+    entities = ["us", "notaplace", "Togo"]
+      - "us" → country/USA (resolves)
+      - "notaplace" → no candidates (skipped)
+      - "Togo" → country/TGO (resolves)
+
+    Expected 4-tuples (dcid, canonical_name, input_surface, role):
+      ("country/USA", "United States", "us", <role>)
+      ("country/TGO", "Togo", "Togo", <role>)
+
+    The bug: the old zip-style loop would pair country/TGO with "notaplace" as surface.
+    Role defaults to "ambiguous" when query="" (no directional grammar).
+    """
+    import dc_search.retrieval as _retrieval
+    from dc_search.pipeline._run import _build_resolved_places_triples
+    from dc_search.retrieval import PlaceCandidate
+
+    def _mock_resolve_batch(*, names):
+        return {
+            "us": (PlaceCandidate(dcid="country/USA"),),
+            # "notaplace" absent → no candidates
+            "Togo": (PlaceCandidate(dcid="country/TGO"),),
+        }
+
+    monkeypatch.setattr(_retrieval, "resolve_places_batch", _mock_resolve_batch)
+    monkeypatch.setattr(
+        _retrieval,
+        "place_names_batch",
+        lambda *, dcids: {
+            "country/USA": ("United States", "Country"),
+            "country/TGO": ("Togo", "Country"),
+        },
+    )
+
+    triples = await _build_resolved_places_triples(
+        place_dcids=["country/USA", "country/TGO"],
+        entities=["us", "notaplace", "Togo"],
+        query="",  # empty query → all roles "ambiguous"
+    )
+
+    assert len(triples) == 2, f"Expected 2 4-tuples, got {len(triples)}: {triples}"
+
+    # Each element is (dcid, canonical_name, input_surface, role).
+    dcid_to_surface = {t[0]: t[2] for t in triples}
+    assert dcid_to_surface["country/USA"] == "us", (
+        f"USA 4-tuple carries wrong surface: {dcid_to_surface['country/USA']!r}"
+    )
+    assert dcid_to_surface["country/TGO"] == "Togo", (
+        f"Togo 4-tuple carries wrong surface: {dcid_to_surface['country/TGO']!r}"
+    )
+
+    dcid_to_name = {t[0]: t[1] for t in triples}
+    assert dcid_to_name["country/USA"] == "United States"
+    assert dcid_to_name["country/TGO"] == "Togo"
+
+    # Role field (index 3) is present; "ambiguous" with empty query.
+    dcid_to_role = {t[0]: t[3] for t in triples}
+    assert dcid_to_role["country/USA"] in ("donor", "recipient", "ambiguous")
+    assert dcid_to_role["country/TGO"] in ("donor", "recipient", "ambiguous")
+
+
+# ===========================================================================
+# Amendment 2 critical integration test: real bind + precomputed roles
+# ===========================================================================
+# This test exercises the REAL slot_binding.bind (LLM mocked, not bind mocked)
+# so the post-correction runs off the precomputed role in resolved_places.
+# It would have caught the fan-out vs. directional-role conflict: even though
+# shape_context.query is the scoped "grants in us, Togo", the role is read
+# from the 4-tuple (computed from the original query) — so USA stays donor
+# and TGO is forced into the recipient slot.
+# ===========================================================================
+
+
+@pytest.mark.asyncio
+async def test_real_bind_directional_role_from_precomputed_4tuple(monkeypatch):
+    """AMENDMENT 2 integration: real bind reads pre-computed role from 4-tuple.
+
+    Query: "grants from us to togo"
+    - Extraction: variables=["grants"], entities=["us", "togo"]
+    - Resolved: country/USA (role=donor), country/TGO (role=recipient)
+    - shape_context.query is scoped to "grants in us, togo" (fan-out query)
+      which strips "from"/"to" grammar — the old code would call
+      place_directional_role on that scoped query and return "ambiguous" for both.
+    - With Amendment 2, role is read from the 4-tuple pre-computed from the
+      original full query, so USA is correctly excluded (donor) and TGO is
+      forced into the recipient slot (recipient).
+
+    Asserts:
+    - DevelopmentFinanceRecipient == country/TGO
+    - country/USA is NOT the recipient (it is the donor entity)
+    - interpreted_place_as_recipient NOT in caveats (explicit "to togo" cue)
+    """
+    import dc_search.extraction as _ext
+    import dc_search.hooks as _hooks
+    import dc_search.retrieval as _retrieval
+
+    _patch_crs_common(monkeypatch)
+
+    # USA and Togo both resolved, with their correct surface strings.
+    monkeypatch.setattr(
+        _retrieval,
+        "resolve_places_batch",
+        lambda *, names: {
+            "us": (_make_place_candidate("country/USA"),),
+            "togo": (_make_place_candidate("country/TGO"),),
+        },
+    )
+    monkeypatch.setattr(
+        _retrieval,
+        "place_names_batch",
+        lambda *, dcids: {
+            "country/USA": ("United States", "Country"),
+            "country/TGO": ("Togo", "Country"),
+        },
+    )
+
+    # resolve_indicator returns the CRS_DAC candidate (with TGO in taxonomy).
+    monkeypatch.setattr(
+        _retrieval,
+        "resolve_indicator",
+        lambda *, query, k: (_CRS_INDICATOR_CAND,),
+    )
+
+    # stat_var_features_batch returns features with TGO in taxonomy.
+    crs_features = StatVarFeatures(
+        dcid="ONE/CRS_DAC/Malariacontrol-ODAGrants-USA",
+        name="Malaria grants",
+        population_type=["DevelopmentFinance"],
+        measured_property=["amount"],
+        constraints={
+            "DevelopmentFinanceRecipient": ["country/JOR", "country/TGO", "country/NGA"],
+            "DevelopmentFinancePurpose": ["DAC/Malariacontrol"],
+            "DevelopmentFinanceScheme": ["ODAGrants"],
+        },
+    )
+    monkeypatch.setattr(
+        _retrieval,
+        "stat_var_features_batch",
+        lambda *, sv_dcids: {d: crs_features for d in sv_dcids},
+    )
+
+    # LLM returns: recipient=null (it only sees the scoped query "grants in us, togo"
+    # with no directional grammar). The REAL bind post-correction must force TGO in
+    # via the precomputed role="recipient" in the 4-tuple.
+    from unittest.mock import AsyncMock, patch
+
+    from dc_search.slot_binding import _Output, _SlotBinding
+
+    llm_output = _Output(
+        chosen_shape_index=0,
+        bindings=[
+            _SlotBinding(slot="DevelopmentFinanceRecipient", value=None),
+            _SlotBinding(slot="DevelopmentFinancePurpose", value="DAC/Malariacontrol"),
+            _SlotBinding(slot="DevelopmentFinanceScheme", value="ODAGrants"),
+        ],
+    )
+    from dc_search.telemetry import Usage
+
+    mock_generate = AsyncMock(
+        return_value=(
+            llm_output,
+            Usage(input_tokens=10, output_tokens=5, model="test"),
+        )
+    )
+
+    # materialize_many: capture what predicate it receives; return an answer.
+    received_predicates: list = []
+
+    def _capturing_materialize(predicates, candidates, *, ctx):
+        received_predicates.extend(predicates)
+        # Return a minimal AnswerCollection matching the first predicate.
+        from dc_search.predicate import AnswerCollection
+
+        return AnswerCollection(
+            predicate=predicates[0],
+            sv_set=["ONE/CRS_DAC/Malariacontrol-ODAGrants-TGO"],
+            confidence="high",
+        )
+
+    monkeypatch.setattr(_hooks, "materialize_many", _capturing_materialize)
+
+    async def _mock_extract(query, *, model=None):
+        return (
+            QueryExtraction(entities=["us", "togo"], variables=["grants"], dates=[]),
+            _EXTRACT_USAGE,
+        )
+
+    monkeypatch.setattr(_ext, "extract", _mock_extract)
+
+    from dc_search import pipeline
+
+    with patch("dc_search.slot_binding.llm.generate_structured", mock_generate):
+        result = await pipeline.run_default("grants from us to togo")
+
+    assert result.terminated_by == "answer", f"Expected 'answer', got {result.terminated_by!r}"
+    assert len(received_predicates) >= 1, "materialize_many was not called"
+
+    # The post-correction must have forced TGO into the recipient slot
+    # (role="recipient" precomputed from "grants from us to togo").
+    recipient = received_predicates[0].constraints.get("DevelopmentFinanceRecipient")
+    assert recipient == "country/TGO", (
+        f"Expected country/TGO as recipient; got {recipient!r}. "
+        "The precomputed role must override the LLM's null binding."
+    )
+
+    # USA must NOT be in the recipient slot — it is the donor entity.
+    assert recipient != "country/USA"
+
+    # No ambiguous default → interpreted_place_as_recipient NOT in caveats.
+    assert len(result.answers) >= 1
+    for a in result.answers:
+        assert "interpreted_place_as_recipient" not in a.caveats, (
+            f"Unexpected caveat: 'interpreted_place_as_recipient' should be absent "
+            f"when role='recipient' was explicit (not defaulted). Got: {a.caveats}"
+        )

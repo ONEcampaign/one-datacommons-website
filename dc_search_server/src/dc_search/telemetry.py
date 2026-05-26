@@ -47,6 +47,9 @@ class TelemetryLLMUsage(BaseModel):
     step: Literal["extract", "slot_bind"]
     input_tokens: int
     output_tokens: int
+    # Subset of input_tokens served from Gemini's context cache (implicit or
+    # explicit). The cache-hit ratio is cached_input_tokens / input_tokens.
+    cached_input_tokens: int = 0
     model: str | None = None
     latency_s: float | None = None
 

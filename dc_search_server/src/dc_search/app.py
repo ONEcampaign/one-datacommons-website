@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import sys
 from collections.abc import AsyncIterator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
@@ -246,8 +247,29 @@ async def _event_source(stream: AsyncIterator[Event]) -> AsyncIterator[str]:
 _ROUTE_TIMEOUT_S: float = 25.0
 
 
+def _configure_logging() -> None:
+    """Route ``dc_search`` INFO logs to stdout so token-usage telemetry is captured.
+
+    ``gunicorn --log-level info`` configures only the gunicorn/uvicorn loggers; the
+    root logger stays at WARNING, so application ``logger.info`` calls (e.g. the
+    per-request ``dc_search llm_usage`` line) would be dropped. Attach a dedicated
+    stdout handler to the ``dc_search`` parent logger at INFO. Idempotent across
+    workers and repeat lifespan runs.
+    """
+    dc_logger = logging.getLogger("dc_search")
+    if any(getattr(h, "_dc_search_handler", False) for h in dc_logger.handlers):
+        return
+    handler = logging.StreamHandler(sys.stdout)
+    handler._dc_search_handler = True  # type: ignore[attr-defined]  # idempotency marker
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+    dc_logger.addHandler(handler)
+    dc_logger.setLevel(logging.INFO)
+    dc_logger.propagate = False  # our handler emits warnings/errors too; avoid double-log
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _configure_logging()
     loop = asyncio.get_event_loop()
     # Bound the default executor for asyncio.to_thread offloads.
     # The default pool (min(32, os.cpu_count()+4)) is insufficient for

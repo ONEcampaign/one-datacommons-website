@@ -16,15 +16,43 @@ from __future__ import annotations
 import itertools
 import logging
 from contextvars import ContextVar
+from dataclasses import dataclass
 
 from pydantic import BaseModel, Field
 
 from dc_search import llm
+from dc_search.place_role import offerable_places_for_slot
 from dc_search.predicate import AskClarification, Predicate
 from dc_search.shape import Shape, ShapeContext
 from dc_search.telemetry import Usage
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Public result type
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class BindResult:
+    """Successful result from ``bind``.
+
+    Attributes:
+        shape: The elected ``Shape``.
+        predicates: One predicate per cross-product element (always a tuple).
+        usage: LLM token-usage telemetry, or ``None`` on the topic-shape path.
+        defaulted_recipient: ``True`` when a DevelopmentFinance recipient was
+            assigned by the unqualified-place default (i.e. no "to X" cue
+            was present in the query) — drives the
+            ``interpreted_place_as_recipient`` caveat in S6.
+    """
+
+    shape: Shape
+    predicates: tuple[Predicate, ...]
+    usage: Usage | None
+    defaulted_recipient: bool
+
 
 # ---------------------------------------------------------------------------
 # LLM output schema
@@ -132,6 +160,18 @@ Output format example (structured shape with two slots):
   ],
   "ask": null
 }
+
+user_named_places — when present under a slot, this block lists places that
+were resolved verbatim from the user's query and are on-taxonomy for that slot.
+These are authoritative; use them as follows:
+- "to X"   → bind X to that slot (X is the recipient/destination).
+- "from X" → do NOT bind X to that slot (X is the observation subject / donor;
+             leave the slot null so the system treats X as the entity).
+- Unqualified place (no "from"/"to" cue) AND a DevelopmentFinance shape →
+  default X to the offered recipient slot (the most common intent for
+  development-finance queries); the pipeline will emit an
+  "interpreted_place_as_recipient" caveat to signal the default was applied.
+- Any other shape type: follow normal slot-taxonomy matching rules.
 """
 
 
@@ -270,6 +310,40 @@ def _build_user_message(shape_context: ShapeContext) -> str:
                         lines.append(f"    {slot}: {shown} … (+{len(value_list) - 15} more)")
                     else:
                         lines.append(f"    {slot}: {value_list}")
+
+                    # Offer query-resolved places that are on-taxonomy for this slot.
+                    offerable = offerable_places_for_slot(
+                        resolved_places=shape_context.resolved_places,
+                        slot_values=values,
+                    )
+                    if offerable:
+                        lines.append("    user_named_places:")
+                        for dcid in offerable:
+                            # Find the canonical_name (field 1) and input_surface (field 2)
+                            # for this DCID in resolved_places (4-tuple: dcid, name, surface, role).
+                            display_name: str | None = None
+                            input_surface_label: str | None = None
+                            for (
+                                rp_dcid,
+                                rp_name,
+                                rp_surface,
+                                _rp_role,
+                            ) in shape_context.resolved_places:
+                                if rp_dcid == dcid:
+                                    display_name = rp_name
+                                    # Prefer input_surface over canonical slug (api-ux minor fix):
+                                    # when canonical_name is None, the surface is a better label.
+                                    input_surface_label = rp_surface
+                                    break
+                            label = (
+                                display_name
+                                if display_name is not None
+                                else (input_surface_label or dcid.rsplit("/", 1)[-1])
+                            )
+                            lines.append(
+                                f"      - {dcid} ({label})"
+                                "  [resolved from query — assign a role via directional language]"
+                            )
             else:
                 lines.append("  slot_taxonomy: (no constraint slots)")
 
@@ -357,8 +431,8 @@ async def bind(
     shape_context: ShapeContext,
     *,
     model: str | None = None,
-) -> tuple[Shape, tuple[Predicate, ...], Usage | None] | AskClarification:
-    """Bind slots to a chosen shape and return ``(Shape, predicates, Usage)``.
+) -> BindResult | AskClarification:
+    """Bind slots to a chosen shape and return a ``BindResult``.
 
     Makes one google-genai call via ``llm.generate_structured``.  On any
     failure (model returns an ``ask`` field, output validation fails, or the
@@ -369,14 +443,21 @@ async def bind(
     ``Predicate`` instances.  The caller receives a ``tuple[Predicate, ...]``
     in all cases (1-tuple for the single-value / wildcard / Topic paths).
 
+    For ``DevelopmentFinance`` shapes a deterministic post-correction step
+    runs before ``_explode_constraints``.  For each offered place P on a
+    place-typed slot S the query's directional language determines role:
+    donor → P must not appear in that slot; recipient → P is forced into that
+    slot; ambiguous + slot null → P is defaulted to that slot and
+    ``defaulted_recipient`` is set; ambiguous + slot already bound → kept.
+
     Args:
         shape_context: Prepared shape context from ``shape.build_shape_context``.
         model: Optional model string override (test override only).
             Production path passes nothing → uses ``llm.MODEL``.
 
     Returns:
-        A ``(Shape, tuple[Predicate, ...], Usage | None)`` tuple when binding
-        succeeds, or an ``AskClarification`` when it cannot.
+        A ``BindResult`` when binding succeeds, or an ``AskClarification``
+        when it cannot.
     """
     if not shape_context.shapes:
         _last_raw_output_var.set(None)
@@ -455,10 +536,69 @@ async def bind(
             measured_property=None,
             constraints={"relevantTopic": topic_dcid},
         )
-        return (chosen_shape, (predicate,), usage)
+        return BindResult(
+            shape=chosen_shape,
+            predicates=(predicate,),
+            usage=usage,
+            defaulted_recipient=False,
+        )
 
-    # Non-topic: explode list-valued slots into N scalar Predicates.
-    constraint_dicts = _explode_constraints(_bindings_to_dict(output.bindings))
+    # Non-topic: start with the raw LLM bindings dict.
+    constraints: dict[str, str | list[str] | None] = _bindings_to_dict(output.bindings)
+
+    # ------------------------------------------------------------------
+    # Deterministic post-correction (DevelopmentFinance shapes only).
+    # For each constraint slot that has offerable query-resolved places,
+    # apply directional-role logic to override or confirm the LLM's choice.
+    # This runs BEFORE _explode_constraints so the correction applies to
+    # scalar constraints (multi-value explode happens after).
+    # ------------------------------------------------------------------
+    defaulted_recipient = False
+
+    if chosen_shape.population_type == "DevelopmentFinance":
+        for slot, slot_values in chosen_shape.slot_taxonomy.items():
+            offerable = offerable_places_for_slot(
+                resolved_places=shape_context.resolved_places,
+                slot_values=slot_values,
+            )
+            if not offerable:
+                continue
+
+            for dcid in offerable:
+                # Read the pre-computed role from the 4-tuple (dcid, name, surface, role).
+                # The role was determined in the pipeline from the ORIGINAL full query —
+                # not from the per-variable scoped shape_query — so "from X to Y" grammar
+                # is correctly resolved even when shape_context.query is a scoped phrase
+                # like "grants in us, Togo" (Amendment 2 reconciliation).
+                role: str = "ambiguous"
+                for rp_dcid, _rp_name, _rp_surface, rp_role in shape_context.resolved_places:
+                    if rp_dcid == dcid:
+                        role = rp_role
+                        break
+
+                current = constraints.get(slot)
+                if role == "donor":
+                    # Donor must NOT appear in this constraint slot.
+                    # Clear if the LLM incorrectly bound it.
+                    if current == dcid:
+                        constraints[slot] = None
+                elif role == "recipient":
+                    # Recipient must appear in this slot (authoritative).
+                    constraints[slot] = dcid
+                else:
+                    # Ambiguous: apply unqualified-place default for DevFinance.
+                    if current is None:
+                        constraints[slot] = dcid
+                        defaulted_recipient = True
+                    elif current == dcid:
+                        # LLM already bound the offered DCID — the slot is
+                        # still ambiguous-defaulted; mark the caveat so callers
+                        # know the binding was not deterministic.
+                        defaulted_recipient = True
+                    # else: slot bound to a different value by LLM — keep as-is.
+
+    # Explode list-valued slots into N scalar Predicates.
+    constraint_dicts = _explode_constraints(constraints)
     predicates = tuple(
         Predicate(
             population_type=chosen_shape.population_type,
@@ -468,4 +608,9 @@ async def bind(
         for cd in constraint_dicts
     )
 
-    return (chosen_shape, predicates, usage)
+    return BindResult(
+        shape=chosen_shape,
+        predicates=predicates,
+        usage=usage,
+        defaulted_recipient=defaulted_recipient,
+    )

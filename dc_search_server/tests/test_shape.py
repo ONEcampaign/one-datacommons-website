@@ -507,3 +507,65 @@ def test_gdp_shapes_collapse_to_one_shape() -> None:
         "Amount_EconomicActivity_GrossDomesticProduction",
         "Amount_EconomicActivity_GrossDomesticProduction_PurchasingPowerParity",
     }
+
+
+# ---------------------------------------------------------------------------
+# ShapeContext.resolved_places — round-trip and default
+# ---------------------------------------------------------------------------
+
+
+def test_build_shape_context_resolved_places_round_trips(
+    census_candidates: list[StatVarFeatures],
+) -> None:
+    """resolved_places kwarg is stored verbatim on the returned ShapeContext."""
+    places: tuple[tuple[str, str | None, str | None, str], ...] = (
+        ("country/TGO", "Togo", "Togo", "recipient"),
+    )
+    ctx = build_shape_context(
+        "grants to Togo",
+        census_candidates,
+        resolved_places=places,
+    )
+    assert ctx.resolved_places == (("country/TGO", "Togo", "Togo", "recipient"),)
+
+
+def test_build_shape_context_resolved_places_default_empty(
+    census_candidates: list[StatVarFeatures],
+) -> None:
+    """When resolved_places is omitted, ShapeContext.resolved_places defaults to ()."""
+    ctx = build_shape_context("malaria deaths", census_candidates)
+    assert ctx.resolved_places == ()
+
+
+def test_build_shape_context_resolved_places_none_fields(
+    census_candidates: list[StatVarFeatures],
+) -> None:
+    """resolved_places entries may carry None for canonical_name and input_surface."""
+    places: tuple[tuple[str, str | None, str | None, str], ...] = (
+        ("country/TGO", None, None, "ambiguous"),
+    )
+    ctx = build_shape_context(
+        "grants to Togo",
+        census_candidates,
+        resolved_places=places,
+    )
+    assert ctx.resolved_places == (("country/TGO", None, None, "ambiguous"),)
+
+
+def test_build_shape_context_resolved_places_multiple(
+    census_candidates: list[StatVarFeatures],
+) -> None:
+    """Multiple (dcid, canonical_name, input_surface, role) 4-tuples stored in input order."""
+    places: tuple[tuple[str, str | None, str | None, str], ...] = (
+        ("country/USA", "United States", "us", "donor"),
+        ("country/TGO", "Togo", "Togo", "recipient"),
+    )
+    ctx = build_shape_context(
+        "grants from us to Togo",
+        census_candidates,
+        resolved_places=places,
+    )
+    assert ctx.resolved_places == (
+        ("country/USA", "United States", "us", "donor"),
+        ("country/TGO", "Togo", "Togo", "recipient"),
+    )

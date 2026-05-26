@@ -22,7 +22,8 @@ from dataclasses import field as dataclass_field
 import cachetools
 
 from dc_search import retrieval as graph
-from dc_search.retrieval import StatVarFeatures, TopicMetadata
+from dc_search.retrieval.indicator import StatVarFeatures
+from dc_search.retrieval.topics import TopicMetadata
 
 _log = logging.getLogger(__name__)
 
@@ -73,6 +74,20 @@ class ShapeContext:
     keyword_cues: dict[str, list[str]]  # cue_type → matched words from query
     topic_metadata: dict[str, TopicMetadata] = dataclass_field(default_factory=dict)
     """Fetched name+description for Topic shapes. Empty when no Topic shapes exist."""
+    resolved_places: tuple[tuple[str, str | None, str | None, str], ...] = ()
+    """(dcid, canonical_name, input_surface, role) 4-tuples for places resolved from the query.
+
+    ``role`` is one of ``"donor"``, ``"recipient"``, or ``"ambiguous"`` — computed
+    once per query from the ORIGINAL full query string by
+    ``place_role.place_directional_role``.  The scoped per-variable ``shape_query``
+    is used only for LLM shape election; directional role assignment always reads
+    the original grammar (Amendment 2).
+
+    Empty on the simple endpoint and when no place resolved.  When populated,
+    the slot-binder uses these to offer known places to place-typed constraint
+    slots (e.g. DevelopmentFinanceRecipient) and reads the pre-computed role
+    instead of re-scanning the (possibly scoped) query.
+    """
 
 
 # ---------------------------------------------------------------------------
@@ -489,6 +504,8 @@ def build_shape_context(
     query: str,
     candidates: list[StatVarFeatures],
     retrieval_scores: dict[str, float] | None = None,
+    *,
+    resolved_places: tuple[tuple[str, str | None, str | None, str], ...] = (),
 ) -> ShapeContext:
     """Group candidates by shape, derive slot taxonomies, extract keyword cues.
 
@@ -597,4 +614,5 @@ def build_shape_context(
         query=query,
         shapes=tuple(shapes),
         keyword_cues=keyword_cues,
+        resolved_places=resolved_places,
     )

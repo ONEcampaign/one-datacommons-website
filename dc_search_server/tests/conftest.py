@@ -11,6 +11,30 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
+def _reset_dc_search_logging() -> None:
+    """Restore the dc_search logger to a caplog-capturable state before each test.
+
+    ``src/dc_search/app.py`` calls ``logging.getLogger("dc_search")`` and sets
+    ``propagate = False`` plus attaches a StreamHandler so production logs go
+    directly to stdout without duplicating to the root logger.  When test_app.py
+    exercises that code path the mutation persists globally (Python's logging
+    hierarchy is process-wide), and pytest's ``caplog`` fixture — which captures
+    by injecting a handler at the root logger and relying on propagation — stops
+    seeing any records emitted under the ``dc_search.*`` hierarchy.
+
+    This fixture undoes that mutation before each test so caplog works everywhere.
+    The ``app.py`` behavior itself is correct for production; only its effect on
+    test isolation needs to be neutralised here.
+    """
+    import logging
+
+    lg = logging.getLogger("dc_search")
+    lg.propagate = True
+    for h in lg.handlers[:]:
+        lg.removeHandler(h)
+
+
+@pytest.fixture(autouse=True)
 def _clear_module_caches() -> None:
     """Clear all module-level LRU caches between tests."""
 

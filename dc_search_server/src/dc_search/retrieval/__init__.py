@@ -1,0 +1,154 @@
+"""High-level helpers for the four discrimination primitives.
+
+Each wraps the official ``datacommons-client`` and reshapes responses into
+compact Python objects easy to put in front of an LLM. All four are
+implemented over V2 — verified working against the custom DC where V1 paths
+are not exposed.
+
+The four primitives:
+
+1. ``resolve_place`` — name → candidate DCIDs (with type).
+2. ``stat_var_features`` — SV DCID → structured graph features (populationType,
+   measuredProperty, statType, measurementQualifier, constraint properties).
+   This is the LLM-friendly disambiguation view of a stat var.
+3. ``variables_for_entity`` — entity DCID → set of SV DCIDs that actually have
+   observations (discovery mode of /v2/observation). Critical filter.
+4. ``variable_group`` — V2 traversal of a StatVarGroup node into its parent
+   group, child groups, and child SVs.
+
+This package replaces the flat retrieval.py module. All externally-consumed
+names are re-exported here so every existing import path keeps resolving.
+"""
+
+from __future__ import annotations
+
+# get_client is a package attribute so that submodule network functions
+# calling ``graph.get_client()`` honor ``patch("dc_search.retrieval.get_client", ...)``.
+from dc_search.client import get_client
+
+# Caches and lock — defined exactly once in _cache.py and re-exported so
+# ``dc_search.retrieval.<cache_name>`` resolves for test fixture cleanup.
+from ._cache import (
+    _cache_lock,
+    _child_vars_of_groups_cache_lru,
+    _coverage_cache,
+    _entity_svs_cache,
+    _expand_topic_cache_lru,
+    _features_cache,
+    _observation_dates_cache,
+    _observation_facet_ranges_cache,
+    _place_names_cache,
+    _presence_cache,
+    _resolve_cache,
+    _resolve_indicator_cache_lru,
+    _stat_var_features_cache_lru,
+    _topic_arc_cache,
+    _topic_metadata_batch_cache_lru,
+    _variable_info_dates_cache,
+    _variables_for_entity_cache_lru,
+    _vgroups_cache,
+)
+
+# Degraded-call ContextVar and helpers — defined exactly once in _degraded.py
+# and re-exported here so import paths remain stable.
+from ._degraded import _dc_call_degraded, dc_call_was_degraded, reset_dc_call_degraded
+
+# Indicators / stat-var features / variable groups
+from .indicator import (
+    _BATCH_PROPS,
+    SV_DEFINING_PROPS,
+    IndicatorCandidate,
+    StatVarFeatures,
+    VariableGroupInfo,
+    resolve_indicator,
+    stat_var_features,
+    stat_var_features_batch,
+    variable_group,
+    variable_groups_batch,
+)
+
+# Observation / date-coverage / variable discovery
+from .observation import (
+    _VARIABLE_INFO_DATE_CAP,
+    DateCoverage,
+    _parse_observation,
+    observation_date_ranges,
+    observation_facet_ranges,
+    presence_for_entities,
+    variable_date_coverage,
+    variable_info_date_ranges,
+    variables_for_entities_batch,
+    variables_for_entity,
+)
+
+# ---------------------------------------------------------------------------
+# Concern submodule symbols
+# ---------------------------------------------------------------------------
+# Places
+from .places import (
+    PlaceCandidate,
+    place_names_batch,
+    resolve_place,
+    resolve_places_batch,
+)
+
+# Topics / group expansion
+from .topics import (
+    TopicMetadata,
+    child_vars_of_groups,
+    expand_topic,
+    topic_metadata_batch,
+)
+
+__all__ = [
+    "get_client",
+    "_cache_lock",
+    "_child_vars_of_groups_cache_lru",
+    "_coverage_cache",
+    "_entity_svs_cache",
+    "_expand_topic_cache_lru",
+    "_features_cache",
+    "_observation_dates_cache",
+    "_observation_facet_ranges_cache",
+    "_place_names_cache",
+    "_presence_cache",
+    "_resolve_cache",
+    "_resolve_indicator_cache_lru",
+    "_stat_var_features_cache_lru",
+    "_topic_arc_cache",
+    "_topic_metadata_batch_cache_lru",
+    "_variable_info_dates_cache",
+    "_variables_for_entity_cache_lru",
+    "_vgroups_cache",
+    "_dc_call_degraded",
+    "dc_call_was_degraded",
+    "reset_dc_call_degraded",
+    "PlaceCandidate",
+    "place_names_batch",
+    "resolve_place",
+    "resolve_places_batch",
+    "_BATCH_PROPS",
+    "IndicatorCandidate",
+    "StatVarFeatures",
+    "SV_DEFINING_PROPS",
+    "VariableGroupInfo",
+    "resolve_indicator",
+    "stat_var_features",
+    "stat_var_features_batch",
+    "variable_group",
+    "variable_groups_batch",
+    "DateCoverage",
+    "_VARIABLE_INFO_DATE_CAP",
+    "_parse_observation",
+    "observation_date_ranges",
+    "observation_facet_ranges",
+    "presence_for_entities",
+    "variable_date_coverage",
+    "variable_info_date_ranges",
+    "variables_for_entities_batch",
+    "variables_for_entity",
+    "TopicMetadata",
+    "child_vars_of_groups",
+    "expand_topic",
+    "topic_metadata_batch",
+]
