@@ -15,6 +15,7 @@ import sys
 from collections.abc import AsyncIterator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Literal
 
 import httpx
@@ -22,6 +23,7 @@ from datacommons_client.utils.error_handling import APIError as DCAPIError
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from dc_search import config, llm, pipeline, retrieval, slot_binding
@@ -411,3 +413,24 @@ async def search_simple(req: SearchRequest, request: Request) -> Response:
 @app.get("/api/dc-search/healthz", include_in_schema=False)
 async def healthz() -> dict[str, str]:
     return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Demo comparison page (static)
+# ---------------------------------------------------------------------------
+# Self-contained side-by-side comparison UI (dc-search vs Resolve vs
+# explore/detect) for sharing with the team. Mounted under the /api/dc-search
+# prefix nginx already proxies to this service, so it is reachable at
+# /api/dc-search/demo/ with no nginx change. The page calls the three live
+# endpoints cross-origin (CORS is `*` above) and defaults its API host to
+# dc-staging.one.org (override with ?base=<url>). html=True serves index.html
+# for the directory root and redirects the slash-less path to add the slash.
+# Registered last so the exact POST/GET routes above take precedence; the
+# mount only matches the /api/dc-search/demo/* sub-tree.
+_DEMO_DIR = Path(__file__).parent / "demo"
+if _DEMO_DIR.is_dir():
+    app.mount(
+        "/api/dc-search/demo",
+        StaticFiles(directory=_DEMO_DIR, html=True),
+        name="demo",
+    )

@@ -32,6 +32,11 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+# Ship the static demo page (HTML/CSS/JS/fonts) as package data so it is
+# available at runtime for the /api/dc-search/demo mount in app.py.
+[tool.setuptools.package-data]
+dc_search = ["demo/**/*"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
