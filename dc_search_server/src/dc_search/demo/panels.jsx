@@ -2,9 +2,9 @@
    Search Comparison — panels (v2)
    Per-method result renderers + diff summary.
 
-   Harmonisation pass: all three panels render results via a shared
-   <VariableCard>, wrap long lists in <ExpandableList>, and emit
-   the same "interpretation" strip up top.
+   All three panels render results via a shared <VariableCard>,
+   wrap long lists in <ExpandableList>, and emit the same
+   "interpretation" strip up top.
 
    Exposes: window.ResolvePanel, DcSearchPanel, DetectPanel
             normalize{Resolve,DcSearch,Detect}
@@ -199,11 +199,12 @@ function SectionHead({ children, right }) {
 /* SHARED — Expandable list ("show top N + show more")        */
 /* ---------------------------------------------------------- */
 
-function ExpandableList({ items, renderItem, defaultCount = 4, expandLabel = "result" }) {
+function ExpandableList({ items, renderItem, defaultCount = 4, expandLabel = "result", expandLabelPlural }) {
   const [expanded, setExpanded] = useState(false);
   if (!items || items.length === 0) return null;
   const visible = expanded ? items : items.slice(0, defaultCount);
   const remaining = items.length - defaultCount;
+  const plural = expandLabelPlural || `${expandLabel}s`;
   return (
     <div className="expandable">
       {visible.map((it, i) => renderItem(it, i))}
@@ -215,7 +216,7 @@ function ExpandableList({ items, renderItem, defaultCount = 4, expandLabel = "re
         >
           {expanded
             ? <>↑ Show top {defaultCount} only</>
-            : <>↓ Show {remaining} more {expandLabel}{remaining !== 1 ? "s" : ""}</>}
+            : <>↓ Show {remaining} more {remaining !== 1 ? plural : expandLabel}</>}
         </button>
       )}
     </div>
@@ -304,9 +305,75 @@ function InterpretationStrip({ kind, items }) {
             {it.label && <span className="interp-chip-k">{it.label}</span>}
             <span className="interp-chip-v">{it.value}</span>
             {it.extra && <span className="interp-chip-extra">{it.extra}</span>}
+            {it.note && <span className="interp-chip-note">{it.note}</span>}
           </span>
         ))}
       </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------- */
+/* DC-SEARCH — contained-in expansion block                  */
+/* ---------------------------------------------------------- */
+
+const CHILD_PLACE_CAP = 300;
+
+function ContainedInExpansion({ interp, streaming }) {
+  if (!interp || !interp.contained_in) return null;
+
+  const places = interp.places || [];
+  const expanded = places.filter(p => p.expanded && (p.children || []).length > 0);
+
+  // pending — intent fired, still streaming, no expanded places yet
+  if (expanded.length === 0 && streaming) {
+    return (
+      <div className="contained-in-pending">
+        <span className="streaming-pulse" /> expanding to children…
+      </div>
+    );
+  }
+
+  // intent fired, no children (stream done or not streaming)
+  if (expanded.length === 0) {
+    return (
+      <div className="contained-in-empty">
+        contained-in detected — no children expanded
+      </div>
+    );
+  }
+
+  // expanded — one parent block per expanded place
+  return (
+    <div className="contained-in-block">
+      <SectionHead right={`${expanded.length} parent${expanded.length !== 1 ? "s" : ""}`}>
+        Contained-in expansion
+      </SectionHead>
+      {expanded.map((p, i) => {
+        const n = p.children.length;
+        const capped = n >= CHILD_PLACE_CAP;
+        return (
+          <div className="contained-in-parent" key={p.dcid || p.input_name || i}>
+            <div className="contained-in-head">
+              <span>{p.name || p.input_name}</span>
+              <span> → {p.child_type} · </span>
+              <span>{n} {capped ? "children (server cap)" : `child${n !== 1 ? "ren" : ""}`}</span>
+            </div>
+            <ExpandableList
+              items={p.children}
+              defaultCount={8}
+              expandLabel="child"
+              expandLabelPlural="children"
+              renderItem={(c, j) => (
+                <span className="contained-in-child-chip" key={(c.dcid || "") + j}>
+                  <span className="interp-chip-v">{c.name || c.dcid}</span>
+                  {c.dcid && <span className="interp-chip-extra">{c.dcid}</span>}
+                </span>
+              )}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -401,13 +468,21 @@ function DcSearchBody({ resp, streaming, state }) {
   // Build interpretation chips
   const chips = [];
   for (const v of interp.variables || []) chips.push({ label: "var", value: v, kind: "variable" });
-  for (const p of interp.places || [])
+  // Intent pill before places so it reads "intent, then the places it applies to"
+  if (interp.contained_in) chips.push({ label: "intent", value: "contained-in", kind: "intent" });
+  for (const p of interp.places || []) {
+    const children = p.children || [];
+    const note = (p.expanded && p.child_type && children.length)
+      ? `→ ${children.length} × ${p.child_type}`
+      : undefined;
     chips.push({
       label: "place",
       value: p.name || p.input_name,
       extra: p.dcid,
       kind: "place",
+      note,
     });
+  }
   for (const d of interp.dates || [])
     chips.push({ label: "date", value: formatDate(d), kind: "date" });
 
@@ -416,11 +491,16 @@ function DcSearchBody({ resp, streaming, state }) {
   const totalSlots = Math.max(expectedResults || 0, answers.length);
   const totalVars = answers.reduce((s, a) => s + ((a && a.variables) || []).length, 0);
 
-  const showStreamingHint = streaming && (interp.variables || []).length === 0 && answers.length === 0;
+  const showStreamingHint = streaming
+    && (interp.variables || []).length === 0
+    && answers.length === 0
+    && !interp.contained_in;
 
   return (
     <div className="panel-body">
       {chips.length > 0 && <InterpretationStrip kind="Understood as" items={chips} />}
+
+      <ContainedInExpansion interp={interp} streaming={streaming} />
 
       {showStreamingHint && (
         <div className="interp-strip" style={{ borderLeftColor: "hsl(var(--green))" }}>
@@ -879,12 +959,20 @@ function Telemetry({ method, state }) {
   const totalIn  = (t.llm_usage || []).reduce((s, u) => s + (u.input_tokens || 0), 0);
   const totalOut = (t.llm_usage || []).reduce((s, u) => s + (u.output_tokens || 0), 0);
   const terminatedBy = raw.terminated_by || t.terminated_by;
+  const itp = raw.interpretation;
+  const itpExp = itp ? (itp.places || []).filter(p => p.expanded && (p.children || []).length) : [];
+  const itpChildTotal = itpExp.reduce((s, p) => s + p.children.length, 0);
+  const itpChildTypes = [...new Set(itpExp.map(p => p.child_type).filter(Boolean))].join(", ") || "—";
   return (
     <ExpanderShell label="Telemetry" open={open} setOpen={setOpen}>
       <TelemetryRow k="elapsed_s" v={raw.elapsed_s != null ? raw.elapsed_s.toFixed(2) : "—"} />
       <TelemetryRow k="terminated_by" v={terminatedBy} />
       <TelemetryRow k="n_candidates" v={t.n_candidates} />
       <TelemetryRow k="n_shapes" v={t.n_shapes} />
+      {itp && <TelemetryRow k="contained_in" v={String(!!itp.contained_in)} />}
+      {itp && itp.contained_in && (
+        <TelemetryRow k="children" v={`${itpChildTotal} · ${itpChildTypes}`} mono />
+      )}
       {raw.truncated && (
         <TelemetryRow k="truncated" v="true" valStyle={{ color: "hsl(var(--red))" }} />
       )}

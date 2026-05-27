@@ -5,8 +5,7 @@
 const { useState, useEffect, useCallback } = React;
 
 /* ============================================================
-   CONFIG — formerly tweakable, now baked in.
-   Adjust here to change defaults before handover.
+   CONFIG — baked-in defaults.
    ============================================================ */
 
 /* Base URL precedence:
@@ -272,6 +271,8 @@ function runDcSearchSSE(baseUrl, query, setState) {
             // places may have already arrived (rare but allowed); keep them
             places: (prev.raw.interpretation && prev.raw.interpretation.places) || [],
             dates: p.dates || [],
+            // preserve contained_in if a prior `places` event already set it
+            contained_in: !!(p.contained_in || (prev.raw.interpretation && prev.raw.interpretation.contained_in)),
           },
           // pre-allocate skeleton slots
           answers: slots,
@@ -285,7 +286,7 @@ function runDcSearchSSE(baseUrl, query, setState) {
       raw: {
         ...prev.raw,
         interpretation: {
-          ...(prev.raw.interpretation || { variables: [], dates: [] }),
+          ...(prev.raw.interpretation || { variables: [], dates: [], contained_in: false }),
           places: p.places || [],
         },
       },

@@ -877,6 +877,44 @@ code, kbd, samp { font-family: var(--font-mono); }
 }
 
 /* ============================================================
+   DC-SEARCH — contained-in expansion
+   ============================================================ */
+
+/* Intent pill on the strip (purple = intent, matching date semantics) */
+.interp-chip-intent { border-color: hsl(var(--purple)); }
+.interp-chip-intent .interp-chip-v { color: hsl(var(--purple)); text-transform: lowercase; }
+
+/* Per-chip "→ N × type" summary appended after the dcid */
+.interp-chip-note { font-size: 10px; color: hsl(var(--blue-dc)); font-weight: var(--fw-bold); }
+
+/* Expansion block — BELOW the min-height:84px strip, must not disturb alignment */
+.contained-in-block { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.contained-in-parent {
+  border-left: 3px solid hsl(var(--blue-dc));
+  background: hsl(var(--blue-washed));
+  padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.contained-in-head { font-size: 12px; font-weight: var(--fw-bold); color: hsl(var(--black)); }
+.contained-in-child-chip {
+  display: inline-flex; align-items: baseline; gap: 4px;
+  font-size: 11px; border: 1px solid hsl(var(--grey)); background: hsl(var(--white));
+  padding: 2px 8px;
+}
+
+/* Intent-true / zero-children — muted grey, informational (NOT warn/error) */
+.contained-in-empty {
+  font-size: 12px; color: hsl(var(--grey-italian)); font-style: italic;
+  padding: 6px 0;
+}
+
+/* Streaming pending */
+.contained-in-pending {
+  font-size: 12px; color: hsl(var(--grey-italian));
+  padding: 6px 0; display: flex; align-items: center; gap: 6px;
+}
+
+/* ============================================================
    UTILS
    ============================================================ */
 .hidden { display: none !important; }
