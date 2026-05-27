@@ -67,6 +67,8 @@ def _clear_module_caches() -> None:
             "_vgroups_cache",
             "_topic_arc_cache",
             "_place_names_cache",
+            "_child_places_cache_lru",
+            "_parent_countries_cache_lru",
         ):
             cache = getattr(_retrieval, cache_name, None)
             if cache is not None and hasattr(cache, "clear"):

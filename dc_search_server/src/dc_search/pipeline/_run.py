@@ -17,7 +17,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from dc_search import extraction, retrieval, slot_binding
+from dc_search import extraction, place_hierarchy, retrieval, slot_binding
 from dc_search import hooks as hooks_module
 from dc_search import shape as shape_module
 from dc_search.events import (
@@ -32,7 +32,12 @@ from dc_search.events import (
 )
 from dc_search.extraction import ExtractedDate
 from dc_search.hooks import HookContext
-from dc_search.interpretation import PlaceAlternative, QueryInterpretation, ResolvedPlace
+from dc_search.interpretation import (
+    ChildPlace,
+    PlaceAlternative,
+    QueryInterpretation,
+    ResolvedPlace,
+)
 from dc_search.place_role import classify_place_roles, place_directional_role
 from dc_search.predicate import AnswerCollection, AskClarification, Predicate
 from dc_search.shape import ShapeContext, build_shape_context
@@ -102,6 +107,24 @@ class _VariableResult:
     variable_label: str | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class PlaceResolution:
+    """Resolved place DCIDs plus child-expansion metadata for one query.
+
+    ``dcids`` is the full ordered, de-duplicated resolved set (parents then
+    children) consumed by availability re-rank and the role tuples. The two
+    maps drive the interpretation echo only; empty when contained_in is false.
+
+    The two maps are treated as read-only and are never hashed.
+    """
+
+    dcids: tuple[str, ...]
+    parent_to_children: dict[
+        str, tuple[tuple[str, str | None], ...]
+    ]  # parent dcid -> (child_dcid, child_name)
+    parent_to_child_type: dict[str, str]  # parent dcid -> derived child type
+
+
 # ---------------------------------------------------------------------------
 # Topic-dominance helpers
 # ---------------------------------------------------------------------------
@@ -152,23 +175,29 @@ def _dominant_topic_dcid(
 
 async def _build_resolved_places(
     entities: list[str] | None,
-    dcid_task: asyncio.Task[list[str]],
+    resolution_task: asyncio.Task[PlaceResolution],
 ) -> list[ResolvedPlace]:
-    """Await dcid_task, fetch canonical names, assemble ResolvedPlace objects.
+    """Await resolution_task, fetch canonical names, assemble ResolvedPlace objects.
 
     Fail-open: name-fetch failure leaves name/type as None. Returns [] when no
     places resolved. Alternatives come from resolve_places_batch candidates;
     rank-1 is primary, the rest become alternatives.
+
+    For parents with contained-in expansion, emits one top-level ResolvedPlace
+    per parent (input entity) with ``expanded=True``, ``child_type``, and
+    ``children`` populated. Children are NOT emitted as their own top-level entries.
+    Non-expanded parents render exactly as today.
     """
     try:
-        place_dcids = await dcid_task
+        resolution = await resolution_task
     except Exception:
         return []
 
+    place_dcids = list(resolution.dcids)
     if not place_dcids:
         return []
 
-    # Fetch canonical names for resolved DCIDs.
+    # Fetch canonical names for the full resolved DCID set (parents + children).
     try:
         names_map = await asyncio.to_thread(retrieval.place_names_batch, dcids=tuple(place_dcids))
     except Exception:
@@ -186,31 +215,85 @@ async def _build_resolved_places(
         except Exception:
             resolved_all = {}
 
-    out: list[ResolvedPlace] = []
-    for i, dcid in enumerate(place_dcids):
-        name_entry = names_map.get(dcid, (None, None))
-        canonical_name, place_type = name_entry
+    from dc_search.config import load_config
 
-        # Use entities[i] if available; fallback to dcid.
-        input_name: str = ent_list[i] if i < len(ent_list) else dcid
+    cap = load_config().child_place_cap
+
+    out: list[ResolvedPlace] = []
+    for entity in ent_list:
+        # Look up this entity's rank-1 DCID from resolve_places_batch.
+        candidates = resolved_all.get(entity)
+        if candidates:
+            parent_dcid: str | None = candidates[0].dcid
+        else:
+            parent_dcid = None
 
         # Alternatives: all candidates except the primary (rank-1).
-        alt_candidates = resolved_all.get(input_name, ())
+        alt_candidates = resolved_all.get(entity, ())
         alternatives: list[PlaceAlternative] = [
             PlaceAlternative(dcid=c.dcid, name=None, type=c.dominant_type)
             for c in alt_candidates
-            if c.dcid != dcid
+            if c.dcid != parent_dcid
         ]
 
-        out.append(
-            ResolvedPlace(
-                input_name=input_name,
-                dcid=dcid,
-                name=canonical_name,
-                type=place_type,
-                alternatives=alternatives,
+        if parent_dcid is None:
+            # Entity failed to resolve — emit a stub with expanded=False.
+            out.append(
+                ResolvedPlace(
+                    input_name=entity,
+                    dcid=None,
+                    expanded=False,
+                )
             )
-        )
+            continue
+
+        name_entry = names_map.get(parent_dcid, (None, None))
+        canonical_name, place_type = name_entry
+
+        # Expansion echo: emit children if this parent was expanded.
+        children_raw = resolution.parent_to_children.get(parent_dcid)
+        if children_raw is not None:
+            child_type = resolution.parent_to_child_type.get(parent_dcid)
+            children: list[ChildPlace] = [
+                ChildPlace(dcid=d, name=n, type=child_type) for d, n in children_raw[:cap]
+            ]
+            out.append(
+                ResolvedPlace(
+                    input_name=entity,
+                    dcid=parent_dcid,
+                    name=canonical_name,
+                    type=place_type,
+                    alternatives=alternatives,
+                    expanded=True,
+                    child_type=child_type,
+                    children=children,
+                )
+            )
+        else:
+            out.append(
+                ResolvedPlace(
+                    input_name=entity,
+                    dcid=parent_dcid,
+                    name=canonical_name,
+                    type=place_type,
+                    alternatives=alternatives,
+                )
+            )
+
+    # Simple endpoint (entities=None) — fall back to the flat DCID list as today.
+    if not ent_list:
+        for dcid in place_dcids:
+            name_entry = names_map.get(dcid, (None, None))
+            canonical_name, place_type = name_entry
+            out.append(
+                ResolvedPlace(
+                    input_name=dcid,
+                    dcid=dcid,
+                    name=canonical_name,
+                    type=place_type,
+                )
+            )
+
     return out
 
 
@@ -327,35 +410,152 @@ async def _short_circuit_topic(
     return answer
 
 
-async def _resolve_place_dcids(query: str, entities: list[str] | None) -> list[str]:
+async def _expand_children(
+    parent_dcids: list[str],
+) -> tuple[list[str], dict[str, tuple[tuple[str, str | None], ...]], dict[str, str]]:
+    """Resolve each parent to its immediate children.
+
+    Returns ``(combined_dcids, parent_to_children, parent_to_child_type)``.
+    Fully fail-open — any network step failure leaves parents intact and the
+    affected parent contributes no children. Never raises.
+    """
+    if not parent_dcids:
+        return ([], {}, {})
+
+    # place_names_batch is warm-cached after _resolve_place_dcids ran.
+    try:
+        names_map = await asyncio.to_thread(retrieval.place_names_batch, dcids=tuple(parent_dcids))
+    except Exception:
+        names_map = {}
+    parent_type: dict[str, str | None] = {
+        p: names_map.get(p, (None, None))[1] for p in parent_dcids
+    }
+
+    # Admin-area parents need a country lookup for the per-country remap.
+    admin_parents = [
+        p for p in parent_dcids if place_hierarchy.needs_parent_country(parent_type[p])
+    ]
+    countries: dict[str, str | None] = {}
+    if admin_parents:
+        try:
+            countries = await asyncio.to_thread(
+                retrieval.parent_countries_batch, parent_dcids=tuple(admin_parents)
+            )
+        except Exception:
+            countries = {p: None for p in admin_parents}
+
+    # Derive each parent's country arg and immediate child type, grouping parents
+    # by child type for one fetch per type.
+    parent_to_child_type: dict[str, str] = {}
+    groups: dict[str, list[str]] = {}  # child_type -> [parent_dcids]
+    for p in parent_dcids:
+        if parent_type[p] == "Country":
+            # Country parents use their own DCID as the country arg.
+            country = p
+        elif p in admin_parents:
+            country = countries.get(p)
+        else:
+            country = None
+        ctype = place_hierarchy.default_child_type(
+            parent_dcid=p,
+            parent_type=parent_type[p],
+            parent_country=country,
+        )
+        if ctype is None:
+            continue
+        parent_to_child_type[p] = ctype
+        groups.setdefault(ctype, []).append(p)
+
+    from dc_search.config import load_config
+
+    cap = load_config().child_place_cap
+
+    # One child_places_batch call per distinct child type.
+    parent_to_children: dict[str, tuple[tuple[str, str | None], ...]] = {}
+    for ctype, parents_of_type in groups.items():
+        try:
+            batch = await asyncio.to_thread(
+                retrieval.child_places_batch,
+                parent_dcids=tuple(parents_of_type),
+                child_type=ctype,
+                cap=cap,
+            )
+        except Exception:
+            batch = {p: () for p in parents_of_type}
+        for p, kids in batch.items():
+            # Record child_type for every parent for which we derived it, even if
+            # zero children returned (so the UI can surface "expanded to County (0 found)").
+            parent_to_children[p] = kids
+
+    # Build the combined DCID list: parents first (input order), then children
+    # (sorted-by-dcid per parent, in parent input order), deduplicating.
+    seen: set[str] = set()
+    combined: list[str] = []
+    for p in parent_dcids:
+        if p not in seen:
+            combined.append(p)
+            seen.add(p)
+    for p in parent_dcids:
+        for child_dcid, _child_name in parent_to_children.get(p, ()):
+            if child_dcid not in seen:
+                combined.append(child_dcid)
+                seen.add(child_dcid)
+
+    return (combined, parent_to_children, parent_to_child_type)
+
+
+async def _resolve_place_dcids(
+    query: str, entities: list[str] | None, *, contained_in: bool = False
+) -> PlaceResolution:
     """Resolve place names to DCIDs for availability re-rank.
 
     Default endpoint (entities non-None): trust LLM extraction, including empty
     list (no place found). Never falls back to token path.
 
     Simple endpoint (entities=None): use deterministic extract_place_tokens.
+    ``contained_in`` is always False for the simple endpoint.
+
+    When ``contained_in=True`` (default endpoint only), expands each resolved
+    parent to include its immediate child places in the resolved set. The
+    contained_in=False path is byte-identical to the old list[str] behavior
+    (no extra fetches; short-circuits before any child/country call).
     """
     if entities is not None:
         # Default endpoint: trust LLM-extracted names authoritatively.
         # Empty list means no place found; do not fall back to token path.
         if not entities:
-            return []
+            return PlaceResolution(dcids=(), parent_to_children={}, parent_to_child_type={})
         # Resolve to DCIDs via mixer in one batched call.
         resolved = await asyncio.to_thread(retrieval.resolve_places_batch, names=tuple(entities))
         # Iterate in order to match input entity ordering.
         n_unresolved = 0
-        place_dcids: list[str] = []
+        parent_dcids: list[str] = []
         for name in entities:
             candidates = resolved.get(name)
             if candidates:
-                place_dcids.append(candidates[0].dcid)
+                parent_dcids.append(candidates[0].dcid)
             else:
                 n_unresolved += 1
         if n_unresolved:
             logger.debug("resolve_place_dcids: %d entity/entities unresolved", n_unresolved)
-        return place_dcids
-    # Simple endpoint: deterministic token fallback.
-    return await asyncio.to_thread(shape_module.extract_place_tokens, query)
+
+        # Short-circuit when not expanding — byte-identical resolved set to today.
+        if not contained_in:
+            return PlaceResolution(
+                dcids=tuple(parent_dcids), parent_to_children={}, parent_to_child_type={}
+            )
+
+        # Expansion path: fetch children and build combined DCID set.
+        combined, parent_to_children, parent_to_child_type = await _expand_children(parent_dcids)
+        return PlaceResolution(
+            dcids=tuple(combined),
+            parent_to_children=parent_to_children,
+            parent_to_child_type=parent_to_child_type,
+        )
+
+    # Simple endpoint: deterministic token fallback; contained_in is always False here.
+    dcids = await asyncio.to_thread(shape_module.extract_place_tokens, query)
+    return PlaceResolution(dcids=tuple(dcids), parent_to_children={}, parent_to_child_type={})
 
 
 async def _rerank_by_availability(
@@ -419,8 +619,8 @@ async def _enrich_topic_metadata(shape_ctx: ShapeContext) -> ShapeContext:
     if not topic_dcids:
         return shape_ctx
     topic_meta = await asyncio.to_thread(retrieval.topic_metadata_batch, dcids=topic_dcids)
-    # Carry resolved_places forward (G1/R3): without this the field is silently
-    # dropped before bind and the place-offer feature becomes a no-op.
+    # Carry resolved_places forward: without this the field is silently dropped
+    # before bind and the place-offer feature becomes a no-op.
     return ShapeContext(
         query=shape_ctx.query,
         shapes=shape_ctx.shapes,
@@ -483,6 +683,7 @@ async def _build_resolved_places_triples(
     entities: list[str] | None,
     *,
     query: str = "",
+    parent_to_children: dict[str, tuple[tuple[str, str | None], ...]] | None = None,
 ) -> tuple[tuple[str, str | None, str | None, str], ...]:
     """Build (dcid, canonical_name, input_surface, role) 4-tuples for the default endpoint.
 
@@ -496,7 +697,12 @@ async def _build_resolved_places_triples(
     came from that specific entity.  Calls place_names_batch over the FULL
     resolved set (cold on first request; warm on subsequent calls within the same
     process — racing with the Places-event task, so the first request may be cold)
-    so the name cache is primed for every resolved place (review P3).
+    so the name cache is primed for every resolved place.
+
+    When ``parent_to_children`` is provided (contained-in expansion), appends one
+    4-tuple per child place with ``input_surface=None`` and role ``"ambiguous"``
+    (Decision 1 — children were never typed by the user so the directional scan
+    returns "ambiguous" for them; they are donors by default).
 
     Returns empty tuple for the simple endpoint (entities=None) — the simple
     endpoint does not use place-role binding.
@@ -535,6 +741,20 @@ async def _build_resolved_places_triples(
         )
         tuples.append((dcid, canonical_name, entity, role))
 
+    # Append child 4-tuples when contained-in expansion is active.
+    # Children carry input_surface=None; the directional scan naturally returns
+    # "ambiguous" (they were never typed by the user — Decision 1).
+    if parent_to_children:
+        for _parent, children in parent_to_children.items():
+            for child_dcid, child_name in children:
+                child_role = place_directional_role(
+                    query=query,
+                    input_surface=None,
+                    canonical_name=child_name,
+                    place_dcid=child_dcid,
+                )
+                tuples.append((child_dcid, child_name, None, child_role))
+
     return tuple(tuples)
 
 
@@ -545,6 +765,7 @@ async def _run_one_variable(
     place_dcids: list[str],
     dates: list[ExtractedDate] | None = None,
     entities: list[str] | None = None,
+    parent_to_children: dict[str, tuple[tuple[str, str | None], ...]] | None = None,
     slot_bind_usages: list[Usage],
 ) -> _VariableResult:
     """Shared pipeline core: retrieve → shape → bind → materialize.
@@ -558,6 +779,10 @@ async def _run_one_variable(
             the shape-building query alongside ``variable`` so slot-binding sees
             the place without the sibling variables. Ignored when ``variable`` is
             None (simple endpoint). None on the simple endpoint.
+        parent_to_children: Optional map of parent DCID -> child (dcid, name) tuples
+            produced by contained-in expansion. Forwarded to
+            ``_build_resolved_places_triples`` so child 4-tuples are included.
+            None on the simple endpoint and when contained_in=False.
         slot_bind_usages: Mutable list appended to for LLM usage aggregation.
 
     Returns:
@@ -596,7 +821,9 @@ async def _run_one_variable(
     # scoped `shape_query` built below — so directional grammar ("from X to Y") is
     # preserved across fan-out (Amendment 2).  Simple endpoint passes resolved_places=()
     # — it already works on the full query and does not use place-role binding.
-    resolved_places = await _build_resolved_places_triples(place_dcids, entities, query=query)
+    resolved_places = await _build_resolved_places_triples(
+        place_dcids, entities, query=query, parent_to_children=parent_to_children
+    )
 
     # Shape context. In multi-variable fan-out, scope the shape-building query
     # to the per-variable phrase (plus any extracted places) rather than the full
@@ -624,13 +851,13 @@ async def _run_one_variable(
     if isinstance(bound, AskClarification):
         return _VariableResult(outcome=bound, n_candidates=n_candidates, n_shapes=n_shapes)
 
-    # Unpack BindResult via attribute access (review G2/A1).
+    # Unpack BindResult via attribute access.
     predicates = bound.predicates
     defaulted_recipient = bound.defaulted_recipient
 
     # Donor set = resolved places NOT bound as a constraint value in any predicate.
     # Pass donor_dcids as the HookContext.place_dcids so materialize_many treats
-    # only donors as observation entities (R1).
+    # only donors as observation entities.
     donor_dcids: tuple[str, ...] = classify_place_roles(
         resolved_places=resolved_places, predicates=predicates
     )
@@ -667,8 +894,8 @@ async def _run_one_variable(
         if needs_enrichment:
             final_sv_set = list(answer.sv_set)
 
-            # Backup feature fetch: collect any DCIDs still missing from raw_candidates
-            # (S5 hook is the primary owner; this catches any gaps).
+            # Backup feature fetch: collect any DCIDs still missing from raw_candidates.
+            # This catches any gaps not covered by the S5 hook.
             missing_dcids = [d for d in final_sv_set if d not in retrieved_dcids]
             merged_features: dict[str, object] = {f.dcid: f for f in feature_list}
             if missing_dcids:
@@ -682,7 +909,7 @@ async def _run_one_variable(
 
             # Recompute availability + date_range against the donor set over the
             # final sv_set. When donor_dcids is empty (every place was a recipient)
-            # we OMIT availability — None, not False (review G4).
+            # we OMIT availability — None, not False.
             if donor_dcids:
                 try:
                     new_avail, new_ranges, new_degraded = await asyncio.to_thread(
@@ -894,10 +1121,13 @@ async def stream_default(query: str) -> AsyncIterator[Event]:
             dates=extracted_dates,
             expected_results=1,
             truncated=truncated,
+            contained_in=extraction_result.contained_in,
         )
         # Start tasks after Interpretation is yielded.
-        dcid_task: asyncio.Task[list[str]] = asyncio.create_task(
-            _resolve_place_dcids(query, extracted_entities)
+        dcid_task: asyncio.Task[PlaceResolution] = asyncio.create_task(
+            _resolve_place_dcids(
+                query, extracted_entities, contained_in=extraction_result.contained_in
+            )
         )
         place_event_task: asyncio.Task[list[ResolvedPlace]] = asyncio.create_task(
             _build_resolved_places(extracted_entities, dcid_task)
@@ -905,9 +1135,14 @@ async def stream_default(query: str) -> AsyncIterator[Event]:
         slot_bind_usages: list[Usage] = []
 
         async def _run_zero_variable() -> _VariableResult:
-            place_dcids_resolved = await dcid_task
+            # Await shared resolution task; thread parent_to_children through.
+            resolution = await dcid_task
             return await _run_one_variable(
-                None, query, place_dcids=place_dcids_resolved, slot_bind_usages=slot_bind_usages
+                None,
+                query,
+                place_dcids=list(resolution.dcids),
+                parent_to_children=resolution.parent_to_children or None,
+                slot_bind_usages=slot_bind_usages,
             )
 
         run_task: asyncio.Task[_VariableResult] = asyncio.create_task(_run_zero_variable())
@@ -947,13 +1182,16 @@ async def stream_default(query: str) -> AsyncIterator[Event]:
         dates=extracted_dates,
         expected_results=len(variables),
         truncated=truncated,
+        contained_in=extraction_result.contained_in,
     )
 
     slot_bind_usages = []
     deadline = t0 + _ROUTE_TIMEOUT_S
 
     # DCID-only resolution task; fan-out branches await this.
-    dcid_task = asyncio.create_task(_resolve_place_dcids(query, extracted_entities))
+    dcid_task = asyncio.create_task(
+        _resolve_place_dcids(query, extracted_entities, contained_in=extraction_result.contained_in)
+    )
 
     # Places-event task; awaits dcid_task then does name fetch + assembly.
     # Only Places depends on this; fan-out never awaits it. Fail-open.
@@ -963,13 +1201,14 @@ async def stream_default(query: str) -> AsyncIterator[Event]:
         async with _FANOUT_SEM:
             try:
                 # Await shared dcid_task (resolved once per query).
-                place_dcids_resolved = await dcid_task
+                resolution = await dcid_task
                 vr = await _run_one_variable(
                     v,
                     query,
-                    place_dcids=place_dcids_resolved,
+                    place_dcids=list(resolution.dcids),
                     dates=extracted_dates,
                     entities=extracted_entities,
+                    parent_to_children=resolution.parent_to_children or None,
                     slot_bind_usages=slot_bind_usages,
                 )
             except Exception as exc:
@@ -1032,16 +1271,20 @@ async def stream_simple(query: str) -> AsyncIterator[Event]:
     slot_bind_usages: list[Usage] = []
     deadline = t0 + _ROUTE_TIMEOUT_S
 
-    # entities=None triggers token fallback in _resolve_place_dcids.
-    dcid_task: asyncio.Task[list[str]] = asyncio.create_task(_resolve_place_dcids(query, None))
+    # entities=None triggers token fallback in _resolve_place_dcids; contained_in is
+    # always False on the simple endpoint (no extraction LLM → never set).
+    dcid_task: asyncio.Task[PlaceResolution] = asyncio.create_task(
+        _resolve_place_dcids(query, None)
+    )
     place_event_task: asyncio.Task[list[ResolvedPlace]] = asyncio.create_task(
         _build_resolved_places(None, dcid_task)
     )
 
     async def _run_simple_variable() -> _VariableResult:
-        place_dcids_resolved = await dcid_task
+        resolution = await dcid_task
+        # Simple endpoint: parent_to_children is always empty (no expansion).
         return await _run_one_variable(
-            None, query, place_dcids=place_dcids_resolved, slot_bind_usages=slot_bind_usages
+            None, query, place_dcids=list(resolution.dcids), slot_bind_usages=slot_bind_usages
         )
 
     run_task: asyncio.Task[_VariableResult] = asyncio.create_task(_run_simple_variable())
@@ -1114,6 +1357,7 @@ async def _drain(stream: AsyncIterator[Event], query: str) -> PipelineResult:
             variables=interp_evt.variables if interp_evt else [],
             places=places_evt.places if places_evt else [],
             dates=interp_evt.dates if interp_evt else [],
+            contained_in=interp_evt.contained_in if interp_evt else False,
         )
 
     return PipelineResult(

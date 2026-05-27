@@ -15,6 +15,7 @@ from ._run import (
     _ROUTE_TIMEOUT_S,
     MAX_VARIABLES,
     PipelineResult,
+    PlaceResolution,
     _build_resolved_places,
     _drain,
     _resolve_place_dcids,
@@ -28,6 +29,7 @@ from ._run import (
 
 __all__ = [
     "PipelineResult",
+    "PlaceResolution",
     "run_default",
     "run_simple",
     "stream_default",

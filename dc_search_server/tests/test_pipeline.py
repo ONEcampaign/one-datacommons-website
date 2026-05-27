@@ -137,7 +137,7 @@ def _patch_all(monkeypatch, *, retrieval_candidates=None, extra_patches=None):
     # Place extraction → no places (clean availability path).
     monkeypatch.setattr(_shape_mod, "extract_place_tokens", lambda query: [])
 
-    # bind returns a successful BindResult by default (attribute access per review A1)
+    # bind returns a successful BindResult by default
     async def _mock_bind(shape_context, *, model=None):
         return BindResult(
             shape=_SHAPE, predicates=(_PREDICATE,), usage=_USAGE, defaulted_recipient=False
@@ -364,7 +364,14 @@ async def test_run_default_truncates_at_max_variables(monkeypatch):
     original_run_one = _run._run_one_variable
 
     async def _capturing_run_one(
-        variable, query, *, place_dcids, dates=None, entities=None, slot_bind_usages
+        variable,
+        query,
+        *,
+        place_dcids,
+        dates=None,
+        entities=None,
+        parent_to_children=None,
+        slot_bind_usages,
     ):
         if variable is not None:
             processed.append(variable)
@@ -374,6 +381,7 @@ async def test_run_default_truncates_at_max_variables(monkeypatch):
             place_dcids=place_dcids,
             dates=dates,
             entities=entities,
+            parent_to_children=parent_to_children,
             slot_bind_usages=slot_bind_usages,
         )
 
@@ -413,7 +421,14 @@ async def test_run_default_fan_out_is_concurrent(monkeypatch):
     monkeypatch.setattr(_retrieval, "place_names_batch", lambda *, dcids: {})
 
     async def _slow_run_one(
-        variable, query, *, place_dcids, dates=None, entities=None, slot_bind_usages
+        variable,
+        query,
+        *,
+        place_dcids,
+        dates=None,
+        entities=None,
+        parent_to_children=None,
+        slot_bind_usages,
     ):
         await asyncio.sleep(DELAY)
         slot_bind_usages.append(_USAGE)
@@ -628,7 +643,7 @@ async def test_simple_endpoint_skips_resolve_places_batch(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# B4: _resolve_union_availability hybrid tests
+# _resolve_union_availability hybrid tests
 # ---------------------------------------------------------------------------
 
 
@@ -780,11 +795,9 @@ def test_resolve_union_availability_topic_path_uses_variables_for_entities_batch
 
 
 def test_resolve_union_availability_custom_in_envelope_but_absent_at_place_not_in_custom_present():
-    """Correctness invariant (generic-review G1):
-
-    A custom var present in cov.envelopes but with NO {E,V} pair at the resolved
-    places must be excluded from custom_present AND must NOT be re-queried via
-    presence_for_entities (it is in the map, so not base-DC).
+    """Correctness invariant: A custom var present in cov.envelopes but with NO {E,V}
+    pair at the resolved places must be excluded from custom_present AND must NOT be
+    re-queried via presence_for_entities (it is in the map, so not base-DC).
     """
     from unittest.mock import patch
 
@@ -843,7 +856,11 @@ async def test_build_resolved_places_populates_alternatives(monkeypatch):
     )
 
     async def _resolved():
-        return ["country/KEN"]
+        from dc_search.pipeline import PlaceResolution
+
+        return PlaceResolution(
+            dcids=("country/KEN",), parent_to_children={}, parent_to_child_type={}
+        )
 
     dcid_task = asyncio.create_task(_resolved())
     places = await _build_resolved_places(["Kenya"], dcid_task)
@@ -862,9 +879,15 @@ async def test_build_resolved_places_populates_alternatives(monkeypatch):
 async def test_build_resolved_places_fail_open_on_name_error(monkeypatch):
     """_build_resolved_places returns places with name=None when name fetch fails."""
     import dc_search.retrieval as _retrieval
-    from dc_search.pipeline import _build_resolved_places
+    from dc_search.pipeline import PlaceResolution, _build_resolved_places
+    from dc_search.retrieval import PlaceCandidate
 
-    monkeypatch.setattr(_retrieval, "resolve_places_batch", lambda *, names: {})
+    # resolve_places_batch resolves Kenya → country/KEN so the entity lookup succeeds.
+    monkeypatch.setattr(
+        _retrieval,
+        "resolve_places_batch",
+        lambda *, names: {"Kenya": (PlaceCandidate(dcid="country/KEN"),)},
+    )
 
     # place_names_batch raises — fail-open → name=None
     def _raise(*, dcids):
@@ -873,7 +896,9 @@ async def test_build_resolved_places_fail_open_on_name_error(monkeypatch):
     monkeypatch.setattr(_retrieval, "place_names_batch", _raise)
 
     async def _resolved():
-        return ["country/KEN"]
+        return PlaceResolution(
+            dcids=("country/KEN",), parent_to_children={}, parent_to_child_type={}
+        )
 
     dcid_task = asyncio.create_task(_resolved())
     places = await _build_resolved_places(["Kenya"], dcid_task)
@@ -1059,7 +1084,7 @@ async def test_drain_assembles_interpretation_from_interpretation_and_places_eve
 @pytest.mark.asyncio
 async def test_drain_degenerate_interpretation_simple_endpoint():
     """Simple endpoint: _drain assembles interpretation with empty variables/dates
-    but Places populated (degenerate interpretation per R-C)."""
+    but Places populated (degenerate interpretation)."""
     from dc_search.events import Done, DoneTelemetry, Places, Result, Stage, Start
     from dc_search.interpretation import QueryInterpretation, ResolvedPlace
     from dc_search.pipeline import _drain
@@ -1306,7 +1331,7 @@ async def test_topic_short_circuit_enriches_member_variables(monkeypatch):
 
 
 # ===========================================================================
-# S6 Characterization tests: place-role-aware CRS_DAC binding
+# Characterization tests: place-role-aware CRS_DAC binding
 # ===========================================================================
 
 # Shared CRS_DAC stubs for the three characterization cases.
@@ -1476,7 +1501,7 @@ async def test_default_grants_from_us_to_togo(monkeypatch):
     assert len(result.answers) == 1
     answer = result.answers[0]
 
-    # Explicit assertions (review G5) — not just "matches run_simple".
+    # Explicit assertions — not just "matches run_simple".
     # Predicate carries the TGO recipient constraint.
     assert answer.predicate.constraints.get("DevelopmentFinanceRecipient") == "country/TGO"
 
@@ -1799,7 +1824,7 @@ async def test_build_resolved_places_triples_alignment_with_unresolved_middle(mo
 
 
 # ===========================================================================
-# Amendment 2 critical integration test: real bind + precomputed roles
+# Critical integration test: real bind + precomputed roles
 # ===========================================================================
 # This test exercises the REAL slot_binding.bind (LLM mocked, not bind mocked)
 # so the post-correction runs off the precomputed role in resolved_places.
@@ -1812,7 +1837,7 @@ async def test_build_resolved_places_triples_alignment_with_unresolved_middle(mo
 
 @pytest.mark.asyncio
 async def test_real_bind_directional_role_from_precomputed_4tuple(monkeypatch):
-    """AMENDMENT 2 integration: real bind reads pre-computed role from 4-tuple.
+    """Real bind reads pre-computed role from 4-tuple.
 
     Query: "grants from us to togo"
     - Extraction: variables=["grants"], entities=["us", "togo"]
@@ -1952,3 +1977,296 @@ async def test_real_bind_directional_role_from_precomputed_4tuple(monkeypatch):
             f"Unexpected caveat: 'interpreted_place_as_recipient' should be absent "
             f"when role='recipient' was explicit (not defaulted). Got: {a.caveats}"
         )
+
+
+# ===========================================================================
+# contained-in expansion tests
+# ===========================================================================
+
+
+@pytest.mark.asyncio
+async def test_expansion_pipeline_adds_children_to_resolved_set(monkeypatch):
+    """contained_in=True expands country/USA → states are added to the resolved set
+    alongside the parent.
+
+    Asserts:
+    - resolved place_dcids passed to _run_one_variable contains country/USA, geoId/01, geoId/06
+    - the Places event's ResolvedPlace for country/USA has expanded=True, child_type=="State",
+      and children listing the two state children
+    - child_places_batch was called with child_type="State"
+    """
+    import dc_search.extraction as _ext
+    import dc_search.pipeline._run as _run
+    import dc_search.retrieval as _retrieval
+    from dc_search.extraction import QueryExtraction
+    from dc_search.retrieval import PlaceCandidate
+
+    _patch_all(monkeypatch)
+
+    # LLM extracts contained_in=True with USA as parent.
+    async def _mock_extract(query, *, model=None):
+        return (
+            QueryExtraction(
+                variables=["poverty rate"],
+                entities=["United States"],
+                dates=[],
+                contained_in=True,
+            ),
+            _EXTRACT_USAGE,
+        )
+
+    monkeypatch.setattr(_ext, "extract", _mock_extract)
+
+    # Resolve "United States" → country/USA (Country type).
+    monkeypatch.setattr(
+        _retrieval,
+        "resolve_places_batch",
+        lambda *, names: {"United States": (PlaceCandidate(dcid="country/USA"),)},
+    )
+
+    # place_names_batch returns names for parent + two children.
+    monkeypatch.setattr(
+        _retrieval,
+        "place_names_batch",
+        lambda *, dcids: {
+            "country/USA": ("United States", "Country"),
+            "geoId/01": ("Alabama", "State"),
+            "geoId/06": ("California", "State"),
+        },
+    )
+
+    # child_places_batch returns Alabama + California for USA (sorted by dcid).
+    child_batch_calls: list[dict] = []
+
+    def _mock_child_places_batch(*, parent_dcids, child_type, cap=200):
+        child_batch_calls.append({"parent_dcids": parent_dcids, "child_type": child_type})
+        return {
+            "country/USA": (
+                ("geoId/01", "Alabama"),
+                ("geoId/06", "California"),
+            )
+        }
+
+    monkeypatch.setattr(_retrieval, "child_places_batch", _mock_child_places_batch)
+    # parent_countries_batch: USA is a Country type, so it won't be called for country lookup.
+    monkeypatch.setattr(_retrieval, "parent_countries_batch", lambda *, parent_dcids: {})
+
+    # Capture what place_dcids _run_one_variable receives.
+    received_place_dcids: list[list[str]] = []
+    original_run_one = _run._run_one_variable
+
+    async def _capturing_run_one(
+        variable,
+        query,
+        *,
+        place_dcids,
+        dates=None,
+        entities=None,
+        parent_to_children=None,
+        slot_bind_usages,
+    ):
+        received_place_dcids.append(list(place_dcids))
+        return await original_run_one(
+            variable,
+            query,
+            place_dcids=place_dcids,
+            dates=dates,
+            entities=entities,
+            parent_to_children=parent_to_children,
+            slot_bind_usages=slot_bind_usages,
+        )
+
+    monkeypatch.setattr(_run, "_run_one_variable", _capturing_run_one)
+
+    from dc_search import pipeline
+
+    # Collect SSE events to inspect Places.
+    events = []
+    async for event in pipeline.stream_default("poverty rate in US states"):
+        events.append(event)
+
+    # Assert (1): resolved place_dcids contains all three DCIDs.
+    assert len(received_place_dcids) == 1, (
+        f"Expected one _run_one_variable call; got {len(received_place_dcids)}"
+    )
+    dcids_sent = received_place_dcids[0]
+    assert "country/USA" in dcids_sent, f"country/USA missing from {dcids_sent}"
+    assert "geoId/01" in dcids_sent, f"geoId/01 missing from {dcids_sent}"
+    assert "geoId/06" in dcids_sent, f"geoId/06 missing from {dcids_sent}"
+
+    # Assert (2): the Places event's ResolvedPlace for USA has expansion fields set.
+    from dc_search.events import Places
+
+    places_events = [e for e in events if isinstance(e, Places)]
+    assert len(places_events) == 1, f"Expected 1 Places event; got {len(places_events)}"
+    resolved_places = places_events[0].places
+    usa_place = next((p for p in resolved_places if p.dcid == "country/USA"), None)
+    assert usa_place is not None, "country/USA missing from Places event"
+    assert usa_place.expanded is True, "expected expanded=True for country/USA"
+    assert usa_place.child_type == "State", (
+        f"expected child_type='State'; got {usa_place.child_type!r}"
+    )
+    child_dcids = [c.dcid for c in usa_place.children]
+    assert "geoId/01" in child_dcids, f"geoId/01 missing from children: {child_dcids}"
+    assert "geoId/06" in child_dcids, f"geoId/06 missing from children: {child_dcids}"
+
+    # Assert (3): child_places_batch called with child_type="State".
+    assert len(child_batch_calls) == 1, (
+        f"Expected 1 child_places_batch call; got {len(child_batch_calls)}"
+    )
+    assert child_batch_calls[0]["child_type"] == "State", (
+        f"Expected child_type='State'; got {child_batch_calls[0]['child_type']!r}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_expansion_back_compat_no_child_fetch_when_contained_in_false(monkeypatch):
+    """contained_in=False (default) must make zero child_places_batch / parent_countries_batch
+    calls and return PlaceResolution with empty maps — byte-identical to the pre-expansion path.
+
+    Also verifies that the Places event ResolvedPlaces have expanded=False and empty children.
+    """
+    import dc_search.extraction as _ext
+    import dc_search.retrieval as _retrieval
+    from dc_search.extraction import QueryExtraction
+    from dc_search.retrieval import PlaceCandidate
+
+    _patch_all(monkeypatch)
+
+    # LLM extraction with contained_in defaulting to False.
+    async def _mock_extract(query, *, model=None):
+        return (
+            QueryExtraction(
+                variables=["poverty rate"],
+                entities=["Kenya"],
+                dates=[],
+                contained_in=False,
+            ),
+            _EXTRACT_USAGE,
+        )
+
+    monkeypatch.setattr(_ext, "extract", _mock_extract)
+
+    monkeypatch.setattr(
+        _retrieval,
+        "resolve_places_batch",
+        lambda *, names: {"Kenya": (PlaceCandidate(dcid="country/KEN"),)},
+    )
+    monkeypatch.setattr(
+        _retrieval,
+        "place_names_batch",
+        lambda *, dcids: {"country/KEN": ("Kenya", "Country")},
+    )
+
+    # Spy on child_places_batch and parent_countries_batch — must never be called.
+    child_batch_call_count = 0
+    countries_batch_call_count = 0
+
+    def _spy_child_places(*, parent_dcids, child_type, cap=200):
+        nonlocal child_batch_call_count
+        child_batch_call_count += 1
+        return {}
+
+    def _spy_parent_countries(*, parent_dcids):
+        nonlocal countries_batch_call_count
+        countries_batch_call_count += 1
+        return {}
+
+    monkeypatch.setattr(_retrieval, "child_places_batch", _spy_child_places)
+    monkeypatch.setattr(_retrieval, "parent_countries_batch", _spy_parent_countries)
+
+    from dc_search import pipeline
+
+    events = []
+    async for event in pipeline.stream_default("poverty rate in Kenya"):
+        events.append(event)
+
+    # Zero child/country fetches.
+    assert child_batch_call_count == 0, (
+        f"child_places_batch must not be called when contained_in=False; "
+        f"got {child_batch_call_count} calls"
+    )
+    assert countries_batch_call_count == 0, (
+        f"parent_countries_batch must not be called when contained_in=False; "
+        f"got {countries_batch_call_count} calls"
+    )
+
+    # Places event: non-expanded ResolvedPlace.
+    from dc_search.events import Places
+
+    places_events = [e for e in events if isinstance(e, Places)]
+    assert len(places_events) == 1
+    resolved_places = places_events[0].places
+    assert len(resolved_places) == 1
+    rp = resolved_places[0]
+    assert rp.dcid == "country/KEN"
+    assert rp.expanded is False, f"expected expanded=False; got {rp.expanded!r}"
+    assert rp.children == [], f"expected empty children; got {rp.children!r}"
+
+
+@pytest.mark.asyncio
+async def test_build_resolved_places_triples_children_get_ambiguous_role():
+    """CRS directional + expansion: children appended via parent_to_children
+    land with role='ambiguous' and the parent's existing directional role is unchanged.
+
+    Focused unit test on _build_resolved_places_triples with a parent_to_children map
+    representing the contained-in expansion scenario.
+    """
+    from dc_search.pipeline._run import _build_resolved_places_triples
+    from dc_search.retrieval import PlaceCandidate
+
+    # "grants from us" — USA is the donor.
+    query = "grants from us"
+
+    def _mock_resolve_batch(*, names):
+        return {"us": (PlaceCandidate(dcid="country/USA"),)}
+
+    from unittest.mock import patch
+
+    names_map = {
+        "country/USA": ("United States", "Country"),
+        "geoId/01": ("Alabama", "State"),
+        "geoId/06": ("California", "State"),
+    }
+
+    with (
+        patch("dc_search.retrieval.resolve_places_batch", _mock_resolve_batch),
+        patch(
+            "dc_search.retrieval.place_names_batch",
+            lambda *, dcids: {k: v for k, v in names_map.items() if k in dcids},
+        ),
+    ):
+        triples = await _build_resolved_places_triples(
+            place_dcids=["country/USA", "geoId/01", "geoId/06"],
+            entities=["us"],
+            query=query,
+            parent_to_children={
+                "country/USA": (
+                    ("geoId/01", "Alabama"),
+                    ("geoId/06", "California"),
+                )
+            },
+        )
+
+    # Parent (USA) should have a directional role (donor given "from us").
+    dcid_to_role = {t[0]: t[3] for t in triples}
+    assert "country/USA" in dcid_to_role, "USA parent must be in 4-tuples"
+    # USA should be "donor" from "grants from us" grammar.
+    assert dcid_to_role["country/USA"] == "donor", (
+        f"Expected USA role='donor' from 'grants from us'; got {dcid_to_role['country/USA']!r}"
+    )
+
+    # Children must be present with role="ambiguous".
+    assert "geoId/01" in dcid_to_role, "geoId/01 child must be in 4-tuples"
+    assert "geoId/06" in dcid_to_role, "geoId/06 child must be in 4-tuples"
+    assert dcid_to_role["geoId/01"] == "ambiguous", (
+        f"Expected geoId/01 role='ambiguous'; got {dcid_to_role['geoId/01']!r}"
+    )
+    assert dcid_to_role["geoId/06"] == "ambiguous", (
+        f"Expected geoId/06 role='ambiguous'; got {dcid_to_role['geoId/06']!r}"
+    )
+
+    # Children have input_surface=None (they were never typed by the user).
+    child_surfaces = {t[0]: t[2] for t in triples if t[0] in ("geoId/01", "geoId/06")}
+    assert child_surfaces["geoId/01"] is None
+    assert child_surfaces["geoId/06"] is None

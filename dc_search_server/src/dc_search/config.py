@@ -32,6 +32,7 @@ class Config:
     resolve_target: str
     initial_k: int = 80
     max_shapes: int | None = 10
+    child_place_cap: int = 300
 
 
 @cache
@@ -78,6 +79,15 @@ def load_config() -> Config:
         )
     max_shapes = max_shapes_val or None
 
+    # Maximum number of child places fetched per parent when contained_in=True.
+    # Bounds the mixer payload and downstream coverage POST entity set.
+    # Default 300; override with DC_SEARCH_CHILD_PLACE_CAP (must be >= 1).
+    child_place_cap = int((os.getenv("DC_SEARCH_CHILD_PLACE_CAP") or "300").strip() or "300")
+    if child_place_cap < 1:
+        raise ValueError(
+            f"DC_SEARCH_CHILD_PLACE_CAP must be a positive integer. Got: {child_place_cap}."
+        )
+
     return Config(
         api_url=api_url,
         api_key=api_key,
@@ -85,4 +95,5 @@ def load_config() -> Config:
         resolve_target=resolve_target,
         initial_k=initial_k,
         max_shapes=max_shapes,
+        child_place_cap=child_place_cap,
     )

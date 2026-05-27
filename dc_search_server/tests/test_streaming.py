@@ -276,7 +276,14 @@ async def test_stream_default_partial_failure(monkeypatch: pytest.MonkeyPatch) -
     original_run_one = _run._run_one_variable
 
     async def _sometimes_fail(
-        variable, query, *, place_dcids, dates=None, entities=None, slot_bind_usages
+        variable,
+        query,
+        *,
+        place_dcids,
+        dates=None,
+        entities=None,
+        parent_to_children=None,
+        slot_bind_usages,
     ):
         nonlocal call_count
         call_count += 1
@@ -288,6 +295,7 @@ async def test_stream_default_partial_failure(monkeypatch: pytest.MonkeyPatch) -
             place_dcids=place_dcids,
             dates=dates,
             entities=entities,
+            parent_to_children=parent_to_children,
             slot_bind_usages=slot_bind_usages,
         )
 
@@ -326,7 +334,7 @@ async def test_stream_default_zero_variable_fallback(monkeypatch: pytest.MonkeyP
     """extraction returns [] → start → interpretation(expected_results=1, variables=[]) →
     places → result(index=0) → done; done.telemetry.llm_usage[0].step == "extract".
 
-    A Places event is emitted on the zero-variable path (R-B).  The overall
+    A Places event is emitted on the zero-variable path.  The overall
     structure is still start → interpretation → {places, result} → done.
     """
     import dc_search.extraction as _ext
@@ -347,7 +355,7 @@ async def test_stream_default_zero_variable_fallback(monkeypatch: pytest.MonkeyP
     assert interp.variables == []
     assert interp.expected_results == 1
 
-    # Places appears after Interpretation (R-B ordering guarantee).
+    # Places appears after Interpretation.
     result_events = [e for e in events if isinstance(e, Result)]
     places_events = [e for e in events if isinstance(e, Places)]
     assert len(result_events) == 1, f"Expected one Result, got {result_events}"
@@ -389,7 +397,14 @@ async def test_drain_preserves_order(monkeypatch: pytest.MonkeyPatch) -> None:
     delays = {"var_0": 0.06, "var_1": 0.04, "var_2": 0.01}
 
     async def _delayed_run(
-        variable, query, *, place_dcids, dates=None, entities=None, slot_bind_usages
+        variable,
+        query,
+        *,
+        place_dcids,
+        dates=None,
+        entities=None,
+        parent_to_children=None,
+        slot_bind_usages,
     ):
         delay = delays.get(variable or "", 0.01)
         await asyncio.sleep(delay)
@@ -638,7 +653,14 @@ async def test_disconnect_cancels_fanout(monkeypatch: pytest.MonkeyPatch) -> Non
     cancelled_vars: list[str] = []
 
     async def _patched_run_one(
-        variable, query, *, place_dcids, dates=None, entities=None, slot_bind_usages
+        variable,
+        query,
+        *,
+        place_dcids,
+        dates=None,
+        entities=None,
+        parent_to_children=None,
+        slot_bind_usages,
     ):
         try:
             if variable == "slow":
@@ -752,7 +774,14 @@ async def test_stream_default_soft_deadline(monkeypatch: pytest.MonkeyPatch) -> 
     cancelled_vars: list[str] = []
 
     async def _patched_run_one(
-        variable, query, *, place_dcids, dates=None, entities=None, slot_bind_usages
+        variable,
+        query,
+        *,
+        place_dcids,
+        dates=None,
+        entities=None,
+        parent_to_children=None,
+        slot_bind_usages,
     ):
         try:
             if variable == "slow":
@@ -795,7 +824,14 @@ async def test_stream_simple_soft_deadline(monkeypatch: pytest.MonkeyPatch) -> N
     _patch_all(monkeypatch)
 
     async def _slow_run_one(
-        variable, query, *, place_dcids, dates=None, entities=None, slot_bind_usages
+        variable,
+        query,
+        *,
+        place_dcids,
+        dates=None,
+        entities=None,
+        parent_to_children=None,
+        slot_bind_usages,
     ):
         await asyncio.sleep(10)
         slot_bind_usages.append(_USAGE)
@@ -856,7 +892,7 @@ async def test_stream_default_places_event_present_and_after_interpretation(
 async def test_perf_interpretation_before_places_under_slow_resolve(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """(R-J a) Interpretation index < Places index even under a SLOW _resolve_place_dcids mock.
+    """Interpretation index < Places index even under a SLOW _resolve_place_dcids mock.
 
     Guards the perf-neutrality guarantee: the interpretation event is yielded
     BEFORE place_task is even started, so no place-resolution latency can delay it.
@@ -872,9 +908,11 @@ async def test_perf_interpretation_before_places_under_slow_resolve(
     _patch_all(monkeypatch)
 
     # SLOW place resolution — sleeps before returning
-    async def _slow_resolve_place_dcids(query, entities):
+    async def _slow_resolve_place_dcids(query, entities, *, contained_in=False):
+        from dc_search.pipeline import PlaceResolution
+
         await asyncio.sleep(0.2)
-        return []
+        return PlaceResolution(dcids=(), parent_to_children={}, parent_to_child_type={})
 
     monkeypatch.setattr(_run, "_resolve_place_dcids", _slow_resolve_place_dcids)
 
@@ -896,7 +934,7 @@ async def test_perf_interpretation_before_places_under_slow_resolve(
 async def test_perf_result_emitted_while_place_task_pending(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """(R-J b) A Result event is emitted while place_event_task is still pending.
+    """A Result event is emitted while place_event_task is still pending.
 
     Guards the B1 regression: place_names_batch latency must NOT block result
     emission.  With a slow place_names_batch and a fast _run_one_variable, at
@@ -915,7 +953,14 @@ async def test_perf_result_emitted_while_place_task_pending(
 
     # Fast variable pipeline (near-instant)
     async def _fast_run_one(
-        variable, query, *, place_dcids, dates=None, entities=None, slot_bind_usages
+        variable,
+        query,
+        *,
+        place_dcids,
+        dates=None,
+        entities=None,
+        parent_to_children=None,
+        slot_bind_usages,
     ):
         slot_bind_usages.append(_USAGE)
         answer = _ANSWER.model_copy(update={"variable_label": variable})
@@ -999,7 +1044,7 @@ def test_result_outcome_kind_matches_answer() -> None:
 
 
 # ---------------------------------------------------------------------------
-# F3: simple-endpoint timeout cancels place tasks (no orphaned tasks)
+# simple-endpoint timeout cancels place tasks (no orphaned tasks)
 # ---------------------------------------------------------------------------
 
 
@@ -1020,7 +1065,14 @@ async def test_stream_simple_timeout_cancels_place_tasks(
     _patch_all(monkeypatch)
 
     async def _slow_run_one(
-        variable, query, *, place_dcids, dates=None, entities=None, slot_bind_usages
+        variable,
+        query,
+        *,
+        place_dcids,
+        dates=None,
+        entities=None,
+        parent_to_children=None,
+        slot_bind_usages,
     ):
         await asyncio.sleep(10)
         return _pipeline._VariableResult(outcome=_ANSWER, n_candidates=1, n_shapes=1)
@@ -1062,14 +1114,14 @@ async def test_stream_simple_timeout_cancels_place_tasks(
 
 
 # ---------------------------------------------------------------------------
-# F4: zero-variable path — Result emitted while place_event_task still pending
+# zero-variable path — Result emitted while place_event_task still pending
 # ---------------------------------------------------------------------------
 
 
 async def test_zero_variable_result_not_blocked_by_place_task(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """(F4) On the zero-variable fallback path, a Result is emitted while
+    """On the zero-variable fallback path, a Result is emitted while
     place_event_task is still pending (slow place_names_batch).
 
     Guards that the zero-variable path uses the same FIRST_COMPLETED interleave
@@ -1088,7 +1140,14 @@ async def test_zero_variable_result_not_blocked_by_place_task(
 
     # Fast _run_one_variable — completes near-instantly.
     async def _fast_run_one(
-        variable, query, *, place_dcids, dates=None, entities=None, slot_bind_usages
+        variable,
+        query,
+        *,
+        place_dcids,
+        dates=None,
+        entities=None,
+        parent_to_children=None,
+        slot_bind_usages,
     ):
         slot_bind_usages.append(_USAGE)
         return _pipeline._VariableResult(outcome=_ANSWER, n_candidates=1, n_shapes=1)

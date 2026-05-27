@@ -68,6 +68,7 @@ class Interpretation(BaseModel):
     dates: list[ExtractedDate]
     expected_results: int  # == len(variables) post-cap (1 for the fallback)
     truncated: bool
+    contained_in: bool = False
 
 
 class Places(BaseModel):

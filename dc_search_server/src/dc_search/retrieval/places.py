@@ -14,7 +14,13 @@ import httpx
 
 from dc_search import retrieval as graph
 
-from ._cache import _cache_lock, _place_names_cache, _resolve_cache
+from ._cache import (
+    _cache_lock,
+    _child_places_cache_lru,
+    _parent_countries_cache_lru,
+    _place_names_cache,
+    _resolve_cache,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -172,4 +178,104 @@ def place_names_batch(*, dcids: tuple[str, ...]) -> dict[str, tuple[str | None, 
 
     with _cache_lock:
         _place_names_cache[cache_key] = result
+    return result
+
+
+def child_places_batch(
+    *, parent_dcids: tuple[str, ...], child_type: str, cap: int = 300
+) -> dict[str, tuple[tuple[str, str | None], ...]]:
+    """Batch-fetch immediate child places (dcid, name) for parents; cached, fail-open.
+
+    One client.node.fetch_place_children(list(parent_dcids), children_type=child_type,
+    as_dict=True) call. Names arrive in the same payload. Each parent maps to a
+    sorted-by-dcid, capped tuple of (child_dcid, child_name). Cached by
+    (sorted parent_dcids, child_type, cap). Transient error -> every parent maps to ().
+
+    Args:
+        parent_dcids: Tuple of parent place DCIDs to fetch children for.
+        child_type: The place type of the children to fetch (e.g. "State", "Country").
+        cap: Maximum number of children to return per parent (sorted-by-dcid truncation).
+
+    Returns:
+        Mapping from parent DCID to a sorted, capped tuple of (child_dcid, child_name).
+        Missing or errored parents map to an empty tuple.
+    """
+    result: dict[str, tuple[tuple[str, str | None], ...]] = {p: () for p in parent_dcids}
+    if not parent_dcids:
+        return {}
+
+    # cap is part of the cache key so a test using a small cap does not pollute
+    # the production-cap entry — intended by design.
+    cache_key = (tuple(sorted(parent_dcids)), child_type, cap)
+    with _cache_lock:
+        cached = _child_places_cache_lru.get(cache_key)
+    if cached is not None:
+        return cached
+
+    try:
+        client = graph.get_client()
+        raw = client.node.fetch_place_children(
+            list(parent_dcids), children_type=child_type, as_dict=True
+        )
+    except Exception:
+        return result
+
+    for parent, children in raw.items():
+        if parent not in result:
+            continue
+        pairs = [(c["dcid"], c.get("name")) for c in (children or []) if c.get("dcid")]
+        pairs.sort(key=lambda t: t[0])
+        result[parent] = tuple(pairs[:cap])
+
+    with _cache_lock:
+        _child_places_cache_lru[cache_key] = result
+    return result
+
+
+def parent_countries_batch(*, parent_dcids: tuple[str, ...]) -> dict[str, str | None]:
+    """Batch-fetch each parent's containing country DCID; cached, fail-open.
+
+    One client.node.fetch_property_values(list(parent_dcids), "containedInPlace+",
+    constraints="typeOf:Country", out=True) call. Each parent maps to the first
+    Country ancestor DCID, or None. Cached by sorted parent_dcids. Transient
+    error -> every parent maps to None.
+
+    Args:
+        parent_dcids: Tuple of place DCIDs whose country ancestor to look up.
+
+    Returns:
+        Mapping from parent DCID to the first containing country DCID, or None
+        when no country ancestor is found or on transient error.
+    """
+    from .indicator import _arc_values, _node_arcs
+
+    result: dict[str, str | None] = {p: None for p in parent_dcids}
+    if not parent_dcids:
+        return {}
+
+    cache_key = tuple(sorted(parent_dcids))
+    with _cache_lock:
+        cached = _parent_countries_cache_lru.get(cache_key)
+    if cached is not None:
+        return cached
+
+    try:
+        client = graph.get_client()
+        raw = client.node.fetch(
+            node_dcids=list(parent_dcids),
+            expression="->containedInPlace+{typeOf:Country}",
+        ).to_dict()
+    except Exception:
+        return result
+
+    for dcid in parent_dcids:
+        arcs = _node_arcs(raw, dcid)
+        if not arcs:
+            continue
+        vals = _arc_values(arcs, "containedInPlace+")
+        if vals:
+            result[dcid] = vals[0]
+
+    with _cache_lock:
+        _parent_countries_cache_lru[cache_key] = result
     return result

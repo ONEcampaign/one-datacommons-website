@@ -34,6 +34,8 @@ def clear_caches():
     retrieval._child_vars_of_groups_cache_lru.clear()
     retrieval._expand_topic_cache_lru.clear()
     retrieval._topic_metadata_batch_cache_lru.clear()
+    retrieval._child_places_cache_lru.clear()
+    retrieval._parent_countries_cache_lru.clear()
     yield
 
 
@@ -100,9 +102,13 @@ def test_cache_maxsizes():
     assert retrieval._resolve_cache.maxsize == 2048
     assert retrieval._features_cache.maxsize == 4096
     assert retrieval._entity_svs_cache.maxsize == 512
-    assert retrieval._presence_cache.maxsize == 1024
+    # Bumped to 2048 with child-place expansion (larger entity-set tuples).
+    assert retrieval._presence_cache.maxsize == 2048
+    assert retrieval._coverage_cache.maxsize == 2048
     assert retrieval._vgroups_cache.maxsize == 1024
     assert retrieval._topic_arc_cache.maxsize == 2048
+    assert retrieval._child_places_cache_lru.maxsize == 2048
+    assert retrieval._parent_countries_cache_lru.maxsize == 2048
 
 
 # ---------------------------------------------------------------------------
@@ -545,3 +551,172 @@ def test_observation_facet_ranges_cache_hit_avoids_second_call(mock_dc_client):
 def test_observation_facet_ranges_cache_is_lru():
     """_observation_facet_ranges_cache is a cachetools.LRUCache."""
     assert isinstance(retrieval._observation_facet_ranges_cache, cachetools.LRUCache)
+
+
+# ---------------------------------------------------------------------------
+# child_places_batch — parse, sort, cap, fail-open, cache
+# ---------------------------------------------------------------------------
+
+
+def test_child_places_batch_empty_returns_empty():
+    """Empty parent_dcids returns {} without a client call."""
+    with patch("dc_search.retrieval.get_client") as mock_gc:
+        result = retrieval.child_places_batch(parent_dcids=(), child_type="State")
+    mock_gc.assert_not_called()
+    assert result == {}
+
+
+def test_child_places_batch_parses_and_sorts(mock_dc_client):
+    """Parses child dicts and returns sorted-by-dcid tuples."""
+    mock_dc_client.node.fetch_place_children.return_value = {
+        "country/USA": [
+            {"dcid": "geoId/06", "name": "California"},
+            {"dcid": "geoId/01", "name": "Alabama"},
+        ]
+    }
+    result = retrieval.child_places_batch(parent_dcids=("country/USA",), child_type="State")
+    assert result["country/USA"] == (("geoId/01", "Alabama"), ("geoId/06", "California"))
+
+
+def test_child_places_batch_caps(mock_dc_client):
+    """Children are capped to `cap` lowest-dcid entries after sorting."""
+    mock_dc_client.node.fetch_place_children.return_value = {
+        "country/USA": [
+            {"dcid": "geoId/05", "name": "Arkansas"},
+            {"dcid": "geoId/04", "name": "Arizona"},
+            {"dcid": "geoId/03", "name": "Alaska (fake)"},
+            {"dcid": "geoId/02", "name": "Second"},
+            {"dcid": "geoId/01", "name": "First"},
+        ]
+    }
+    result = retrieval.child_places_batch(parent_dcids=("country/USA",), child_type="State", cap=2)
+    # After sort: geoId/01, geoId/02, geoId/03, geoId/04, geoId/05 — cap to first 2.
+    assert result["country/USA"] == (("geoId/01", "First"), ("geoId/02", "Second"))
+
+
+def test_child_places_batch_fail_open(mock_dc_client):
+    """Transient error returns every parent mapped to ()."""
+    mock_dc_client.node.fetch_place_children.side_effect = RuntimeError("mixer unavailable")
+    result = retrieval.child_places_batch(
+        parent_dcids=("country/USA", "country/KEN"), child_type="AdministrativeArea1"
+    )
+    assert result["country/USA"] == ()
+    assert result["country/KEN"] == ()
+
+
+def test_child_places_batch_cache_hit(mock_dc_client):
+    """Identical second call does not issue another fetch_place_children call."""
+    mock_dc_client.node.fetch_place_children.return_value = {
+        "country/USA": [{"dcid": "geoId/01", "name": "Alabama"}]
+    }
+    first = retrieval.child_places_batch(parent_dcids=("country/USA",), child_type="State")
+    second = retrieval.child_places_batch(parent_dcids=("country/USA",), child_type="State")
+    assert first == second
+    assert mock_dc_client.node.fetch_place_children.call_count == 1
+
+
+def test_child_places_batch_different_cap_bypasses_cache(mock_dc_client):
+    """A different cap is a different cache key — triggers a second fetch."""
+    mock_dc_client.node.fetch_place_children.return_value = {
+        "country/USA": [
+            {"dcid": "geoId/01", "name": "Alabama"},
+            {"dcid": "geoId/02", "name": "Alaska"},
+        ]
+    }
+    retrieval.child_places_batch(parent_dcids=("country/USA",), child_type="State", cap=1)
+    retrieval.child_places_batch(parent_dcids=("country/USA",), child_type="State", cap=2)
+    assert mock_dc_client.node.fetch_place_children.call_count == 2
+
+
+def test_child_places_batch_skips_children_without_dcid(mock_dc_client):
+    """Child dicts missing a truthy dcid are silently skipped."""
+    mock_dc_client.node.fetch_place_children.return_value = {
+        "country/USA": [
+            {"dcid": "", "name": "Bad"},
+            {"name": "Also Bad"},
+            {"dcid": "geoId/01", "name": "Alabama"},
+        ]
+    }
+    result = retrieval.child_places_batch(parent_dcids=("country/USA",), child_type="State")
+    assert result["country/USA"] == (("geoId/01", "Alabama"),)
+
+
+# ---------------------------------------------------------------------------
+# parent_countries_batch — parse, fail-open, cache
+# ---------------------------------------------------------------------------
+
+
+def _make_containedin_response(dcid_to_country: dict) -> dict:
+    """Build a minimal v2/node response for parent_countries_batch."""
+    data: dict = {}
+    for dcid, country_dcid in dcid_to_country.items():
+        arcs: dict = {}
+        if country_dcid is not None:
+            arcs["containedInPlace+"] = {"nodes": [{"dcid": country_dcid}]}
+        data[dcid] = {"arcs": arcs}
+    return {"data": data}
+
+
+def test_parent_countries_batch_empty_returns_empty():
+    """Empty parent_dcids returns {} without a client call."""
+    with patch("dc_search.retrieval.get_client") as mock_gc:
+        result = retrieval.parent_countries_batch(parent_dcids=())
+    mock_gc.assert_not_called()
+    assert result == {}
+
+
+def test_parent_countries_batch_parses_country_dcid(mock_dc_client):
+    """Happy-path: each parent maps to its country DCID."""
+    mock_dc_client.node.fetch.return_value.to_dict.return_value = _make_containedin_response(
+        {
+            "geoId/06": "country/USA",
+            "geoId/07": "country/USA",
+        }
+    )
+    result = retrieval.parent_countries_batch(parent_dcids=("geoId/06", "geoId/07"))
+    assert result["geoId/06"] == "country/USA"
+    assert result["geoId/07"] == "country/USA"
+
+
+def test_parent_countries_batch_missing_country_maps_to_none(mock_dc_client):
+    """A parent with no containedInPlace+ arc maps to None."""
+    mock_dc_client.node.fetch.return_value.to_dict.return_value = _make_containedin_response(
+        {
+            "geoId/06": "country/USA",
+            "country/KEN": None,  # no country arc (it IS a country)
+        }
+    )
+    result = retrieval.parent_countries_batch(parent_dcids=("geoId/06", "country/KEN"))
+    assert result["geoId/06"] == "country/USA"
+    assert result["country/KEN"] is None
+
+
+def test_parent_countries_batch_fail_open(mock_dc_client):
+    """Transient error returns every parent mapped to None."""
+    mock_dc_client.node.fetch.side_effect = RuntimeError("mixer unavailable")
+    result = retrieval.parent_countries_batch(parent_dcids=("geoId/06", "geoId/07"))
+    assert result["geoId/06"] is None
+    assert result["geoId/07"] is None
+
+
+def test_parent_countries_batch_cache_hit(mock_dc_client):
+    """Identical second call does not issue another client.node.fetch call."""
+    mock_dc_client.node.fetch.return_value.to_dict.return_value = _make_containedin_response(
+        {"geoId/06": "country/USA"}
+    )
+    first = retrieval.parent_countries_batch(parent_dcids=("geoId/06",))
+    second = retrieval.parent_countries_batch(parent_dcids=("geoId/06",))
+    assert first == second
+    # place_names_batch also calls node.fetch — count only the containedInPlace+ call.
+    # Both are on the same mock so we check it was called exactly once for our function.
+    assert mock_dc_client.node.fetch.call_count == 1
+
+
+def test_parent_countries_batch_is_lru_cache():
+    """_parent_countries_cache_lru is a cachetools.LRUCache."""
+    assert isinstance(retrieval._parent_countries_cache_lru, cachetools.LRUCache)
+
+
+def test_child_places_cache_lru_is_lru():
+    """_child_places_cache_lru is a cachetools.LRUCache."""
+    assert isinstance(retrieval._child_places_cache_lru, cachetools.LRUCache)

@@ -30,6 +30,7 @@ from dc_search.client import get_client
 # ``dc_search.retrieval.<cache_name>`` resolves for test fixture cleanup.
 from ._cache import (
     _cache_lock,
+    _child_places_cache_lru,
     _child_vars_of_groups_cache_lru,
     _coverage_cache,
     _entity_svs_cache,
@@ -37,6 +38,7 @@ from ._cache import (
     _features_cache,
     _observation_dates_cache,
     _observation_facet_ranges_cache,
+    _parent_countries_cache_lru,
     _place_names_cache,
     _presence_cache,
     _resolve_cache,
@@ -87,6 +89,8 @@ from .observation import (
 # Places
 from .places import (
     PlaceCandidate,
+    child_places_batch,
+    parent_countries_batch,
     place_names_batch,
     resolve_place,
     resolve_places_batch,
@@ -103,6 +107,7 @@ from .topics import (
 __all__ = [
     "get_client",
     "_cache_lock",
+    "_child_places_cache_lru",
     "_child_vars_of_groups_cache_lru",
     "_coverage_cache",
     "_entity_svs_cache",
@@ -110,6 +115,7 @@ __all__ = [
     "_features_cache",
     "_observation_dates_cache",
     "_observation_facet_ranges_cache",
+    "_parent_countries_cache_lru",
     "_place_names_cache",
     "_presence_cache",
     "_resolve_cache",
@@ -124,6 +130,8 @@ __all__ = [
     "dc_call_was_degraded",
     "reset_dc_call_degraded",
     "PlaceCandidate",
+    "child_places_batch",
+    "parent_countries_batch",
     "place_names_batch",
     "resolve_place",
     "resolve_places_batch",

@@ -46,11 +46,14 @@ _variables_for_entity_cache_lru: cachetools.LRUCache = cachetools.LRUCache(maxsi
 # (sorted_variable_dcids, sorted_entity_dcids) so the result is reused when
 # the same SVxentity combination is queried again (e.g. on a second pipeline
 # run within the same session). Cleared by tests via ``_presence_cache.clear()``.
-_presence_cache: cachetools.LRUCache = cachetools.LRUCache(maxsize=1024)
+# Bumped to 2048 — with child-place expansion the entity tuple can grow up to
+# child_place_cap (default 300) entries, increasing key entropy.
+_presence_cache: cachetools.LRUCache = cachetools.LRUCache(maxsize=2048)
 
 # Module-level cache for coverage fetches. Keyed by
 # (sorted_variable_dcids, sorted_entity_dcids). Cleared by tests.
-_coverage_cache: cachetools.LRUCache = cachetools.LRUCache(maxsize=1024)
+# Bumped to 2048 — same rationale as _presence_cache.
+_coverage_cache: cachetools.LRUCache = cachetools.LRUCache(maxsize=2048)
 
 # Module-level cache for variable/info date ranges. Cleared by tests.
 _variable_info_dates_cache: cachetools.LRUCache = cachetools.LRUCache(maxsize=1024)
@@ -77,6 +80,15 @@ _topic_metadata_batch_cache_lru: cachetools.LRUCache = cachetools.LRUCache(maxsi
 
 # Module-level LRU cache for place_names_batch results.
 _place_names_cache: cachetools.LRUCache = cachetools.LRUCache(maxsize=2048)
+
+# Module-level LRU cache for child_places_batch results. Keyed by
+# (sorted_parent_dcids, child_type, cap) — cap is part of the key so that a
+# test using a small cap does not pollute the production-cap entry.
+_child_places_cache_lru: cachetools.LRUCache = cachetools.LRUCache(maxsize=2048)
+
+# Module-level LRU cache for parent_countries_batch results. Keyed by
+# sorted_parent_dcids.
+_parent_countries_cache_lru: cachetools.LRUCache = cachetools.LRUCache(maxsize=2048)
 
 # Module-level cache for per-group info. Both ``variable_group`` (single) and
 # ``variable_groups_batch`` (many) consult and populate this dict so the two

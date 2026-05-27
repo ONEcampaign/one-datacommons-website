@@ -17,7 +17,22 @@ from dc_search.extraction import ExtractedDate
 
 
 class PlaceAlternative(BaseModel):
-    """A candidate place resolution that was not selected as the primary match."""
+    """A candidate place resolution that was not selected as the primary match.
+
+    ``name`` is always ``None`` for alternatives — only the primary place gets a
+    canonical-name fetch. Contrast with ``ChildPlace``, whose ``name`` is populated.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    dcid: str
+    name: str | None = None
+    type: str | None = None
+
+
+class ChildPlace(BaseModel):
+    """A child place produced by contained-in expansion (a selected result, not an
+    ambiguity alternative). Unlike PlaceAlternative, ``name`` is populated."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -42,14 +57,23 @@ class ResolvedPlace(BaseModel):
     name: str | None = None
     type: str | None = None
     alternatives: list[PlaceAlternative] = Field(default_factory=list)
+    expanded: bool = False
+    child_type: str | None = None
+    children: list[ChildPlace] = Field(default_factory=list)
 
 
 class QueryInterpretation(BaseModel):
     """Buffered interpretation assembled from the ``interpretation`` and ``places`` SSE events.
 
-    ``variables`` — raw LLM-extracted phrase strings (the skeleton labels).
-    ``places``    — resolved place objects (populated when a ``Places`` SSE event arrives).
-    ``dates``     — extracted date windows from the LLM extraction step.
+    ``variables``    — raw LLM-extracted phrase strings (the skeleton labels).
+    ``places``       — resolved place objects (populated when a ``Places`` SSE event arrives).
+    ``dates``        — extracted date windows from the LLM extraction step.
+    ``contained_in`` — LLM extraction *intent*: true when the query asked for places
+                       contained in a named parent. Independent of whether expansion
+                       found any children — a response can have ``contained_in=True``
+                       with every ``ResolvedPlace.expanded=False`` / empty ``children``
+                       when no children were found (intent set, zero children, not an
+                       error).
 
     Note: ``variables`` here are *strings* (LLM-extracted phrases), distinct from
     ``AnswerCollection.variables`` which are enriched ``ResolvedVariable`` objects.
@@ -60,3 +84,4 @@ class QueryInterpretation(BaseModel):
     variables: list[str] = Field(default_factory=list)
     places: list[ResolvedPlace] = Field(default_factory=list)
     dates: list[ExtractedDate] = Field(default_factory=list)
+    contained_in: bool = False

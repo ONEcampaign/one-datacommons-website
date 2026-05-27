@@ -70,7 +70,7 @@ class QueryExtraction(BaseModel):
         default_factory=list,
         description=(
             "Place names or named regions, rendered in ENGLISH. If the query is in "
-            'another language, translate each place name to its common English name '
+            "another language, translate each place name to its common English name "
             '("España" → "Spain", "Allemagne" → "Germany", "Costa de Marfil" → '
             '"Ivory Coast"). When the place name is already English, keep it as '
             "written. Empty list when the query names no place."
@@ -82,6 +82,23 @@ class QueryExtraction(BaseModel):
             "Date references in the query. Leave empty when the query has no temporal "
             "reference at all — do not infer an implicit date for an otherwise "
             "timeless query."
+        ),
+    )
+    contained_in: bool = Field(
+        default=False,
+        description=(
+            "True ONLY when the query asks about the places CONTAINED IN a named "
+            "parent — signalled by a plural child-place-type word tied to the parent "
+            '("US states", "African countries", "counties in California", "districts '
+            'of India") or phrasing like "across", "within each", "in each". The '
+            "`entities` list still names the PARENT(S) ONLY — never enumerate the "
+            'children. Leave false for an ordinary single-place query where "in" just '
+            'locates the measure ("poverty in Kenya", "life expectancy in Japan"): '
+            "those name one place, not its contents. Leave false when "
+            '"across"/"within" modifies a concept rather than a named parent place '
+            '("GDP across sectors", "trends across time") — there is no parent place '
+            "to expand. contained_in requires BOTH a named parent in `entities` AND "
+            "a request for the places inside it."
         ),
     )
 
@@ -115,6 +132,15 @@ Example — "GDP per capita in Kenya and Uganda since 2010":
 Example (non-English) — "esperanza de vida en España y Alemania desde 2010":
 {"variables": ["life expectancy"], "entities": ["Spain", "Germany"],
  "dates": [{"kind": "range", "start": "2010", "end": null}]}
+
+Example (contained-in) — "poverty rate in US states":
+{"variables": ["poverty rate"], "entities": ["United States"],
+ "dates": [], "contained_in": true}
+
+Counter-example (contained_in must be false) — "GDP across sectors":
+{"variables": ["GDP"], "entities": [],
+ "dates": [], "contained_in": false}
+(Here "across" modifies a concept, not a named parent place — no parent to expand.)
 """
 
 
