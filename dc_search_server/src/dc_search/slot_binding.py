@@ -21,12 +21,27 @@ from dataclasses import dataclass
 from pydantic import BaseModel, Field
 
 from dc_search import llm
-from dc_search.place_role import offerable_places_for_slot
+from dc_search.place_role import _namespace, offerable_places_for_slot
 from dc_search.predicate import AskClarification, Predicate
 from dc_search.shape import Shape, ShapeContext
 from dc_search.telemetry import Usage
 
 logger = logging.getLogger(__name__)
+
+
+def _namespace_match(dcid: str, slot_values: tuple[str, ...]) -> bool:
+    """Return True when *dcid*'s namespace matches any namespace in *slot_values*.
+
+    Mirrors the namespace-match logic in ``offerable_places_for_slot``:
+    a DCID is on-taxonomy for a slot when its namespace prefix (segment before
+    the first ``/``) is present in the set of namespaces observed in the slot's
+    existing values.  Used to qualify child DCIDs that may not appear in
+    ``offerable`` (which is derived from ``resolved_places`` and excludes
+    child 4-tuples whose ``input_surface`` is ``None``).
+    """
+    if not slot_values:
+        return False
+    return _namespace(dcid) in {_namespace(v) for v in slot_values}
 
 
 # ---------------------------------------------------------------------------
@@ -340,7 +355,7 @@ def _build_user_message(shape_context: ShapeContext) -> str:
                             ) in shape_context.resolved_places:
                                 if rp_dcid == dcid:
                                     display_name = rp_name
-                                    # Prefer input_surface over canonical slug (api-ux minor fix):
+                                    # Prefer input_surface over canonical slug:
                                     # when canonical_name is None, the surface is a better label.
                                     input_surface_label = rp_surface
                                     break
@@ -374,6 +389,23 @@ def _bindings_to_dict(
 ) -> dict[str, str | list[str] | None]:
     """Convert a list of _SlotBinding to the dict form used by _explode_constraints."""
     return {b.slot: b.value for b in bindings}
+
+
+def _role_for_dcid(
+    resolved_places: tuple[tuple[str, str | None, str | None, str], ...],
+    dcid: str,
+) -> str:
+    """Return the pre-computed directional role for *dcid*, or ``"ambiguous"``.
+
+    The role was determined in the pipeline from the ORIGINAL full query — not
+    from the per-variable scoped shape_query — so "from X to Y" grammar is
+    correctly resolved even when ``shape_context.query`` is a scoped phrase like
+    "grants in us, Togo" (Amendment 2 reconciliation).
+    """
+    for rp_dcid, _rp_name, _rp_surface, rp_role in resolved_places:
+        if rp_dcid == dcid:
+            return rp_role
+    return "ambiguous"
 
 
 def _explode_constraints(
@@ -560,13 +592,11 @@ async def bind(
     # Non-topic: start with the raw LLM bindings dict.
     constraints: dict[str, str | list[str] | None] = _bindings_to_dict(output.bindings)
 
-    # ------------------------------------------------------------------
-    # Deterministic post-correction (DevelopmentFinance shapes only).
-    # For each constraint slot that has offerable query-resolved places,
-    # apply directional-role logic to override or confirm the LLM's choice.
-    # This runs BEFORE _explode_constraints so the correction applies to
-    # scalar constraints (multi-value explode happens after).
-    # ------------------------------------------------------------------
+    # Deterministic post-correction for DevelopmentFinance shapes.
+    # For each constraint slot with offerable query-resolved places,
+    # apply directional-role logic (from / to cues) to override or confirm
+    # the LLM's binding. Runs BEFORE _explode_constraints so the correction
+    # applies to scalar constraints (multi-value explode happens after).
     defaulted_recipient = False
 
     if chosen_shape.population_type == "DevelopmentFinance":
@@ -579,17 +609,7 @@ async def bind(
                 continue
 
             for dcid in offerable:
-                # Read the pre-computed role from the 4-tuple (dcid, name, surface, role).
-                # The role was determined in the pipeline from the ORIGINAL full query —
-                # not from the per-variable scoped shape_query — so "from X to Y" grammar
-                # is correctly resolved even when shape_context.query is a scoped phrase
-                # like "grants in us, Togo" (Amendment 2 reconciliation).
-                role: str = "ambiguous"
-                for rp_dcid, _rp_name, _rp_surface, rp_role in shape_context.resolved_places:
-                    if rp_dcid == dcid:
-                        role = rp_role
-                        break
-
+                role = _role_for_dcid(shape_context.resolved_places, dcid)
                 current = constraints.get(slot)
                 if role == "donor":
                     # Donor must NOT appear in this constraint slot.
@@ -611,13 +631,93 @@ async def bind(
                         defaulted_recipient = True
                     # else: slot bound to a different value by LLM — keep as-is.
 
+    # Set-binding branch for DevelopmentFinance + contained_in queries.
+    # Fires when the predicate has a parent DCID (recipient or defaulted)
+    # in an offerable slot AND that parent has children in the expansion map.
+    #
+    # Result: parent stays in constraints[slot] (scalar, aggregated);
+    # child DCIDs go into recipient_constraint_sets[slot] (set-valued).
+    # Children's ambiguous 4-tuples carry input_surface=None, so they don't
+    # trigger independent scalar-binding — the parent already claims the slot.
+    #
+    # Non-triggering paths: recipient_constraint_sets defaults to {} so
+    # non-DevFinance / non-contained / multi-value / donor-side paths
+    # emit scalar predicates (today's behavior).
+    recipient_constraint_sets: dict[str, frozenset[str]] = {}
+
+    if (
+        chosen_shape.population_type == "DevelopmentFinance"
+        and shape_context.contained_in
+        and shape_context.parent_to_children
+    ):
+        for slot, slot_values in chosen_shape.slot_taxonomy.items():
+            offerable = offerable_places_for_slot(
+                resolved_places=shape_context.resolved_places,
+                slot_values=slot_values,
+            )
+            if not offerable:
+                continue
+
+            # Only proceed when the scalar constraint value in this slot is a
+            # parent with children (i.e. the parent is the aggregate recipient).
+            parent_dcid = constraints.get(slot)
+            if parent_dcid is None:
+                continue
+            if not isinstance(parent_dcid, str):
+                # Multi-value LLM binding (list[str]) can't identify a single
+                # parent aggregate; fall through to scalar/explode (fail-open).
+                continue
+            if parent_dcid not in shape_context.parent_to_children:
+                continue
+
+            # Confirm the parent's role is recipient or ambiguous-defaulted
+            # (not donor — we never build a set for a donor-side parent).
+            parent_role = _role_for_dcid(shape_context.resolved_places, parent_dcid)
+            if parent_role == "donor":
+                # Donor-side contained-in: children stay as observation entities.
+                continue
+
+            # Gather child DCIDs that are offerable to this slot (namespace match).
+            # ``offerable`` already includes children present in resolved_places
+            # (they are 4-tuples with input_surface=None, role="ambiguous"); the
+            # namespace-match helper covers any child not in resolved_places.
+            child_entries = shape_context.parent_to_children[parent_dcid]
+            offerable_set = set(offerable)
+            child_dcids = tuple(
+                child_dcid
+                for child_dcid, _child_name in child_entries
+                if child_dcid in offerable_set or _namespace_match(child_dcid, slot_values)
+            )
+
+            if not child_dcids:
+                # No offerable children — fall through to scalar aggregate path.
+                continue
+
+            # Guard: no child DCID should have leaked into constraints[slot] from
+            # the LLM or the directional loop (parent occupies the scalar slot).
+            for child_dcid in child_dcids:
+                assert constraints.get(slot) != child_dcid, (
+                    f"Child DCID {child_dcid!r} must not be scalar-bound in "
+                    f"constraints[{slot!r}] — parent {parent_dcid!r} occupies it."
+                )
+
+            recipient_constraint_sets[slot] = frozenset(child_dcids)
+            # Only one slot triggers per predicate (recipient slot is scalar).
+            break
+
     # Explode list-valued slots into N scalar Predicates.
+    # Attach constraint_sets only when a 1-tuple is produced (single predicate).
+    # If >1 (cross-product from multiple list-valued slots), degrade to scalar
+    # aggregate — emit plain predicates with constraint_sets={} (today's behavior).
+    # This ensures SetValuedRecipientHook fires on at most one predicate.
     constraint_dicts = _explode_constraints(constraints)
+    attach_sets = recipient_constraint_sets if len(constraint_dicts) == 1 else {}
     predicates = tuple(
         Predicate(
             population_type=chosen_shape.population_type,
             measured_property=chosen_shape.measured_property,
             constraints=cd,
+            constraint_sets=attach_sets,
         )
         for cd in constraint_dicts
     )

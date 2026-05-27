@@ -1,29 +1,9 @@
-"""Composable hook pipeline for the universal materializer.
+"""Composable hook pipeline for materialization.
 
-Each hook answers two questions:
-  1. ``applies(predicate, candidates, ctx) -> bool`` — should this hook run?
-  2. ``run(predicate, result, ctx) -> HookResult``   — what does it do?
+Each hook implements applies() and run(). The dispatcher iterates HOOKS
+in order and short-circuits on AskClarification.
 
-The dispatcher in ``materialize_via_hooks`` iterates ``HOOKS`` in declaration
-order, runs applicable hooks in sequence, and short-circuits on the first
-``AskClarification`` result.
-
-Hook ordering::
-
-    _universal_materialize (NOT a hook — runs once before the hook chain)
-    → TopicExpansionHook                fires for ``relevantTopic`` predicates
-    → WeakRetrievalTopicDumpHook        fires after topic expansion when retrieval weak
-    → SdgAskClarificationHook           fires for SDG with missing populationType
-    → CrsDacSvgExpansionHook   fires for DevelopmentFinance predicates
-    → DonorIsObservationFacetHook  fires for CRS_DAC wildcards
-    → DenominatorImplicitHook  fires for Person/count without denominator
-    → SetCapHook               universal post-hook (caveat at ≥5 SVs)
-    → PlaceAvailabilityHook    universal post-hook (availability filtering)
-    → RetrievalQualityHook     universal post-hook (data-driven confidence)
-    → EmptyResultHook          terminal guard → AskClarification
-
-This package replaces the flat hooks.py module. All externally-consumed names
-are re-exported here so every existing import path keeps resolving.
+All externally-consumed names are re-exported for backward compatibility.
 """
 
 from __future__ import annotations
@@ -58,6 +38,7 @@ from .registry import (
     TopicExpansionHook,
     WeakRetrievalTopicDumpHook,
 )
+from .set_recipient import SetValuedRecipientHook
 
 __all__ = [
     "dc_call_was_degraded",
@@ -82,6 +63,7 @@ __all__ = [
     "RetrievalQualityHook",
     "SdgAskClarificationHook",
     "SetCapHook",
+    "SetValuedRecipientHook",
     "TopicExpansionHook",
     "WeakRetrievalTopicDumpHook",
     "_build_variables",

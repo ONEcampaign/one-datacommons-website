@@ -370,6 +370,7 @@ async def test_run_default_truncates_at_max_variables(monkeypatch):
         resolution_task,
         dates=None,
         entities=None,
+        contained_in=False,
         slot_bind_usages,
     ):
         if variable is not None:
@@ -380,6 +381,7 @@ async def test_run_default_truncates_at_max_variables(monkeypatch):
             resolution_task=resolution_task,
             dates=dates,
             entities=entities,
+            contained_in=contained_in,
             slot_bind_usages=slot_bind_usages,
         )
 
@@ -425,6 +427,7 @@ async def test_run_default_fan_out_is_concurrent(monkeypatch):
         resolution_task,
         dates=None,
         entities=None,
+        contained_in=False,
         slot_bind_usages,
     ):
         await asyncio.sleep(DELAY)
@@ -1076,6 +1079,124 @@ async def test_drain_assembles_interpretation_from_interpretation_and_places_eve
     assert result.interpretation.places[0].dcid == "country/KEN"
     assert len(result.interpretation.dates) == 1
     assert result.interpretation.dates[0].start == "2020"
+
+
+# ===========================================================================
+# Slice 3: contained_in + parent_to_children threading
+# ===========================================================================
+
+
+@pytest.mark.asyncio
+async def test_run_default_contained_in_threads_to_shape_context(monkeypatch):
+    """When extraction.contained_in=True and resolution returns a parent_to_children
+    map, the ShapeContext forwarded to slot_binding.bind carries both fields."""
+    import dc_search.extraction as _ext
+    import dc_search.pipeline._run as _run
+    import dc_search.retrieval as _retrieval
+    import dc_search.slot_binding as _sb
+
+    _patch_all(monkeypatch)
+
+    # Resolution returns a non-empty parent_to_children map.
+    from dc_search.pipeline._run import PlaceResolution
+
+    parent_dcid = "undata-geo/G00134000"  # Africa aggregate
+    child_dcids = (("country/KEN", "Kenya"), ("country/TGO", "Togo"))
+    parent_to_children_map = {parent_dcid: child_dcids}
+
+    async def _mock_resolve(query, entities, *, contained_in=False):
+        return PlaceResolution(
+            dcids=(parent_dcid, "country/KEN", "country/TGO"),
+            parent_to_children=parent_to_children_map,
+            parent_to_child_type={parent_dcid: "Country"},
+        )
+
+    monkeypatch.setattr(_run, "_resolve_place_dcids", _mock_resolve)
+
+    # Capture the shape_context arg passed to bind.
+    captured_ctx: list = []
+
+    async def _capturing_bind(shape_context, *, model=None):
+        captured_ctx.append(shape_context)
+        return BindResult(
+            shape=_SHAPE, predicates=(_PREDICATE,), usage=_USAGE, defaulted_recipient=False
+        )
+
+    monkeypatch.setattr(_sb, "bind", _capturing_bind)
+
+    async def _mock_extract(query, *, model=None):
+        from dc_search.extraction import QueryExtraction
+
+        return (
+            QueryExtraction(
+                entities=["african countries"],
+                variables=["malaria grants"],
+                contained_in=True,
+            ),
+            _EXTRACT_USAGE,
+        )
+
+    monkeypatch.setattr(_ext, "extract", _mock_extract)
+    # Stub name lookup used by _build_resolved_places_triples.
+    monkeypatch.setattr(_retrieval, "place_names_batch", lambda *, dcids: {})
+
+    from dc_search import pipeline
+
+    result = await pipeline.run_default("malaria grants to african countries")
+
+    assert result.terminated_by == "answer"
+    assert len(captured_ctx) == 1, "bind must be called exactly once"
+    ctx = captured_ctx[0]
+    assert ctx.contained_in is True, "ShapeContext.contained_in must be True"
+    assert ctx.parent_to_children, "ShapeContext.parent_to_children must be non-empty"
+    assert parent_dcid in ctx.parent_to_children
+
+
+@pytest.mark.asyncio
+async def test_enrich_topic_metadata_preserves_contained_in_and_parent_to_children(monkeypatch):
+    """B1 regression: _enrich_topic_metadata on a ShapeContext with contained_in=True
+    and non-empty parent_to_children must preserve BOTH fields after the rebuild.
+    Exercises the replace(shape_ctx, topic_metadata=...) fix."""
+    import dc_search.retrieval as _retrieval
+    from dc_search.pipeline._run import _enrich_topic_metadata
+    from dc_search.retrieval.topics import TopicMetadata
+
+    parent_dcid = "undata-geo/G00134000"
+    parent_to_children_map = {parent_dcid: (("country/KEN", "Kenya"),)}
+
+    # A Topic shape — _enrich_topic_metadata only rebuilds when topic_dcids is non-empty.
+    topic_shape = Shape(
+        population_type=None,
+        measured_property=None,
+        constraint_keys=(),
+        member_dcids=("dc/topic/Health",),
+        slot_taxonomy={},
+        is_topic=True,
+    )
+    ctx_in = ShapeContext(
+        query="malaria grants to african countries",
+        shapes=(topic_shape,),
+        keyword_cues={},
+        contained_in=True,
+        parent_to_children=parent_to_children_map,
+    )
+
+    fake_meta = {
+        "dc/topic/Health": TopicMetadata(
+            dcid="dc/topic/Health", name="Health", description="Health topic"
+        )
+    }
+    monkeypatch.setattr(_retrieval, "topic_metadata_batch", lambda *, dcids: fake_meta)
+
+    ctx_out = await _enrich_topic_metadata(ctx_in)
+
+    # topic_metadata was updated
+    assert ctx_out.topic_metadata == fake_meta
+    # contained_in and parent_to_children must survive the rebuild
+    assert ctx_out.contained_in is True, "contained_in must be preserved by _enrich_topic_metadata"
+    assert ctx_out.parent_to_children == parent_to_children_map, (
+        "parent_to_children must be preserved by _enrich_topic_metadata"
+    )
 
 
 @pytest.mark.asyncio

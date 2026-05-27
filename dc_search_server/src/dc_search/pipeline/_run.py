@@ -589,6 +589,8 @@ def _build_shape(
     feature_list: list,
     retrieval_scores: dict[str, float],
     resolved_places: tuple[tuple[str, str | None, str | None, str], ...] = (),
+    contained_in: bool = False,
+    parent_to_children: dict | None = None,
 ) -> ShapeContext | AskClarification:
     """Build shape context (pure, no I/O)."""
     from dc_search.config import load_config
@@ -598,6 +600,8 @@ def _build_shape(
         feature_list,
         retrieval_scores=retrieval_scores,
         resolved_places=resolved_places,
+        contained_in=contained_in,
+        parent_to_children=parent_to_children,
         max_shapes=load_config().max_shapes,
     )
     if not shape_ctx.shapes:
@@ -619,15 +623,9 @@ async def _enrich_topic_metadata(shape_ctx: ShapeContext) -> ShapeContext:
     if not topic_dcids:
         return shape_ctx
     topic_meta = await asyncio.to_thread(retrieval.topic_metadata_batch, dcids=topic_dcids)
-    # Carry resolved_places forward: without this the field is silently dropped
-    # before bind and the place-offer feature becomes a no-op.
-    return ShapeContext(
-        query=shape_ctx.query,
-        shapes=shape_ctx.shapes,
-        keyword_cues=shape_ctx.keyword_cues,
-        topic_metadata=topic_meta,
-        resolved_places=shape_ctx.resolved_places,
-    )
+    # Use dataclasses.replace so ALL fields (including contained_in /
+    # parent_to_children) are forwarded automatically.
+    return replace(shape_ctx, topic_metadata=topic_meta)
 
 
 async def _bind_slot(
@@ -765,6 +763,7 @@ async def _run_one_variable(
     resolution_task: asyncio.Task[PlaceResolution],
     dates: list[ExtractedDate] | None = None,
     entities: list[str] | None = None,
+    contained_in: bool = False,
     slot_bind_usages: list[Usage],
 ) -> _VariableResult:
     """Shared pipeline core: retrieve → shape → bind → materialize.
@@ -842,7 +841,14 @@ async def _run_one_variable(
             shape_query = f"{variable} in {', '.join(entities)}" if entities else variable
         else:
             shape_query = query
-        shape_or_ask = _build_shape(shape_query, feature_list, retrieval_scores, resolved_places)
+        shape_or_ask = _build_shape(
+            shape_query,
+            feature_list,
+            retrieval_scores,
+            resolved_places,
+            contained_in=contained_in,
+            parent_to_children=parent_to_children,
+        )
         if isinstance(shape_or_ask, AskClarification):
             return _VariableResult(outcome=shape_or_ask, n_candidates=n_candidates)
 
@@ -884,14 +890,10 @@ async def _run_one_variable(
             dcid_to_date_range=dcid_to_date_range,
         )
 
-        # ------------------------------------------------------------------
-        # Post-materialize enrichment (conditional — CRS recipient-bound path only).
-        # Fires when:
-        #   • the donor set differs from the full place set (a recipient was bound), OR
-        #   • the final sv_set has DCIDs absent from the retrieved feature pool
-        #     (recovered DCIDs must have their availability/names recomputed).
-        # The common non-CRS path skips this block entirely (zero added cost).
-        # ------------------------------------------------------------------
+        # Post-materialize enrichment: recompute availability + variables when:
+        #   • a recipient was bound (donor set differs from full place set), OR
+        #   • recovered DCIDs absent from initial retrieval (e.g. CRS_DAC Piece D)
+        # Non-recipient-bound queries skip this block entirely (zero cost).
         if isinstance(answer, AnswerCollection):
             retrieved_dcids: set[str] = {f.dcid for f in feature_list}
             needs_enrichment = tuple(place_dcids) != donor_dcids or bool(
@@ -914,8 +916,8 @@ async def _run_one_variable(
                         pass  # fail-open: names remain None for missing DCIDs
 
                 # Recompute availability + date_range against the donor set over the
-                # final sv_set. When donor_dcids is empty (every place was a recipient)
-                # we OMIT availability — None, not False.
+                # final sv_set. Omit availability (None, not False) when donor_dcids
+                # is empty — all places bound as recipients, so no observation entities.
                 if donor_dcids:
                     try:
                         new_avail, new_ranges, new_degraded = await asyncio.to_thread(
@@ -1213,6 +1215,7 @@ async def stream_default(query: str) -> AsyncIterator[Event]:
                     resolution_task=dcid_task,
                     dates=extracted_dates,
                     entities=extracted_entities,
+                    contained_in=extraction_result.contained_in,
                     slot_bind_usages=slot_bind_usages,
                 )
             except Exception as exc:

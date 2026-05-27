@@ -197,11 +197,13 @@ def classify_place_roles(
 
     Implements the set difference::
 
-        donor_dcids = resolved_dcids − {values bound in any predicate's constraints}
+        donor_dcids = resolved_dcids − {values bound in any predicate's constraints
+                                        or constraint_sets}
 
-    A place that appears as a constraint value in *any* predicate is considered a
-    recipient (observation-constraint axis) and is excluded from the observation
-    entity set.  Preserves the input order of *resolved_places*.
+    A place that appears as a constraint value in *any* predicate (scalar via
+    ``constraints`` OR set-valued via ``constraint_sets``) is considered a recipient
+    (observation-constraint axis) and is excluded from the observation entity set.
+    Preserves the input order of *resolved_places*.
 
     Pure function; no side effects.  Empty input → empty output.
 
@@ -211,7 +213,8 @@ def classify_place_roles(
             is ignored here — donor classification uses the set-difference of
             bound constraint values, not the pre-computed directional role.
         predicates: All bound predicates for the current variable.  Constraint
-            values are collected from every predicate's ``constraints`` mapping.
+            values are collected from every predicate's ``constraints`` mapping
+            and from every frozenset in ``constraint_sets``.
 
     Returns:
         Tuple of DCIDs that are NOT bound as a constraint value in any predicate,
@@ -220,12 +223,15 @@ def classify_place_roles(
     if not resolved_places:
         return ()
 
-    # Collect every non-None constraint value across all predicates.
+    # Collect every non-None constraint value across all predicates —
+    # including set-bound recipients from constraint_sets (each a frozenset).
     bound_values: set[str] = set()
     for pred in predicates:
         for v in pred.constraints.values():
             if v is not None:
                 bound_values.add(v)
+        for members in pred.constraint_sets.values():
+            bound_values.update(members)
 
     return tuple(
         dcid for dcid, _name, _surface, _role in resolved_places if dcid not in bound_values

@@ -31,8 +31,11 @@ class PlaceAlternative(BaseModel):
 
 
 class ChildPlace(BaseModel):
-    """A child place produced by contained-in expansion (a selected result, not an
-    ambiguity alternative). Unlike PlaceAlternative, ``name`` is populated."""
+    """A child place produced by contained-in expansion.
+
+    Selected result, not an ambiguity alternative. Unlike PlaceAlternative,
+    ``name`` is populated. See the ``set_valued_recipient`` caveat on
+    ``AnswerCollection`` for the parallel signal."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -58,8 +61,11 @@ class ResolvedPlace(BaseModel):
     type: str | None = None
     alternatives: list[PlaceAlternative] = Field(default_factory=list)
     expanded: bool = False
+    """``True`` when child-place expansion ran for this place."""
     child_type: str | None = None
     children: list[ChildPlace] = Field(default_factory=list)
+    """Child places discovered by expansion. Paired with ``set_valued_recipient``
+    caveat on ``AnswerCollection``."""
 
 
 class QueryInterpretation(BaseModel):

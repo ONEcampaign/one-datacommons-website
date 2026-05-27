@@ -628,3 +628,58 @@ def test_build_shape_context_max_shapes_keeps_highest_scored() -> None:
     )
     assert len(ctx.shapes) == 1
     assert ctx.shapes[0].member_dcids == ("sdg/HIGH",)
+
+
+# ---------------------------------------------------------------------------
+# ShapeContext.contained_in + parent_to_children — round-trip and defaults
+# ---------------------------------------------------------------------------
+
+
+def test_build_shape_context_contained_in_and_parent_to_children_round_trip(
+    census_candidates: list[StatVarFeatures],
+) -> None:
+    """contained_in=True and a non-empty parent_to_children are stored verbatim."""
+    p2c: dict[str, tuple[tuple[str, str | None], ...]] = {
+        "DAC/Africa": (
+            ("country/KEN", "Kenya"),
+            ("country/TGO", "Togo"),
+        ),
+    }
+    ctx = build_shape_context(
+        "malaria grants to african countries",
+        census_candidates,
+        contained_in=True,
+        parent_to_children=p2c,
+    )
+    assert ctx.contained_in is True
+    assert ctx.parent_to_children == p2c
+
+
+def test_build_shape_context_contained_in_defaults_false(
+    census_candidates: list[StatVarFeatures],
+) -> None:
+    """Existing callers omitting contained_in get contained_in=False."""
+    ctx = build_shape_context("malaria deaths", census_candidates)
+    assert ctx.contained_in is False
+
+
+def test_build_shape_context_parent_to_children_defaults_empty(
+    census_candidates: list[StatVarFeatures],
+) -> None:
+    """Existing callers omitting parent_to_children get an empty dict."""
+    ctx = build_shape_context("malaria deaths", census_candidates)
+    assert ctx.parent_to_children == {}
+
+
+def test_build_shape_context_contained_in_false_with_empty_p2c(
+    census_candidates: list[StatVarFeatures],
+) -> None:
+    """contained_in=False and parent_to_children={} are stored correctly (explicit defaults)."""
+    ctx = build_shape_context(
+        "malaria grants to Nigeria",
+        census_candidates,
+        contained_in=False,
+        parent_to_children={},
+    )
+    assert ctx.contained_in is False
+    assert ctx.parent_to_children == {}

@@ -1,7 +1,8 @@
-"""Smoke tests for predicate.py."""
+"""Tests for predicate.py classes and utilities."""
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import pytest
@@ -153,3 +154,64 @@ class TestBuildCrsSvgDcid:
         assert "DevelopmentFinancePurpose_" in dcid
         assert "DevelopmentFinanceScheme" in dcid
         assert "CountryKEN" in dcid
+
+
+class TestPredicateConstraintSets:
+    def test_construction_with_constraint_sets(self):
+        """Predicate with constraint_sets constructs and is frozen."""
+        p = Predicate(
+            population_type="DevelopmentFinance",
+            measured_property=None,
+            constraints={"DevelopmentFinanceRecipient": "DAC/Africa"},
+            constraint_sets={
+                "DevelopmentFinanceRecipient": frozenset({"country/KEN", "country/TGO"})
+            },
+        )
+        assert p.constraint_sets == {
+            "DevelopmentFinanceRecipient": frozenset({"country/KEN", "country/TGO"})
+        }
+        # Frozen: mutation must raise.
+        with pytest.raises(Exception):
+            p.constraint_sets = {}  # type: ignore[misc]
+
+    def test_wire_exclude_model_dump(self):
+        """constraint_sets must NOT appear in model_dump() (wire-excluded, mirrors sv_set)."""
+        p = Predicate(
+            population_type="DevelopmentFinance",
+            measured_property=None,
+            constraint_sets={
+                "DevelopmentFinanceRecipient": frozenset({"country/KEN"})
+            },
+        )
+        dumped = p.model_dump()
+        assert "constraint_sets" not in dumped
+
+    def test_wire_exclude_model_dump_json(self):
+        """constraint_sets must NOT appear in model_dump_json()."""
+        p = Predicate(
+            population_type="DevelopmentFinance",
+            measured_property=None,
+            constraint_sets={
+                "DevelopmentFinanceRecipient": frozenset({"country/KEN"})
+            },
+        )
+        parsed = json.loads(p.model_dump_json())
+        assert "constraint_sets" not in parsed
+
+    def test_default_empty_constraint_sets(self):
+        """Default constraint_sets is {} — existing Predicate(...) calls unaffected."""
+        p = _make_predicate(population_type="Person")
+        assert p.constraint_sets == {}
+
+    def test_back_compat_equality(self):
+        """Predicate with no constraint_sets equals one explicitly set to {} (back-compat)."""
+        p1 = _make_predicate(population_type="Person")
+        p2 = Predicate(
+            population_type="Person",
+            measured_property=None,
+            constraints={},
+            constraint_sets={},
+        )
+        assert p1 == p2
+
+

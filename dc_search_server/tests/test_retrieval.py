@@ -1,4 +1,4 @@
-"""Tests for retrieval.py — LRU caches, syntax-fix branch, and eviction."""
+"""Tests for retrieval.py: caches, cache eviction, and syntax handling."""
 
 from __future__ import annotations
 
@@ -720,3 +720,143 @@ def test_parent_countries_batch_is_lru_cache():
 def test_child_places_cache_lru_is_lru():
     """_child_places_cache_lru is a cachetools.LRUCache."""
     assert isinstance(retrieval._child_places_cache_lru, cachetools.LRUCache)
+
+
+# ---------------------------------------------------------------------------
+# svs_by_inverse_arcs — parse, cache, fail-open
+# ---------------------------------------------------------------------------
+
+
+def _inverse_arc_response(dcid_to_sv_lists: dict) -> dict:
+    """Build a minimal v2/node <-[...] response for svs_by_inverse_arcs."""
+    data: dict = {}
+    for dcid, (prop, sv_dcids) in dcid_to_sv_lists.items():
+        data[dcid] = {
+            "arcs": {
+                prop: {"nodes": [{"dcid": sv} for sv in sv_dcids]}
+            }
+        }
+    return {"data": data}
+
+
+def test_svs_by_inverse_arcs_maps_each_value_to_inbound_svs(mock_dc_client):
+    """Maps each value DCID to the frozenset of SV DCIDs declaring it on the property."""
+    mock_dc_client.node.fetch.return_value.to_dict.return_value = {
+        "data": {
+            "DAC/Malariacontrol": {
+                "arcs": {
+                    "DevelopmentFinancePurpose": {
+                        "nodes": [
+                            {"dcid": "ONE/CRS_DAC/Malariacontrol-ODAGrants-KEN"},
+                            {"dcid": "ONE/CRS_DAC/Malariacontrol-ODAGrants-TGO"},
+                        ]
+                    }
+                }
+            },
+            "ODAGrants": {
+                "arcs": {
+                    "DevelopmentFinanceScheme": {
+                        "nodes": [
+                            {"dcid": "ONE/CRS_DAC/Malariacontrol-ODAGrants-KEN"},
+                            {"dcid": "ONE/CRS_DAC/OtherPurpose-ODAGrants-KEN"},
+                        ]
+                    }
+                }
+            },
+        }
+    }
+
+    result = retrieval.svs_by_inverse_arcs(
+        value_dcids=("DAC/Malariacontrol", "ODAGrants"),
+        properties=("DevelopmentFinancePurpose", "DevelopmentFinanceScheme"),
+    )
+
+    assert result["DAC/Malariacontrol"] == frozenset({
+        "ONE/CRS_DAC/Malariacontrol-ODAGrants-KEN",
+        "ONE/CRS_DAC/Malariacontrol-ODAGrants-TGO",
+    })
+    assert result["ODAGrants"] == frozenset({
+        "ONE/CRS_DAC/Malariacontrol-ODAGrants-KEN",
+        "ONE/CRS_DAC/OtherPurpose-ODAGrants-KEN",
+    })
+
+
+def test_svs_by_inverse_arcs_caches_result(mock_dc_client):
+    """Second call with identical args returns cached result without a second fetch."""
+    mock_dc_client.node.fetch.return_value.to_dict.return_value = {
+        "data": {
+            "DAC/Malariacontrol": {
+                "arcs": {
+                    "DevelopmentFinancePurpose": {
+                        "nodes": [{"dcid": "ONE/CRS_DAC/Malariacontrol-ODAGrants-KEN"}]
+                    }
+                }
+            },
+            "ODAGrants": {"arcs": {"DevelopmentFinanceScheme": {"nodes": []}}},
+        }
+    }
+
+    first = retrieval.svs_by_inverse_arcs(
+        value_dcids=("DAC/Malariacontrol", "ODAGrants"),
+        properties=("DevelopmentFinancePurpose", "DevelopmentFinanceScheme"),
+    )
+    second = retrieval.svs_by_inverse_arcs(
+        value_dcids=("DAC/Malariacontrol", "ODAGrants"),
+        properties=("DevelopmentFinancePurpose", "DevelopmentFinanceScheme"),
+    )
+
+    assert first is second
+    assert mock_dc_client.node.fetch.call_count == 1, (
+        "Second call should be served from cache without a second fetch"
+    )
+
+
+def test_svs_by_inverse_arcs_fail_open_on_exception(mock_dc_client):
+    """Transient fetch error → fail-open: returns {}."""
+    mock_dc_client.node.fetch.side_effect = RuntimeError("mixer unavailable")
+
+    result = retrieval.svs_by_inverse_arcs(
+        value_dcids=("DAC/Malariacontrol", "ODAGrants"),
+        properties=("DevelopmentFinancePurpose", "DevelopmentFinanceScheme"),
+    )
+
+    assert result == {}
+
+
+def test_svs_by_inverse_arcs_empty_inputs_return_empty():
+    """Empty value_dcids or properties returns {} without a client call."""
+    with patch("dc_search.retrieval.get_client") as mock_gc:
+        r1 = retrieval.svs_by_inverse_arcs(value_dcids=(), properties=("p",))
+        r2 = retrieval.svs_by_inverse_arcs(value_dcids=("v",), properties=())
+    mock_gc.assert_not_called()
+    assert r1 == {}
+    assert r2 == {}
+
+
+def test_svs_by_inverse_arcs_absent_value_maps_to_empty_frozenset(mock_dc_client):
+    """A value DCID not present in the response maps to frozenset() (not missing)."""
+    mock_dc_client.node.fetch.return_value.to_dict.return_value = {
+        "data": {
+            "DAC/Malariacontrol": {
+                "arcs": {
+                    "DevelopmentFinancePurpose": {
+                        "nodes": [{"dcid": "ONE/CRS_DAC/Malariacontrol-ODAGrants-KEN"}]
+                    }
+                }
+            }
+            # "ODAGrants" absent from response
+        }
+    }
+
+    result = retrieval.svs_by_inverse_arcs(
+        value_dcids=("DAC/Malariacontrol", "ODAGrants"),
+        properties=("DevelopmentFinancePurpose", "DevelopmentFinanceScheme"),
+    )
+
+    assert result["ODAGrants"] == frozenset()
+    assert result["DAC/Malariacontrol"] == frozenset({"ONE/CRS_DAC/Malariacontrol-ODAGrants-KEN"})
+
+
+def test_inverse_arcs_cache_lru_is_lru():
+    """_inverse_arcs_cache_lru is a cachetools.LRUCache."""
+    assert isinstance(retrieval._inverse_arcs_cache_lru, cachetools.LRUCache)

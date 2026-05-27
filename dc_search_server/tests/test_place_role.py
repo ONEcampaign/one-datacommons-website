@@ -23,11 +23,13 @@ def _predicate(
     population_type: str | None = "DevelopmentFinance",
     measured_property: str | None = None,
     constraints: dict[str, str | None] | None = None,
+    constraint_sets: dict[str, frozenset[str]] | None = None,
 ) -> Predicate:
     return Predicate(
         population_type=population_type,
         measured_property=measured_property,
         constraints=constraints or {},
+        constraint_sets=constraint_sets or {},
     )
 
 
@@ -187,6 +189,60 @@ class TestClassifyPlaceRoles:
             predicates=(pred,),
         )
         assert result == ("country/USA", "country/NGA")
+
+    def test_constraint_sets_excludes_set_bound_recipients(self) -> None:
+        """KEN and TGO in constraint_sets → excluded from donor set; USA kept."""
+        pred = _predicate(
+            constraints={"DevelopmentFinanceRecipient": "DAC/Africa"},
+            constraint_sets={
+                "DevelopmentFinanceRecipient": frozenset({"country/KEN", "country/TGO"})
+            },
+        )
+        result = classify_place_roles(
+            resolved_places=(
+                ("country/USA", "United States", "united states", "donor"),
+                ("country/KEN", "Kenya", None, "ambiguous"),
+                ("country/TGO", "Togo", None, "ambiguous"),
+            ),
+            predicates=(pred,),
+        )
+        assert result == ("country/USA",)
+
+    def test_constraint_sets_excludes_all_children_entity_set_empty(self) -> None:
+        """All resolved places are set-bound recipients → donor set is empty."""
+        pred = _predicate(
+            constraints={"DevelopmentFinanceRecipient": "DAC/Africa"},
+            constraint_sets={
+                "DevelopmentFinanceRecipient": frozenset({"country/KEN", "country/TGO"})
+            },
+        )
+        result = classify_place_roles(
+            resolved_places=(
+                ("country/KEN", "Kenya", None, "ambiguous"),
+                ("country/TGO", "Togo", None, "ambiguous"),
+            ),
+            predicates=(pred,),
+        )
+        assert result == ()
+
+    def test_empty_constraint_sets_back_compat(self) -> None:
+        """Predicate with empty constraint_sets behaves identically to today's scalar path."""
+        pred_with_sets = _predicate(
+            constraints={"DevelopmentFinanceRecipient": "country/NGA"},
+            constraint_sets={},
+        )
+        pred_without_sets = _predicate(
+            constraints={"DevelopmentFinanceRecipient": "country/NGA"},
+        )
+        resolved = (
+            ("country/USA", "United States", "united states", "donor"),
+            ("country/NGA", "Nigeria", "nigeria", "recipient"),
+        )
+        result_with = classify_place_roles(resolved_places=resolved, predicates=(pred_with_sets,))
+        result_without = classify_place_roles(
+            resolved_places=resolved, predicates=(pred_without_sets,)
+        )
+        assert result_with == result_without == ("country/USA",)
 
 
 # ---------------------------------------------------------------------------

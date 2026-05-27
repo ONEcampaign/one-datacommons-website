@@ -16,6 +16,7 @@ from dc_search import retrieval as graph
 from ._cache import (
     _cache_lock,
     _features_cache,
+    _inverse_arcs_cache_lru,
     _resolve_indicator_cache_lru,
     _stat_var_features_cache_lru,
     _vgroups_cache,
@@ -53,7 +54,7 @@ _BATCH_PROPS = [
 
 @dataclass(slots=True)
 class IndicatorCandidate:
-    """One candidate returned by /v2/resolve with resolver='indicator'."""
+    """One StatVar / Topic candidate returned by /v2/resolve."""
 
     dcid: str
     type_of: list[str]
@@ -77,9 +78,8 @@ class StatVarFeatures:
     observation_period: list[str] = field(default_factory=list)
     unit: list[str] = field(default_factory=list)
     member_of: list[str] = field(default_factory=list)
-    # Anything else surfaced by ->* that isn't in the named list above —
-    # these are the constraint properties (gender, age, race, ...) that
-    # actually distinguish similar SVs.
+    # Constraint properties (gender, age, race, ...) — the fields that
+    # distinguish similar SVs. Populated from unused ->* arcs.
     constraints: dict[str, list[str]] = field(default_factory=dict)
 
 
@@ -173,14 +173,12 @@ def stat_var_features_batch(
 ) -> dict[str, StatVarFeatures]:
     """Fetch structured features for a batch of SV DCIDs.
 
-    Hits the module-level ``_features_cache`` first; only cache-miss DCIDs go
-    to the network. With a warm cache the function returns without any API
-    calls. Cold path: one ``/v2/node`` request for the named fields + a second
-    ``/v2/node`` request for constraint arcs of SVs that declare
-    ``constraintProperties``.
+    Hits module-level cache first; cache misses go to the network.
+    Cold path: ``/v2/node`` for named fields, then a second call for
+    constraint arcs (gender, age, etc.) of SVs that declare constraintProperties.
 
-    Returns a dict keyed by sv_dcid, with one entry per input that resolved.
-    SVs absent from the response are silently skipped and not cached.
+    Returns a dict keyed by sv_dcid. SVs absent from the response are skipped
+    and not cached.
     """
     if not sv_dcids:
         return {}
@@ -207,8 +205,7 @@ def stat_var_features_batch(
     expr = "->[" + ",".join(_BATCH_PROPS) + "]"
     raw = client.node.fetch(node_dcids=misses, expression=expr).to_dict()
 
-    # Parse the first-pass response — extract named fields and the set of
-    # constraintProperties each SV declares.
+    # Extract named fields and the constraint properties each SV declares.
     partial: dict[str, StatVarFeatures] = {}
     sv_constraint_prop_names: dict[str, list[str]] = {}
 
@@ -236,8 +233,8 @@ def stat_var_features_batch(
             constraints={},
         )
 
-    # Collect the union of all constraint property names across the candidate
-    # set; make one additional batched call to fetch those arcs.
+    # Collect the union of constraint properties across all SVs;
+    # fetch those arcs in one additional call.
     union_constraint_props: list[str] = sorted(
         {p for names in sv_constraint_prop_names.values() for p in names}
     )
@@ -257,8 +254,7 @@ def stat_var_features_batch(
                     constraints[prop] = vals
             partial[dcid] = replace(feats, constraints=constraints)
 
-    # Populate cache and merge into the result. Iterate `misses` rather than
-    # `partial` so the result preserves the (deduplicated) input order.
+    # Cache and merge into result. Iterate misses to preserve input order.
     with _cache_lock:
         for dcid in misses:
             feats = partial.get(dcid)
@@ -305,21 +301,17 @@ def variable_groups_batch(
 ) -> dict[str, VariableGroupInfo]:
     """Fetch StatVarGroup info for a batch of group DCIDs.
 
-    Hits the module-level ``_vgroups_cache`` first; only cache-miss DCIDs go
-    to the network. With a warm cache the function returns without any API
-    calls. Cold path: exactly two ``/v2/node`` calls regardless of N — one for
-    ``->[name,specializationOf]`` (outgoing arcs) and one for
-    ``<-[specializationOf,memberOf]`` (incoming arcs). Fails open: if either
-    call raises, returns whatever was already cached without raising.
+    Hits module-level cache first; cache misses use the network.
+    Cold path: exactly two ``/v2/node`` calls — one for outgoing arcs
+    (name, parent groups), one for incoming arcs (child groups, child SVs).
+    Fails open: if either call raises, returns cached results without raising.
 
     Args:
-        dcids: Tuple of StatVarGroup DCIDs to look up. Duplicates are
-            deduplicated before the network call.
+        dcids: Tuple of StatVarGroup DCIDs to look up (duplicates deduplicated).
 
     Returns:
-        Mapping from DCID to ``VariableGroupInfo`` for every input that
-        resolved. DCIDs absent from both cache and API response are silently
-        omitted.
+        Mapping from DCID to ``VariableGroupInfo``. DCIDs absent from both
+        cache and API are silently omitted.
     """
     if not dcids:
         return {}
@@ -387,3 +379,59 @@ def variable_group(*, dcid: str) -> VariableGroupInfo:
         KeyError: If the DCID is absent from both cache and API response.
     """
     return variable_groups_batch(dcids=(dcid,))[dcid]
+
+
+def svs_by_inverse_arcs(
+    *,
+    value_dcids: tuple[str, ...],
+    properties: tuple[str, ...],
+) -> dict[str, frozenset[str]]:
+    """For each value DCID, return SVs that declare it on the given properties.
+
+    Uses a single ``<-[prop1,prop2,...]`` ``/v2/node`` call. Cached at module
+    level. Fails open: returns ``{}`` on any API error.
+
+    Args:
+        value_dcids: Constraint-value DCIDs to query for inbound arcs.
+        properties: Property names to form the combined inbound arc expression.
+
+    Returns:
+        Mapping from each value DCID to frozenset of SVs declaring it via
+        one of the requested properties. Absent value DCIDs map to empty frozensets.
+    """
+    if not value_dcids or not properties:
+        return {}
+
+    cache_key = (tuple(sorted(value_dcids)), tuple(sorted(properties)))
+    with _cache_lock:
+        cached = _inverse_arcs_cache_lru.get(cache_key)
+    if cached is not None:
+        return cached
+
+    try:
+        expression = "<-[" + ",".join(sorted(properties)) + "]"
+        client = graph.get_client()
+        raw = client.node.fetch(
+            node_dcids=list(value_dcids), expression=expression
+        ).to_dict()
+    except Exception:
+        logger.warning(
+            "svs_by_inverse_arcs failed for value_dcids=%s properties=%s",
+            value_dcids,
+            properties,
+        )
+        return {}
+
+    result: dict[str, frozenset[str]] = {}
+    for dcid in value_dcids:
+        arcs = _node_arcs(raw, dcid)
+        sv_dcids: set[str] = set()
+        for prop in properties:
+            for node in arcs.get(prop, {}).get("nodes", []):
+                if "dcid" in node:
+                    sv_dcids.add(node["dcid"])
+        result[dcid] = frozenset(sv_dcids)
+
+    with _cache_lock:
+        _inverse_arcs_cache_lru[cache_key] = result
+    return result

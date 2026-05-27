@@ -282,6 +282,7 @@ async def test_stream_default_partial_failure(monkeypatch: pytest.MonkeyPatch) -
         resolution_task,
         dates=None,
         entities=None,
+        contained_in=False,
         slot_bind_usages,
     ):
         nonlocal call_count
@@ -294,6 +295,7 @@ async def test_stream_default_partial_failure(monkeypatch: pytest.MonkeyPatch) -
             resolution_task=resolution_task,
             dates=dates,
             entities=entities,
+            contained_in=contained_in,
             slot_bind_usages=slot_bind_usages,
         )
 
@@ -401,6 +403,7 @@ async def test_drain_preserves_order(monkeypatch: pytest.MonkeyPatch) -> None:
         resolution_task,
         dates=None,
         entities=None,
+        contained_in=False,
         slot_bind_usages,
     ):
         delay = delays.get(variable or "", 0.01)
@@ -656,6 +659,7 @@ async def test_disconnect_cancels_fanout(monkeypatch: pytest.MonkeyPatch) -> Non
         resolution_task,
         dates=None,
         entities=None,
+        contained_in=False,
         slot_bind_usages,
     ):
         try:
@@ -776,6 +780,7 @@ async def test_stream_default_soft_deadline(monkeypatch: pytest.MonkeyPatch) -> 
         resolution_task,
         dates=None,
         entities=None,
+        contained_in=False,
         slot_bind_usages,
     ):
         try:
@@ -825,6 +830,7 @@ async def test_stream_simple_soft_deadline(monkeypatch: pytest.MonkeyPatch) -> N
         resolution_task,
         dates=None,
         entities=None,
+        contained_in=False,
         slot_bind_usages,
     ):
         await asyncio.sleep(10)
@@ -953,6 +959,7 @@ async def test_perf_result_emitted_while_place_task_pending(
         resolution_task,
         dates=None,
         entities=None,
+        contained_in=False,
         slot_bind_usages,
     ):
         slot_bind_usages.append(_USAGE)
@@ -1063,6 +1070,7 @@ async def test_stream_simple_timeout_cancels_place_tasks(
         resolution_task,
         dates=None,
         entities=None,
+        contained_in=False,
         slot_bind_usages,
     ):
         await asyncio.sleep(10)
@@ -1137,6 +1145,7 @@ async def test_zero_variable_result_not_blocked_by_place_task(
         resolution_task,
         dates=None,
         entities=None,
+        contained_in=False,
         slot_bind_usages,
     ):
         slot_bind_usages.append(_USAGE)

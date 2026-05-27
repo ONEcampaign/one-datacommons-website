@@ -64,8 +64,9 @@ class ResolvedVariable(BaseModel):
         default=None,
         description=(
             "Tri-state: None = no place resolved (availability inapplicable), "
-            "OR every resolved place was bound as a constraint value (recipient) "
-            "so no donor/observation entity remained; "
+            "OR every resolved place was bound as a constraint value (scalar "
+            "recipient OR a set-valued contained-in recipient) so no "
+            "donor/observation entity remained → None (not False); "
             "True = has data at resolved place(s); False = resolved but no data. "
             "Union across multiple places."
         ),
@@ -92,6 +93,7 @@ Caveat = Literal[
     "interpreted_place_as_recipient",
     "partial_result",
     "set_valued_answer",
+    "set_valued_recipient",  # contained-in expansion ran; see ResolvedPlace.expanded / .children
     "retrieval_weak",
     "topic_expanded",
 ]
@@ -106,6 +108,11 @@ class Predicate(BaseModel):
 
     ``constraints`` maps slot DCID → value DCID; ``None`` values are wildcards
     (the slot is intentionally unbound, not missing).
+
+    Co-keying invariant: for a slot key ``k``, ``constraints[k]`` holds the
+    scalar aggregate-parent recipient and ``constraint_sets[k]`` holds the
+    contained-in child recipients (a membership filter, NOT a cross-product).
+    Both reference the same slot.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -113,6 +120,15 @@ class Predicate(BaseModel):
     population_type: str | None
     measured_property: str | None
     constraints: dict[str, str | None] = Field(default_factory=dict)
+    constraint_sets: dict[str, frozenset[str]] = Field(
+        default_factory=dict, exclude=True
+    )
+    """Slot DCID → set of value DCIDs for membership filtering (NOT a cross-product).
+
+    Empty = no set constraint. One predicate carries the whole set.
+    ``exclude=True``: internal-only, never serialized to the HTTP response (mirrors
+    ``AnswerCollection.sv_set``); the user-visible result is ``AnswerCollection.variables``.
+    """
 
 
 class AnswerCollection(BaseModel):

@@ -1,7 +1,6 @@
-"""Tests for dc_search.slot_binding — mocked llm.generate_structured responses.
+"""Tests for dc_search.slot_binding — deterministic with mocked LLM.
 
-All tests are deterministic: no real API calls are made.
-``llm.generate_structured`` is patched with an AsyncMock throughout.
+llm.generate_structured is patched with an AsyncMock throughout.
 """
 
 from __future__ import annotations
@@ -26,7 +25,7 @@ from dc_search.slot_binding import (
 from dc_search.telemetry import Usage
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Test helpers
 # ---------------------------------------------------------------------------
 
 _DUMMY_USAGE = Usage(
@@ -42,7 +41,7 @@ def _make_output(
     constraints: dict[str, Any],
     ask: str | None = None,
 ) -> _Output:
-    """Build an _Output from a flat constraints dict (test convenience helper)."""
+    """Build an _Output from a flat constraints dict."""
     bindings = [_SlotBinding(slot=k, value=v) for k, v in constraints.items()]
     return _Output(chosen_shape_index=chosen_shape_index, bindings=bindings, ask=ask)
 
@@ -83,7 +82,7 @@ def census_shape_context(census_candidates):
 
 
 # ---------------------------------------------------------------------------
-# Test 1: fully-bound CRS_DAC predicate
+# Fully-bound predicate path
 # ---------------------------------------------------------------------------
 
 
@@ -132,7 +131,7 @@ async def test_bind_threads_cache_name_into_llm_call(
 
 
 # ---------------------------------------------------------------------------
-# Test 2: wildcard recipient (intentional null)
+# Wildcard recipient path
 # ---------------------------------------------------------------------------
 
 
@@ -160,7 +159,7 @@ async def test_bind_crs_dac_wildcard_recipient(crs_dac_shape_context: ShapeConte
 
 
 # ---------------------------------------------------------------------------
-# Test 3: census namespace with constraint binding
+# Census namespace with constraints
 # ---------------------------------------------------------------------------
 
 
@@ -188,7 +187,7 @@ async def test_bind_census_with_constraints(census_shape_context: ShapeContext) 
 
 
 # ---------------------------------------------------------------------------
-# Test 4: model returns ask → AskClarification(reason="under_specified")
+# Model ask signal: AskClarification
 # ---------------------------------------------------------------------------
 
 
@@ -206,16 +205,15 @@ async def test_bind_returns_ask_when_model_asks(crs_dac_shape_context: ShapeCont
 
 
 # ---------------------------------------------------------------------------
-# Test 5: parse error → AskClarification(reason="parse_error") — I10 verification
+# Parse error path: fixed message (no SDK details leaked)
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
 async def test_bind_returns_ask_on_parse_error(crs_dac_shape_context: ShapeContext) -> None:
-    """When generate_structured raises, bind returns AskClarification with a FIXED message.
+    """When generate_structured raises, bind returns AskClarification with fixed message.
 
-    The exception text must NOT appear in the returned AskClarification.message
-    to avoid leaking internal SDK details to callers.
+    Exception text is not exposed to avoid leaking internal SDK details.
     """
     sensitive_detail = "internal model error including SDK details"
     mock = _make_raising_generate_structured(Exception(sensitive_detail))
@@ -231,7 +229,7 @@ async def test_bind_returns_ask_on_parse_error(crs_dac_shape_context: ShapeConte
 
 
 # ---------------------------------------------------------------------------
-# Test 6: empty shapes → AskClarification(reason="retrieval_weak")
+# Empty shapes: retrieval_weak AskClarification
 # ---------------------------------------------------------------------------
 
 
@@ -251,7 +249,7 @@ async def test_bind_returns_ask_on_empty_shapes() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Test 7: out-of-range index → AskClarification(reason="ambiguous_shape")
+# Out-of-range index: ambiguous_shape AskClarification
 # ---------------------------------------------------------------------------
 
 
@@ -268,7 +266,7 @@ async def test_bind_out_of_range_index(crs_dac_shape_context: ShapeContext) -> N
 
 
 # ---------------------------------------------------------------------------
-# Test 8: singleton list normalised to scalar
+# Singleton list normalization
 # ---------------------------------------------------------------------------
 
 
@@ -321,7 +319,7 @@ def test_explode_empty_dict_returns_one_empty_predicate() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Test 9: multi-value bind returns a tuple of Predicates
+# Multi-value binding: predicate tuple
 # ---------------------------------------------------------------------------
 
 
@@ -377,7 +375,7 @@ async def test_bind_returns_singleton_tuple_single_value(
 
 
 # ---------------------------------------------------------------------------
-# Test 10: CONCURRENCY — ContextVars are isolated per asyncio Task
+# ContextVar isolation across concurrent tasks
 # ---------------------------------------------------------------------------
 
 
@@ -388,14 +386,8 @@ async def test_contextvar_isolation_across_concurrent_tasks(
 ) -> None:
     """8 concurrent bind() calls each see their own ContextVar values.
 
-    Spawns 8 tasks on different ShapeContexts; each task's generate_structured
-    mock returns a distinct user message (via the query embedded in the
-    ShapeContext). After all tasks complete, we verify via per-task callbacks
-    that get_last_user_message() returned a value that matches the task's own
-    query — proving ContextVar isolation across concurrent tasks.
-
-    This test catches the bug where module-level globals would cause the last
-    concurrent write to overwrite values seen by earlier reads.
+    Spawns 8 tasks on different ShapeContexts and verifies get_last_user_message()
+    matches each task's query — proving ContextVar isolation across concurrent tasks.
     """
     # Build 8 distinct shape contexts with distinct queries.
     queries = [f"test query number {i} for isolation check" for i in range(8)]
@@ -433,7 +425,7 @@ async def test_contextvar_isolation_across_concurrent_tasks(
 
 
 # ---------------------------------------------------------------------------
-# Test 11: usage ContextVar set even when model signals ask
+# Usage ContextVar set on ask path
 # ---------------------------------------------------------------------------
 
 
@@ -458,7 +450,7 @@ async def test_usage_contextvar_set_on_ask_path(crs_dac_shape_context: ShapeCont
 
 
 # ---------------------------------------------------------------------------
-# Test 12: ask message is capped at 500 chars
+# Ask message truncation at 500 chars
 # ---------------------------------------------------------------------------
 
 
@@ -479,7 +471,7 @@ async def test_ask_message_truncated_at_500_chars(crs_dac_shape_context: ShapeCo
 
 
 # ---------------------------------------------------------------------------
-# Test 13: _Output schema must NOT contain additionalProperties
+# _Output schema validation
 # ---------------------------------------------------------------------------
 
 
@@ -499,7 +491,7 @@ def test_output_schema_no_additional_properties() -> None:
 
 
 # ---------------------------------------------------------------------------
-# S4 tests: place-role offer + DevelopmentFinance default correction
+# Place-role offer and default correction
 # ---------------------------------------------------------------------------
 
 
@@ -527,14 +519,14 @@ async def test_devfinance_unqualified_place_defaults_to_recipient(
 ) -> None:
     """Unqualified 'nigeria' (no from/to cue) → NGA bound as recipient.
 
-    defaulted_recipient must be True.
+    defaulted_recipient is True (caveat needed on ambiguous place).
     """
     ctx = _crs_dac_ctx_with_places(
         "malaria grants nigeria",
         (("country/NGA", "Nigeria", "nigeria", "ambiguous"),),
         crs_dac_candidates,
     )
-    # LLM leaves recipient null (no taxonomy match for NGA in retrieved pool).
+    # LLM leaves recipient null (no on-taxonomy match for NGA).
     mock = _make_generate_structured(
         0,
         {
@@ -563,7 +555,7 @@ async def test_devfinance_explicit_to_binds_recipient_no_default(
         (("country/NGA", "Nigeria", "nigeria", "recipient"),),
         crs_dac_candidates,
     )
-    # LLM sets recipient (it saw it in prompt or taxonomy).
+    # LLM sets recipient explicitly.
     mock = _make_generate_structured(
         0,
         {
@@ -591,7 +583,7 @@ async def test_devfinance_from_place_not_bound_as_recipient(
         (("country/USA", "United States", "the united states", "donor"),),
         crs_dac_candidates,
     )
-    # LLM incorrectly binds USA as recipient (post-correction must clear it).
+    # LLM may bind USA as recipient (post-correction clears it).
     mock = _make_generate_structured(
         0,
         {
@@ -614,10 +606,9 @@ async def test_devfinance_from_place_not_bound_as_recipient(
 async def test_devfinance_grants_from_us_to_togo(
     crs_dac_candidates,
 ) -> None:
-    """'grants from us to togo': USA donor (not bound), TGO recipient; defaulted_recipient False.
+    """'grants from us to togo': USA donor cleared, TGO recipient set.
 
-    This exercises the input_surface anchor — 'us' is the verbatim token and
-    would not match canonical_name 'United States' or DCID slug 'USA'.
+    Exercises input_surface matching for abbreviated place names ('us' ≠ 'USA').
     """
     ctx = _crs_dac_ctx_with_places(
         "grants from us to togo",
@@ -627,7 +618,7 @@ async def test_devfinance_grants_from_us_to_togo(
         ),
         crs_dac_candidates,
     )
-    # LLM may bind either or neither; post-correction is deterministic.
+    # LLM output varies; post-correction is deterministic.
     mock = _make_generate_structured(
         0,
         {
@@ -734,6 +725,264 @@ async def test_build_user_message_omits_user_named_places_for_census(
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Set-binding: recipient parent with children
+# ---------------------------------------------------------------------------
+
+
+def _crs_dac_ctx_with_places_and_contained_in(
+    query: str,
+    resolved_places: tuple[tuple[str, str | None, str | None, str], ...],
+    parent_to_children: dict[str, tuple[tuple[str, str | None], ...]],
+    crs_dac_candidates,
+    *,
+    contained_in: bool = True,
+) -> ShapeContext:
+    """Build a CRS_DAC ShapeContext with contained_in + parent_to_children set."""
+    return build_shape_context(
+        query,
+        crs_dac_candidates,
+        resolved_places=resolved_places,
+        contained_in=contained_in,
+        parent_to_children=parent_to_children,
+    )
+
+
+@pytest.mark.asyncio
+async def test_set_binding_recipient_parent_with_children(
+    crs_dac_candidates,
+) -> None:
+    """Parent 'DAC/Africa' recipient + contained_in + children KEN/TGO.
+
+    constraints holds parent, constraint_sets holds children frozenset.
+    """
+    ctx = _crs_dac_ctx_with_places_and_contained_in(
+        "malaria grants to african countries",
+        (
+            ("DAC/Africa", "Africa", "african countries", "recipient"),
+            ("country/KEN", "Kenya", None, "ambiguous"),
+            ("country/TGO", "Togo", None, "ambiguous"),
+        ),
+        {"DAC/Africa": (("country/KEN", "Kenya"), ("country/TGO", "Togo"))},
+        crs_dac_candidates,
+    )
+    mock = _make_generate_structured(
+        0,
+        {
+            "DevelopmentFinancePurpose": "DAC/Malariacontrol",
+            "DevelopmentFinanceRecipient": "DAC/Africa",
+            "DevelopmentFinanceScheme": "ODAGrants",
+        },
+    )
+
+    with patch("dc_search.slot_binding.llm.generate_structured", mock):
+        result = await bind(ctx)
+
+    assert isinstance(result, BindResult)
+    assert len(result.predicates) == 1
+    pred = result.predicates[0]
+    # Parent aggregate stays in scalar constraints.
+    assert pred.constraints["DevelopmentFinanceRecipient"] == "DAC/Africa"
+    # Children are in constraint_sets.
+    assert pred.constraint_sets.get("DevelopmentFinanceRecipient") == frozenset(
+        {"country/KEN", "country/TGO"}
+    )
+
+
+@pytest.mark.asyncio
+async def test_set_binding_scalar_unchanged_contained_in_false(
+    crs_dac_candidates,
+) -> None:
+    """Scalar path: 'malaria grants to Nigeria', contained_in=False.
+
+    No set binding occurs; constraint_sets is empty.
+    """
+    ctx = _crs_dac_ctx_with_places_and_contained_in(
+        "malaria grants to Nigeria",
+        (("country/NGA", "Nigeria", "Nigeria", "recipient"),),
+        {},
+        crs_dac_candidates,
+        contained_in=False,
+    )
+    mock = _make_generate_structured(
+        0,
+        {
+            "DevelopmentFinancePurpose": "DAC/Malariacontrol",
+            "DevelopmentFinanceRecipient": "country/NGA",
+            "DevelopmentFinanceScheme": "ODAGrants",
+        },
+    )
+
+    with patch("dc_search.slot_binding.llm.generate_structured", mock):
+        result = await bind(ctx)
+
+    assert isinstance(result, BindResult)
+    assert len(result.predicates) == 1
+    pred = result.predicates[0]
+    assert pred.constraints["DevelopmentFinanceRecipient"] == "country/NGA"
+    assert pred.constraint_sets == {}, "No set binding when contained_in is False"
+
+
+@pytest.mark.asyncio
+async def test_set_binding_donor_contained_in_does_not_trigger(
+    crs_dac_candidates,
+) -> None:
+    """Donor contained-in: 'grants from african countries'.
+
+    Parent role is 'donor'; set-binding must NOT fire. constraint_sets == {}.
+    """
+    ctx = _crs_dac_ctx_with_places_and_contained_in(
+        "grants from african countries",
+        (
+            ("DAC/Africa", "Africa", "african countries", "donor"),
+            ("country/KEN", "Kenya", None, "ambiguous"),
+            ("country/TGO", "Togo", None, "ambiguous"),
+        ),
+        {"DAC/Africa": (("country/KEN", "Kenya"), ("country/TGO", "Togo"))},
+        crs_dac_candidates,
+    )
+    mock = _make_generate_structured(
+        0,
+        {
+            "DevelopmentFinancePurpose": None,
+            "DevelopmentFinanceRecipient": None,
+            "DevelopmentFinanceScheme": None,
+        },
+    )
+
+    with patch("dc_search.slot_binding.llm.generate_structured", mock):
+        result = await bind(ctx)
+
+    assert isinstance(result, BindResult)
+    for pred in result.predicates:
+        assert pred.constraint_sets == {}, (
+            "Donor contained-in must NOT produce a recipient constraint_sets"
+        )
+
+
+@pytest.mark.asyncio
+async def test_set_binding_mixed_from_germany_to_african_countries(
+    crs_dac_candidates,
+) -> None:
+    """Mixed: 'from Germany to african countries'.
+
+    Germany (donor) cleared from recipient; Africa (recipient) set as parent + children.
+    """
+    ctx = _crs_dac_ctx_with_places_and_contained_in(
+        "grants from Germany to african countries",
+        (
+            ("country/DEU", "Germany", "Germany", "donor"),
+            ("DAC/Africa", "Africa", "african countries", "recipient"),
+            ("country/KEN", "Kenya", None, "ambiguous"),
+            ("country/TGO", "Togo", None, "ambiguous"),
+        ),
+        {"DAC/Africa": (("country/KEN", "Kenya"), ("country/TGO", "Togo"))},
+        crs_dac_candidates,
+    )
+    # LLM may incorrectly bind Germany as recipient; post-correction clears it.
+    # Africa is then set as the recipient.
+    mock = _make_generate_structured(
+        0,
+        {
+            "DevelopmentFinancePurpose": "DAC/Malariacontrol",
+            "DevelopmentFinanceRecipient": "country/DEU",
+            "DevelopmentFinanceScheme": "ODAGrants",
+        },
+    )
+
+    with patch("dc_search.slot_binding.llm.generate_structured", mock):
+        result = await bind(ctx)
+
+    assert isinstance(result, BindResult)
+    assert len(result.predicates) == 1
+    pred = result.predicates[0]
+    # Germany must be cleared; Africa is the recipient aggregate.
+    assert pred.constraints["DevelopmentFinanceRecipient"] == "DAC/Africa"
+    # Children in constraint_sets.
+    assert pred.constraint_sets.get("DevelopmentFinanceRecipient") == frozenset(
+        {"country/KEN", "country/TGO"}
+    )
+
+
+@pytest.mark.asyncio
+async def test_set_binding_no_children_falls_back_to_scalar(
+    crs_dac_candidates,
+) -> None:
+    """No children found → scalar parent path, constraint_sets == {}."""
+    ctx = _crs_dac_ctx_with_places_and_contained_in(
+        "malaria grants to african countries",
+        (("DAC/Africa", "Africa", "african countries", "recipient"),),
+        # parent_to_children empty for this parent — no expansion ran.
+        {"DAC/Africa": ()},
+        crs_dac_candidates,
+    )
+    mock = _make_generate_structured(
+        0,
+        {
+            "DevelopmentFinancePurpose": "DAC/Malariacontrol",
+            "DevelopmentFinanceRecipient": "DAC/Africa",
+            "DevelopmentFinanceScheme": "ODAGrants",
+        },
+    )
+
+    with patch("dc_search.slot_binding.llm.generate_structured", mock):
+        result = await bind(ctx)
+
+    assert isinstance(result, BindResult)
+    assert len(result.predicates) == 1
+    pred = result.predicates[0]
+    assert pred.constraints["DevelopmentFinanceRecipient"] == "DAC/Africa"
+    assert pred.constraint_sets == {}, "No children → scalar path, no set binding"
+
+
+@pytest.mark.asyncio
+async def test_set_binding_i3_compound_query_degrades_to_scalar(
+    crs_dac_candidates,
+) -> None:
+    """Recipient parent + 2-value purpose list → set binding dropped.
+
+    When _explode_constraints yields >1 predicate (multi-valued slot),
+    both predicates must have constraint_sets == {}.
+    """
+    ctx = _crs_dac_ctx_with_places_and_contained_in(
+        "malaria or HIV grants to Nigeria sub-regions",
+        (
+            ("country/NGA", "Nigeria", "Nigeria", "recipient"),
+            ("country/NGA_Abia", "Abia", None, "ambiguous"),
+            ("country/NGA_Lagos", "Lagos", None, "ambiguous"),
+        ),
+        {
+            "country/NGA": (
+                ("country/NGA_Abia", "Abia"),
+                ("country/NGA_Lagos", "Lagos"),
+            )
+        },
+        crs_dac_candidates,
+    )
+    # LLM emits 2-element purpose list → cross-product yields 2 predicates.
+    # DAC/* namespace is distinct from country/*, so purpose list is not collapsed.
+    mock = _make_generate_structured(
+        0,
+        {
+            "DevelopmentFinancePurpose": ["DAC/Malariacontrol", "DAC/STDcontrolincludingHIVAIDS"],
+            "DevelopmentFinanceRecipient": "country/NGA",
+            "DevelopmentFinanceScheme": "ODAGrants",
+        },
+    )
+
+    with patch("dc_search.slot_binding.llm.generate_structured", mock):
+        result = await bind(ctx)
+
+    assert isinstance(result, BindResult)
+    assert len(result.predicates) == 2, (
+        "2-value purpose list must produce 2 predicates (cross-product)"
+    )
+    for pred in result.predicates:
+        assert pred.constraint_sets == {}, (
+            "I3: set binding must be DROPPED when explode yields >1 predicate"
+        )
+
+
 @pytest.mark.asyncio
 async def test_devfinance_ambiguous_llm_binds_offered_dcid_sets_defaulted_recipient(
     crs_dac_candidates,
@@ -770,3 +1019,42 @@ async def test_devfinance_ambiguous_llm_binds_offered_dcid_sets_defaulted_recipi
         "ambiguous (no directional cue) query — the caveat must not be suppressed"
     )
     assert result.predicates[0].constraints["DevelopmentFinanceRecipient"] == "country/NGA"
+
+
+@pytest.mark.asyncio
+async def test_set_binding_list_recipient_graceful_degrade(
+    crs_dac_candidates,
+) -> None:
+    """LLM binds list[str] to recipient slot → no crash, constraint_sets == {}.
+
+    isinstance guard catches list before membership test. Fails open to scalar.
+    """
+    ctx = _crs_dac_ctx_with_places_and_contained_in(
+        "malaria grants to african countries",
+        (
+            ("DAC/Africa", "Africa", "african countries", "ambiguous"),
+            ("country/KEN", "Kenya", None, "ambiguous"),
+            ("country/TGO", "Togo", None, "ambiguous"),
+        ),
+        {"DAC/Africa": (("country/KEN", "Kenya"), ("country/TGO", "Togo"))},
+        crs_dac_candidates,
+    )
+    # LLM returns list[str] for recipient slot.
+    mock = _make_generate_structured(
+        0,
+        {
+            "DevelopmentFinancePurpose": "DAC/Malariacontrol",
+            "DevelopmentFinanceRecipient": ["DAC/Africa", "country/KEN"],
+            "DevelopmentFinanceScheme": "ODAGrants",
+        },
+    )
+
+    with patch("dc_search.slot_binding.llm.generate_structured", mock):
+        result = await bind(ctx)
+
+    assert isinstance(result, BindResult), "Must not crash with a 500"
+    for pred in result.predicates:
+        assert pred.constraint_sets == {}, (
+            "Multi-value recipient binding must degrade to scalar aggregate "
+            "(constraint_sets == {})"
+        )

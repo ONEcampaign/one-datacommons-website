@@ -37,6 +37,7 @@ from ._helpers import (
 )
 from .context import Hook, HookContext, HookResult
 from .date_helpers import _overlaps, _range_for, _union_range
+from .set_recipient import SetValuedRecipientHook
 
 logger = logging.getLogger(__name__)
 
@@ -269,6 +270,14 @@ class CrsDacSvgExpansionHook:
         result: AnswerCollection,
         ctx: HookContext,
     ) -> HookResult:
+        # SetValuedRecipientHook already materialized the per-country family and
+        # added the set_valued_recipient caveat.  No need to run the scalar SVG path.
+        # On fail-open (no caveat) the set hook left result unchanged, so we proceed.
+        if predicate.constraint_sets.get("DevelopmentFinanceRecipient") and (
+            "set_valued_recipient" in result.caveats
+        ):
+            return result
+
         svg_dcid = _build_crs_svg_dcid(predicate)
 
         # Piece D: when the retrieved pool is empty (bound recipient absent from
@@ -292,9 +301,8 @@ class CrsDacSvgExpansionHook:
                     else:
                         recovered_caveats = list(result.caveats)
                     # Fetch features for recovered DCIDs so display has names.
-                    # S5 is the single owner of this fetch; S6 backs it up for
-                    # any still-missing DCIDs. The call primes _features_cache so
-                    # the S6 backup is a warm hit.
+                    # Backup availability fetch in the post-materialize step will
+                    # recompute against the donor set if needed.
                     features = _hooks_pkg.stat_var_features_batch(sv_dcids=recovered)
                     # Build variables inline using the fetched features so the
                     # hook result is self-consistent (names present).
@@ -767,6 +775,7 @@ HOOKS: tuple[Hook, ...] = (
     TopicExpansionHook(),
     WeakRetrievalTopicDumpHook(),
     SdgAskClarificationHook(),
+    SetValuedRecipientHook(),
     CrsDacSvgExpansionHook(),
     DonorIsObservationFacetHook(),
     DenominatorImplicitHook(),

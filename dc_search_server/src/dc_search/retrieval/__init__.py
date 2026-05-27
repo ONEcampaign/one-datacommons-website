@@ -1,23 +1,15 @@
-"""High-level helpers for the four discrimination primitives.
+"""High-level helpers for data discrimination.
 
-Each wraps the official ``datacommons-client`` and reshapes responses into
-compact Python objects easy to put in front of an LLM. All four are
-implemented over V2 — verified working against the custom DC where V1 paths
-are not exposed.
+Wraps the official datacommons-client and reshapes responses into
+compact Python objects for LLM consumption. Implemented over V2.
 
-The four primitives:
+The four main primitives:
+1. resolve_place — name → candidate DCIDs
+2. stat_var_features — SV DCID → structured graph features
+3. variables_for_entity — entity DCID → SV DCIDs with observations
+4. variable_group — StatVarGroup traversal
 
-1. ``resolve_place`` — name → candidate DCIDs (with type).
-2. ``stat_var_features`` — SV DCID → structured graph features (populationType,
-   measuredProperty, statType, measurementQualifier, constraint properties).
-   This is the LLM-friendly disambiguation view of a stat var.
-3. ``variables_for_entity`` — entity DCID → set of SV DCIDs that actually have
-   observations (discovery mode of /v2/observation). Critical filter.
-4. ``variable_group`` — V2 traversal of a StatVarGroup node into its parent
-   group, child groups, and child SVs.
-
-This package replaces the flat retrieval.py module. All externally-consumed
-names are re-exported here so every existing import path keeps resolving.
+All externally-consumed names are re-exported for backward compatibility.
 """
 
 from __future__ import annotations
@@ -36,6 +28,7 @@ from ._cache import (
     _entity_svs_cache,
     _expand_topic_cache_lru,
     _features_cache,
+    _inverse_arcs_cache_lru,
     _observation_dates_cache,
     _observation_facet_ranges_cache,
     _parent_countries_cache_lru,
@@ -65,6 +58,7 @@ from .indicator import (
     resolve_indicator,
     stat_var_features,
     stat_var_features_batch,
+    svs_by_inverse_arcs,
     variable_group,
     variable_groups_batch,
 )
@@ -113,6 +107,7 @@ __all__ = [
     "_entity_svs_cache",
     "_expand_topic_cache_lru",
     "_features_cache",
+    "_inverse_arcs_cache_lru",
     "_observation_dates_cache",
     "_observation_facet_ranges_cache",
     "_parent_countries_cache_lru",
@@ -143,6 +138,7 @@ __all__ = [
     "resolve_indicator",
     "stat_var_features",
     "stat_var_features_batch",
+    "svs_by_inverse_arcs",
     "variable_group",
     "variable_groups_batch",
     "DateCoverage",

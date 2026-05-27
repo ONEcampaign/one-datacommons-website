@@ -80,14 +80,23 @@ class ShapeContext:
     ``role`` is one of ``"donor"``, ``"recipient"``, or ``"ambiguous"`` — computed
     once per query from the ORIGINAL full query string by
     ``place_role.place_directional_role``.  The scoped per-variable ``shape_query``
-    is used only for LLM shape election; directional role assignment always reads
-    the original grammar (Amendment 2).
+    is used only for LLM shape election; directional role stays tied to the
+    original grammar so "from X to Y" is preserved across fan-out.
 
     Empty on the simple endpoint and when no place resolved.  When populated,
     the slot-binder uses these to offer known places to place-typed constraint
     slots (e.g. DevelopmentFinanceRecipient) and reads the pre-computed role
     instead of re-scanning the (possibly scoped) query.
     """
+    contained_in: bool = False
+    """LLM contained-in intent, plumbed from extraction.
+
+    Independent of whether child places were actually found.
+    """
+    parent_to_children: dict[str, tuple[tuple[str, str | None], ...]] = dataclass_field(
+        default_factory=dict
+    )
+    """parent dcid -> ((child_dcid, child_name), ...); empty unless contained_in expansion ran."""
 
 
 # ---------------------------------------------------------------------------
@@ -506,6 +515,8 @@ def build_shape_context(
     retrieval_scores: dict[str, float] | None = None,
     *,
     resolved_places: tuple[tuple[str, str | None, str | None, str], ...] = (),
+    contained_in: bool = False,
+    parent_to_children: dict[str, tuple[tuple[str, str | None], ...]] | None = None,
     max_shapes: int | None = None,
 ) -> ShapeContext:
     """Group candidates by shape, derive slot taxonomies, extract keyword cues.
@@ -628,4 +639,6 @@ def build_shape_context(
         shapes=tuple(shapes),
         keyword_cues=keyword_cues,
         resolved_places=resolved_places,
+        contained_in=contained_in,
+        parent_to_children=parent_to_children if parent_to_children is not None else {},
     )
