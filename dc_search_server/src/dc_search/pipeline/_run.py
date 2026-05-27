@@ -689,7 +689,7 @@ async def _build_resolved_places_triples(
 
     ``role`` is computed once per query from the ORIGINAL full query string via
     ``place_directional_role`` — NOT from any per-variable scoped shape query
-    (Amendment 2: fan-out scoping must not corrupt directional detection).
+    (fan-out scoping must not corrupt directional detection).
 
     Calls resolve_places_batch (LRU-cached, warm after _resolve_place_dcids ran)
     to re-derive each entity's own DCID, so entities that failed to resolve are
@@ -762,10 +762,9 @@ async def _run_one_variable(
     variable: str | None,
     query: str,
     *,
-    place_dcids: list[str],
+    resolution_task: asyncio.Task[PlaceResolution],
     dates: list[ExtractedDate] | None = None,
     entities: list[str] | None = None,
-    parent_to_children: dict[str, tuple[tuple[str, str | None], ...]] | None = None,
     slot_bind_usages: list[Usage],
 ) -> _VariableResult:
     """Shared pipeline core: retrieve → shape → bind → materialize.
@@ -773,184 +772,193 @@ async def _run_one_variable(
     Args:
         variable: Extracted variable for scoping; None for simple endpoint.
         query: Original user query (forwarded to LLM for context).
-        place_dcids: Pre-resolved place DCIDs (shared across all variables).
+        resolution_task: Shared place-resolution task (resolve + contained-in expansion).
+            Awaited once inside the body (just before the topic short-circuit); yields the
+            full resolved DCID set and the parent->children expansion map. Started concurrently
+            with retrieval so resolution latency is hidden behind the retrieval round-trip.
         dates: Extracted date references (None on simple endpoint).
         entities: Extracted place names (as written in the query). Folded into
             the shape-building query alongside ``variable`` so slot-binding sees
             the place without the sibling variables. Ignored when ``variable`` is
             None (simple endpoint). None on the simple endpoint.
-        parent_to_children: Optional map of parent DCID -> child (dcid, name) tuples
-            produced by contained-in expansion. Forwarded to
-            ``_build_resolved_places_triples`` so child 4-tuples are included.
-            None on the simple endpoint and when contained_in=False.
         slot_bind_usages: Mutable list appended to for LLM usage aggregation.
 
     Returns:
         _VariableResult with answer/clarification and telemetry counts.
     """
-    # Retrieval.
-    retrieve_out = await _retrieve(variable, query)
-    if isinstance(retrieve_out, AskClarification):
-        return _VariableResult(outcome=retrieve_out)
+    # Start retrieval concurrently; it is place-independent, so it overlaps resolution.
+    retrieve_task = asyncio.create_task(_retrieve(variable, query))
+    try:
+        # Join place resolution (shared dcid_task) — the first real consumer of resolved
+        # places is the topic short-circuit below.
+        resolution = await resolution_task
+        place_dcids = list(resolution.dcids)
+        parent_to_children = resolution.parent_to_children or None
 
-    candidates, sv_dcids, retrieval_scores = retrieve_out
-    n_candidates = len(sv_dcids)
+        retrieve_out = await retrieve_task
+        if isinstance(retrieve_out, AskClarification):
+            return _VariableResult(outcome=retrieve_out)
 
-    # Build dcid_to_sentence map from candidates.
-    dcid_to_sentence: dict[str, str] = {
-        c.dcid: c.sentence for c in candidates if getattr(c, "sentence", None)
-    }
+        candidates, sv_dcids, retrieval_scores = retrieve_out
+        n_candidates = len(sv_dcids)
 
-    # Topic-dominance short-circuit.
-    topic_answer = await _short_circuit_topic(
-        candidates, retrieval_scores, variable, place_dcids=place_dcids, dates=dates
-    )
-    if topic_answer is not None:
-        return _VariableResult(outcome=topic_answer, n_candidates=n_candidates)
+        # Build dcid_to_sentence map from candidates.
+        dcid_to_sentence: dict[str, str] = {
+            c.dcid: c.sentence for c in candidates if getattr(c, "sentence", None)
+        }
 
-    # Availability re-rank (against the full resolved place set, before donor narrowing).
-    sv_dcids, union_avail, dcid_to_date_range, avail_degraded = await _rerank_by_availability(
-        sv_dcids, place_dcids
-    )
-
-    # Feature fetch.
-    feature_list = await _fetch_features(sv_dcids)
-
-    # Build (dcid, canonical_name, input_surface, role) 4-tuples for the default endpoint.
-    # Role is computed from the ORIGINAL full `query` — NOT from the per-variable
-    # scoped `shape_query` built below — so directional grammar ("from X to Y") is
-    # preserved across fan-out (Amendment 2).  Simple endpoint passes resolved_places=()
-    # — it already works on the full query and does not use place-role binding.
-    resolved_places = await _build_resolved_places_triples(
-        place_dcids, entities, query=query, parent_to_children=parent_to_children
-    )
-
-    # Shape context. In multi-variable fan-out, scope the shape-building query
-    # to the per-variable phrase (plus any extracted places) rather than the full
-    # query, so the slot-binding LLM's shape election isn't biased by sibling
-    # variables (e.g. "gdp" dragging "unemployment" into the broad Economy topic).
-    # Mirrors _retrieve, which already scopes retrieval to `variable`. Entities are
-    # kept so the place survives for place-as-constraint binding (e.g. CRS_DAC
-    # recipient). The simple endpoint (variable is None) keeps the full query.
-    if variable is not None:
-        shape_query = f"{variable} in {', '.join(entities)}" if entities else variable
-    else:
-        shape_query = query
-    shape_or_ask = _build_shape(shape_query, feature_list, retrieval_scores, resolved_places)
-    if isinstance(shape_or_ask, AskClarification):
-        return _VariableResult(outcome=shape_or_ask, n_candidates=n_candidates)
-
-    shape_ctx = shape_or_ask
-    n_shapes = len(shape_ctx.shapes)
-
-    # Topic metadata enrichment (carries resolved_places through the rebuild).
-    shape_ctx = await _enrich_topic_metadata(shape_ctx)
-
-    # Slot binding LLM call — returns BindResult with attribute access.
-    bound = await _bind_slot(shape_ctx, slot_bind_usages)
-    if isinstance(bound, AskClarification):
-        return _VariableResult(outcome=bound, n_candidates=n_candidates, n_shapes=n_shapes)
-
-    # Unpack BindResult via attribute access.
-    predicates = bound.predicates
-    defaulted_recipient = bound.defaulted_recipient
-
-    # Donor set = resolved places NOT bound as a constraint value in any predicate.
-    # Pass donor_dcids as the HookContext.place_dcids so materialize_many treats
-    # only donors as observation entities.
-    donor_dcids: tuple[str, ...] = classify_place_roles(
-        resolved_places=resolved_places, predicates=predicates
-    )
-
-    # Materialize via hooks using the donor set as the entity set.
-    answer = await _materialize(
-        predicates,
-        feature_list,
-        list(donor_dcids),
-        # Pre-bind availability/ranges were computed against the full place_dcids;
-        # they are superseded by the post-materialize enrichment when needed.
-        union_avail,
-        retrieval_scores,
-        variable,
-        dates=dates,
-        availability_degraded=avail_degraded,
-        dcid_to_sentence=dcid_to_sentence,
-        dcid_to_date_range=dcid_to_date_range,
-    )
-
-    # ------------------------------------------------------------------
-    # Post-materialize enrichment (conditional — CRS recipient-bound path only).
-    # Fires when:
-    #   • the donor set differs from the full place set (a recipient was bound), OR
-    #   • the final sv_set has DCIDs absent from the retrieved feature pool
-    #     (Piece D recovered them — their availability/names need a recompute).
-    # The common non-CRS path skips this block entirely (zero added cost).
-    # ------------------------------------------------------------------
-    if isinstance(answer, AnswerCollection):
-        retrieved_dcids: set[str] = {f.dcid for f in feature_list}
-        needs_enrichment = tuple(place_dcids) != donor_dcids or bool(
-            set(answer.sv_set) - retrieved_dcids
+        # Topic-dominance short-circuit.
+        topic_answer = await _short_circuit_topic(
+            candidates, retrieval_scores, variable, place_dcids=place_dcids, dates=dates
         )
-        if needs_enrichment:
-            final_sv_set = list(answer.sv_set)
+        if topic_answer is not None:
+            return _VariableResult(outcome=topic_answer, n_candidates=n_candidates)
 
-            # Backup feature fetch: collect any DCIDs still missing from raw_candidates.
-            # This catches any gaps not covered by the S5 hook.
-            missing_dcids = [d for d in final_sv_set if d not in retrieved_dcids]
-            merged_features: dict[str, object] = {f.dcid: f for f in feature_list}
-            if missing_dcids:
-                try:
-                    extra = await asyncio.to_thread(
-                        retrieval.stat_var_features_batch, sv_dcids=missing_dcids
-                    )
-                    merged_features.update(extra)
-                except Exception:
-                    pass  # fail-open: names remain None for missing DCIDs
+        # Availability re-rank (against the full resolved place set, before donor narrowing).
+        sv_dcids, union_avail, dcid_to_date_range, avail_degraded = await _rerank_by_availability(
+            sv_dcids, place_dcids
+        )
 
-            # Recompute availability + date_range against the donor set over the
-            # final sv_set. When donor_dcids is empty (every place was a recipient)
-            # we OMIT availability — None, not False.
-            if donor_dcids:
-                try:
-                    new_avail, new_ranges, new_degraded = await asyncio.to_thread(
-                        _resolve_union_availability_with_ranges,
-                        list(donor_dcids),
-                        tuple(final_sv_set),
-                    )
-                except Exception:
-                    new_avail = frozenset()
+        # Feature fetch.
+        feature_list = await _fetch_features(sv_dcids)
+
+        # Build (dcid, canonical_name, input_surface, role) 4-tuples for the default endpoint.
+        # Role is computed from the ORIGINAL full `query` — NOT from the per-variable
+        # scoped `shape_query` built below — so directional grammar ("from X to Y") is
+        # preserved across fan-out.  Simple endpoint passes resolved_places=()
+        # — it already works on the full query and does not use place-role binding.
+        resolved_places = await _build_resolved_places_triples(
+            place_dcids, entities, query=query, parent_to_children=parent_to_children
+        )
+
+        # Shape context. In multi-variable fan-out, scope the shape-building query
+        # to the per-variable phrase (plus any extracted places) rather than the full
+        # query, so the slot-binding LLM's shape election isn't biased by sibling
+        # variables (e.g. "gdp" dragging "unemployment" into the broad Economy topic).
+        # Mirrors _retrieve, which already scopes retrieval to `variable`. Entities are
+        # kept so the place survives for place-as-constraint binding (e.g. CRS_DAC
+        # recipient). The simple endpoint (variable is None) keeps the full query.
+        if variable is not None:
+            shape_query = f"{variable} in {', '.join(entities)}" if entities else variable
+        else:
+            shape_query = query
+        shape_or_ask = _build_shape(shape_query, feature_list, retrieval_scores, resolved_places)
+        if isinstance(shape_or_ask, AskClarification):
+            return _VariableResult(outcome=shape_or_ask, n_candidates=n_candidates)
+
+        shape_ctx = shape_or_ask
+        n_shapes = len(shape_ctx.shapes)
+
+        # Topic metadata enrichment (carries resolved_places through the rebuild).
+        shape_ctx = await _enrich_topic_metadata(shape_ctx)
+
+        # Slot binding LLM call — returns BindResult with attribute access.
+        bound = await _bind_slot(shape_ctx, slot_bind_usages)
+        if isinstance(bound, AskClarification):
+            return _VariableResult(outcome=bound, n_candidates=n_candidates, n_shapes=n_shapes)
+
+        # Unpack BindResult via attribute access.
+        predicates = bound.predicates
+        defaulted_recipient = bound.defaulted_recipient
+
+        # Donor set = resolved places NOT bound as a constraint value in any predicate.
+        # Pass donor_dcids as the HookContext.place_dcids so materialize_many treats
+        # only donors as observation entities.
+        donor_dcids: tuple[str, ...] = classify_place_roles(
+            resolved_places=resolved_places, predicates=predicates
+        )
+
+        # Materialize via hooks using the donor set as the entity set.
+        answer = await _materialize(
+            predicates,
+            feature_list,
+            list(donor_dcids),
+            # Pre-bind availability/ranges were computed against the full place_dcids;
+            # they are superseded by the post-materialize enrichment when needed.
+            union_avail,
+            retrieval_scores,
+            variable,
+            dates=dates,
+            availability_degraded=avail_degraded,
+            dcid_to_sentence=dcid_to_sentence,
+            dcid_to_date_range=dcid_to_date_range,
+        )
+
+        # ------------------------------------------------------------------
+        # Post-materialize enrichment (conditional — CRS recipient-bound path only).
+        # Fires when:
+        #   • the donor set differs from the full place set (a recipient was bound), OR
+        #   • the final sv_set has DCIDs absent from the retrieved feature pool
+        #     (recovered DCIDs must have their availability/names recomputed).
+        # The common non-CRS path skips this block entirely (zero added cost).
+        # ------------------------------------------------------------------
+        if isinstance(answer, AnswerCollection):
+            retrieved_dcids: set[str] = {f.dcid for f in feature_list}
+            needs_enrichment = tuple(place_dcids) != donor_dcids or bool(
+                set(answer.sv_set) - retrieved_dcids
+            )
+            if needs_enrichment:
+                final_sv_set = list(answer.sv_set)
+
+                # Backup feature fetch: collect any DCIDs still missing from raw_candidates.
+                # This catches any gaps not covered by the S5 hook.
+                missing_dcids = [d for d in final_sv_set if d not in retrieved_dcids]
+                merged_features: dict[str, object] = {f.dcid: f for f in feature_list}
+                if missing_dcids:
+                    try:
+                        extra = await asyncio.to_thread(
+                            retrieval.stat_var_features_batch, sv_dcids=missing_dcids
+                        )
+                        merged_features.update(extra)
+                    except Exception:
+                        pass  # fail-open: names remain None for missing DCIDs
+
+                # Recompute availability + date_range against the donor set over the
+                # final sv_set. When donor_dcids is empty (every place was a recipient)
+                # we OMIT availability — None, not False.
+                if donor_dcids:
+                    try:
+                        new_avail, new_ranges, new_degraded = await asyncio.to_thread(
+                            _resolve_union_availability_with_ranges,
+                            list(donor_dcids),
+                            tuple(final_sv_set),
+                        )
+                    except Exception:
+                        new_avail = frozenset()
+                        new_ranges = {}
+                        new_degraded = False
+                else:
+                    new_avail = None
                     new_ranges = {}
                     new_degraded = False
-            else:
-                new_avail = None
-                new_ranges = {}
-                new_degraded = False
 
-            # Rebuild variables with updated features, availability, and ranges.
-            enrich_ctx = HookContext(
-                place_dcids=donor_dcids,
-                place_availability=new_avail,
-                retrieval_scores=retrieval_scores,
-                raw_candidates=tuple(merged_features.values()),
-                dates=dates or [],
-                availability_degraded=new_degraded,
-                dcid_to_sentence=dcid_to_sentence,
-                dcid_to_date_range=new_ranges,
-            )
-            answer = answer.model_copy(
-                update={"variables": hooks_module._build_variables(final_sv_set, enrich_ctx)}
-            )
+                # Rebuild variables with updated features, availability, and ranges.
+                enrich_ctx = HookContext(
+                    place_dcids=donor_dcids,
+                    place_availability=new_avail,
+                    retrieval_scores=retrieval_scores,
+                    raw_candidates=tuple(merged_features.values()),
+                    dates=dates or [],
+                    availability_degraded=new_degraded,
+                    dcid_to_sentence=dcid_to_sentence,
+                    dcid_to_date_range=new_ranges,
+                )
+                answer = answer.model_copy(
+                    update={"variables": hooks_module._build_variables(final_sv_set, enrich_ctx)}
+                )
 
-        # Stamp interpreted_place_as_recipient caveat when the recipient role was
-        # assigned by the unqualified-place default (not by explicit "to X" cue).
-        if defaulted_recipient and "interpreted_place_as_recipient" not in answer.caveats:
-            answer = answer.model_copy(
-                update={
-                    "caveats": [*answer.caveats, "interpreted_place_as_recipient"],
-                }
-            )
+            # Stamp interpreted_place_as_recipient caveat when the recipient role was
+            # assigned by the unqualified-place default (not by explicit "to X" cue).
+            if defaulted_recipient and "interpreted_place_as_recipient" not in answer.caveats:
+                answer = answer.model_copy(
+                    update={
+                        "caveats": [*answer.caveats, "interpreted_place_as_recipient"],
+                    }
+                )
 
-    return _VariableResult(outcome=answer, n_candidates=n_candidates, n_shapes=n_shapes)
+        return _VariableResult(outcome=answer, n_candidates=n_candidates, n_shapes=n_shapes)
+    finally:
+        retrieve_task.cancel()
 
 
 # ---------------------------------------------------------------------------
@@ -1135,13 +1143,11 @@ async def stream_default(query: str) -> AsyncIterator[Event]:
         slot_bind_usages: list[Usage] = []
 
         async def _run_zero_variable() -> _VariableResult:
-            # Await shared resolution task; thread parent_to_children through.
-            resolution = await dcid_task
+            # Resolution is joined inside _run_one_variable (overlapped with retrieval).
             return await _run_one_variable(
                 None,
                 query,
-                place_dcids=list(resolution.dcids),
-                parent_to_children=resolution.parent_to_children or None,
+                resolution_task=dcid_task,
                 slot_bind_usages=slot_bind_usages,
             )
 
@@ -1200,15 +1206,13 @@ async def stream_default(query: str) -> AsyncIterator[Event]:
     async def per_variable(index: int, v: str) -> _VariableResult:
         async with _FANOUT_SEM:
             try:
-                # Await shared dcid_task (resolved once per query).
-                resolution = await dcid_task
+                # Resolution is joined inside _run_one_variable (overlapped with retrieval).
                 vr = await _run_one_variable(
                     v,
                     query,
-                    place_dcids=list(resolution.dcids),
+                    resolution_task=dcid_task,
                     dates=extracted_dates,
                     entities=extracted_entities,
-                    parent_to_children=resolution.parent_to_children or None,
                     slot_bind_usages=slot_bind_usages,
                 )
             except Exception as exc:
@@ -1281,10 +1285,9 @@ async def stream_simple(query: str) -> AsyncIterator[Event]:
     )
 
     async def _run_simple_variable() -> _VariableResult:
-        resolution = await dcid_task
-        # Simple endpoint: parent_to_children is always empty (no expansion).
+        # Resolution is joined inside _run_one_variable (overlapped with retrieval).
         return await _run_one_variable(
-            None, query, place_dcids=list(resolution.dcids), slot_bind_usages=slot_bind_usages
+            None, query, resolution_task=dcid_task, slot_bind_usages=slot_bind_usages
         )
 
     run_task: asyncio.Task[_VariableResult] = asyncio.create_task(_run_simple_variable())

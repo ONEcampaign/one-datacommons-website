@@ -279,10 +279,9 @@ async def test_stream_default_partial_failure(monkeypatch: pytest.MonkeyPatch) -
         variable,
         query,
         *,
-        place_dcids,
+        resolution_task,
         dates=None,
         entities=None,
-        parent_to_children=None,
         slot_bind_usages,
     ):
         nonlocal call_count
@@ -292,10 +291,9 @@ async def test_stream_default_partial_failure(monkeypatch: pytest.MonkeyPatch) -
         return await original_run_one(
             variable,
             query,
-            place_dcids=place_dcids,
+            resolution_task=resolution_task,
             dates=dates,
             entities=entities,
-            parent_to_children=parent_to_children,
             slot_bind_usages=slot_bind_usages,
         )
 
@@ -400,10 +398,9 @@ async def test_drain_preserves_order(monkeypatch: pytest.MonkeyPatch) -> None:
         variable,
         query,
         *,
-        place_dcids,
+        resolution_task,
         dates=None,
         entities=None,
-        parent_to_children=None,
         slot_bind_usages,
     ):
         delay = delays.get(variable or "", 0.01)
@@ -656,10 +653,9 @@ async def test_disconnect_cancels_fanout(monkeypatch: pytest.MonkeyPatch) -> Non
         variable,
         query,
         *,
-        place_dcids,
+        resolution_task,
         dates=None,
         entities=None,
-        parent_to_children=None,
         slot_bind_usages,
     ):
         try:
@@ -777,10 +773,9 @@ async def test_stream_default_soft_deadline(monkeypatch: pytest.MonkeyPatch) -> 
         variable,
         query,
         *,
-        place_dcids,
+        resolution_task,
         dates=None,
         entities=None,
-        parent_to_children=None,
         slot_bind_usages,
     ):
         try:
@@ -827,10 +822,9 @@ async def test_stream_simple_soft_deadline(monkeypatch: pytest.MonkeyPatch) -> N
         variable,
         query,
         *,
-        place_dcids,
+        resolution_task,
         dates=None,
         entities=None,
-        parent_to_children=None,
         slot_bind_usages,
     ):
         await asyncio.sleep(10)
@@ -936,9 +930,9 @@ async def test_perf_result_emitted_while_place_task_pending(
 ) -> None:
     """A Result event is emitted while place_event_task is still pending.
 
-    Guards the B1 regression: place_names_batch latency must NOT block result
-    emission.  With a slow place_names_batch and a fast _run_one_variable, at
-    least one Result should appear before the Places event.
+    Result emission must not be blocked by place resolution latency. With a slow
+    place_names_batch and a fast _run_one_variable, at least one Result should
+    appear before the Places event.
     """
     import dc_search.extraction as _ext
     import dc_search.pipeline as _pipeline
@@ -956,10 +950,9 @@ async def test_perf_result_emitted_while_place_task_pending(
         variable,
         query,
         *,
-        place_dcids,
+        resolution_task,
         dates=None,
         entities=None,
-        parent_to_children=None,
         slot_bind_usages,
     ):
         slot_bind_usages.append(_USAGE)
@@ -1044,18 +1037,17 @@ def test_result_outcome_kind_matches_answer() -> None:
 
 
 # ---------------------------------------------------------------------------
-# simple-endpoint timeout cancels place tasks (no orphaned tasks)
+# Timeout path: place_event_task cancellation prevents orphans
 # ---------------------------------------------------------------------------
 
 
 async def test_stream_simple_timeout_cancels_place_tasks(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """stream_simple timeout path cancels dcid_task + place_event_task — no orphans.
+    """stream_simple deadline path cancels dcid_task + place_event_task — no orphans.
 
-    Mirrors case-10 / case-12 but exercises the specific path where both
-    _run_one_variable AND place_names_batch block, so place_event_task is still
-    pending when the route deadline fires.
+    Exercises the path where both _run_one_variable AND place_names_batch block,
+    so place_event_task is still pending when the route deadline fires.
     """
     import dc_search.pipeline as _pipeline
     import dc_search.pipeline._run as _run
@@ -1068,10 +1060,9 @@ async def test_stream_simple_timeout_cancels_place_tasks(
         variable,
         query,
         *,
-        place_dcids,
+        resolution_task,
         dates=None,
         entities=None,
-        parent_to_children=None,
         slot_bind_usages,
     ):
         await asyncio.sleep(10)
@@ -1143,10 +1134,9 @@ async def test_zero_variable_result_not_blocked_by_place_task(
         variable,
         query,
         *,
-        place_dcids,
+        resolution_task,
         dates=None,
         entities=None,
-        parent_to_children=None,
         slot_bind_usages,
     ):
         slot_bind_usages.append(_USAGE)
@@ -1185,3 +1175,117 @@ async def test_zero_variable_result_not_blocked_by_place_task(
         assert result_idx <= places_idx, (
             "Result must not be blocked by Places on the zero-variable path"
         )
+
+
+# ---------------------------------------------------------------------------
+# Resolution failure cleans up: retrieve_task is cancelled, not orphaned
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_resolution_failure_does_not_orphan_retrieve_task(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """_resolve_place_dcids raising while retrieve_task is in flight → retrieve_task cancelled."""
+    import dc_search.extraction as _ext
+    import dc_search.pipeline as _pipeline
+    import dc_search.pipeline._run as _run
+
+    async def _mock_extract(query, *, model=None):
+        return (_make_extraction(["population"]), _EXTRACT_USAGE)
+
+    monkeypatch.setattr(_ext, "extract", _mock_extract)
+    _patch_all(monkeypatch)
+
+    retrieve_started = asyncio.Event()
+    retrieve_cancelled = asyncio.Event()
+
+    async def _slow_retrieve(variable, query):
+        retrieve_started.set()
+        try:
+            await asyncio.sleep(10)
+        except asyncio.CancelledError:
+            retrieve_cancelled.set()
+            raise
+
+    monkeypatch.setattr(_run, "_retrieve", _slow_retrieve)
+
+    async def _failing_resolve(query, entities, *, contained_in=False):
+        await retrieve_started.wait()  # ensure retrieve_task is in flight before we fail
+        raise RuntimeError("simulated resolution failure")
+
+    monkeypatch.setattr(_run, "_resolve_place_dcids", _failing_resolve)
+
+    events = await _collect(_pipeline.stream_default(_QUERY))
+
+    # Resolution failure → branch records error AskClarification (per_variable except path).
+    result_events = [e for e in events if isinstance(e, Result)]
+    assert len(result_events) == 1
+    assert isinstance(result_events[0].answer, AskClarification)
+    assert result_events[0].answer.reason == "error"
+
+    await asyncio.sleep(0)  # let the finally's cancel finalize
+    assert retrieve_cancelled.is_set(), "retrieve_task must be cancelled on resolution failure"
+    current = asyncio.current_task()
+    pending = {t for t in asyncio.all_tasks() if t is not current and not t.done()}
+    assert not pending, f"Orphaned tasks remain: {pending}"
+
+
+# ---------------------------------------------------------------------------
+# Consumer cancellation during resolution: retrieve_task cleanup via finally
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_cancel_during_resolution_cleans_up_retrieve_task(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """CancelledError while awaiting resolution_task inside _run_one_variable → finally cancels
+    retrieve_task."""
+    import dc_search.extraction as _ext
+    import dc_search.pipeline as _pipeline
+    import dc_search.pipeline._run as _run
+
+    async def _mock_extract(query, *, model=None):
+        return (_make_extraction(["population"]), _EXTRACT_USAGE)
+
+    monkeypatch.setattr(_ext, "extract", _mock_extract)
+    _patch_all(monkeypatch)
+
+    retrieve_started = asyncio.Event()
+    retrieve_cancelled = asyncio.Event()
+    release_resolve = asyncio.Event()  # never set → resolution stays suspended
+
+    async def _slow_retrieve(variable, query):
+        retrieve_started.set()
+        try:
+            await asyncio.sleep(10)
+        except asyncio.CancelledError:
+            retrieve_cancelled.set()
+            raise
+
+    monkeypatch.setattr(_run, "_retrieve", _slow_retrieve)
+
+    async def _blocking_resolve(query, entities, *, contained_in=False):
+        await release_resolve.wait()  # suspends the await resolution_task inside the body
+        # PlaceResolution has THREE required fields (frozen/slots, no defaults).
+        return _run.PlaceResolution(dcids=(), parent_to_children={}, parent_to_child_type={})
+
+    monkeypatch.setattr(_run, "_resolve_place_dcids", _blocking_resolve)
+
+    async def _consume():
+        async for _ in _pipeline.stream_default(_QUERY):
+            pass
+
+    task = asyncio.create_task(_consume())
+    await asyncio.wait_for(asyncio.shield(retrieve_started.wait()), timeout=5.0)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    # Event-driven wait for the finally's cancel to finalize.
+    await asyncio.wait_for(retrieve_cancelled.wait(), timeout=1.0)
+    assert retrieve_cancelled.is_set(), "retrieve_task must be cancelled when consumer is cancelled"
+    current = asyncio.current_task()
+    pending = {t for t in asyncio.all_tasks() if t is not current and not t.done()}
+    assert not pending, f"Orphaned tasks remain: {pending}"

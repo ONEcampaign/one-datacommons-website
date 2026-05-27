@@ -64,6 +64,64 @@ code, kbd, samp { font-family: var(--font-mono); }
   margin: 0;
 }
 
+/* ---------- "How it works" disclosure (under the tagline) ---------- */
+.howitworks {
+  margin-top: var(--space-xxs);
+}
+.howitworks-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: max-content;
+  cursor: pointer;
+  list-style: none;                 /* hide default marker (Firefox) */
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(var(--black));
+}
+.howitworks-summary::-webkit-details-marker { display: none; }  /* hide default marker (WebKit) */
+.howitworks-summary::before {
+  content: "▸";
+  display: inline-block;
+  transition: transform var(--duration) var(--ease);
+}
+.howitworks[open] .howitworks-summary::before { transform: rotate(90deg); }
+.howitworks-summary:hover { color: hsl(var(--blue-dc)); }
+.howitworks-content {
+  margin-top: var(--space-xs);
+  padding-left: var(--space-sm);
+  border-left: 2px solid hsl(var(--grey));
+  max-width: 70ch;
+}
+.howitworks-body {
+  margin: 0;
+  font-size: var(--fs-normal-sm);
+  line-height: var(--lh-normal-sm);
+  color: hsl(var(--grey-italian));
+}
+.howitworks-compared-label {
+  margin: var(--space-sm) 0 var(--space-xxs);
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(var(--black));
+}
+.howitworks-compared {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  font-size: var(--fs-normal-sm);
+  line-height: var(--lh-normal-sm);
+  color: hsl(var(--grey-italian));
+}
+.howitworks-compared strong { color: hsl(var(--black)); }
+
 /* ============================================================
    QUERY BAR
    ============================================================ */
@@ -888,18 +946,41 @@ code, kbd, samp { font-family: var(--font-mono); }
 .interp-chip-note { font-size: 10px; color: hsl(var(--blue-dc)); font-weight: var(--fw-bold); }
 
 /* Expansion block — BELOW the min-height:84px strip, must not disturb alignment */
-.contained-in-block { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+/* Collapsed-by-default disclosure — subtle, mirrors the header "How it works". */
+.contained-in { margin-top: 4px; }
+.contained-in-summary {
+  display: inline-flex; align-items: center; gap: 6px;
+  width: max-content; cursor: pointer; list-style: none;
+  font-size: 11px; font-weight: var(--fw-bold); letter-spacing: 0.08em;
+  text-transform: uppercase; color: hsl(var(--grey-italian));
+}
+.contained-in-summary::-webkit-details-marker { display: none; }
+.contained-in-summary::before {
+  content: "▸"; display: inline-block;
+  transition: transform var(--duration) var(--ease);
+}
+.contained-in[open] .contained-in-summary::before { transform: rotate(90deg); }
+.contained-in-summary:hover { color: hsl(var(--blue-dc)); }
+.contained-in-summary-meta {
+  font-weight: var(--fw-regular); letter-spacing: 0; text-transform: none;
+  color: hsl(var(--grey-slate));
+}
+.contained-in-content {
+  display: flex; flex-direction: column; gap: 8px; margin-top: 6px;
+}
 .contained-in-parent {
-  border-left: 3px solid hsl(var(--blue-dc));
-  background: hsl(var(--blue-washed));
-  padding: 8px 10px;
+  border-left: 2px solid hsl(var(--grey));
+  padding: 2px 0 2px 10px;
   display: flex; flex-direction: column; gap: 6px;
 }
-.contained-in-head { font-size: 12px; font-weight: var(--fw-bold); color: hsl(var(--black)); }
-.contained-in-child-chip {
-  display: inline-flex; align-items: baseline; gap: 4px;
-  font-size: 11px; border: 1px solid hsl(var(--grey)); background: hsl(var(--white));
-  padding: 2px 8px;
+.contained-in-head { font-size: 11px; color: hsl(var(--grey-italian)); }
+/* Child places: small and un-bold; flow as a compact wrapping list. */
+.contained-in-content .expandable { flex-direction: row; flex-wrap: wrap; gap: 4px 12px; }
+.contained-in-content .expand-toggle { flex-basis: 100%; }
+.contained-in-child { display: inline-flex; align-items: baseline; gap: 4px; }
+.contained-in-child-name { font-size: 11px; color: hsl(var(--grey-italian)); }
+.contained-in-child-dcid {
+  font-family: var(--font-mono); font-size: 10px; color: hsl(var(--grey-slate));
 }
 
 /* Intent-true / zero-children — muted grey, informational (NOT warn/error) */

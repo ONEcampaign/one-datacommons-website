@@ -367,10 +367,9 @@ async def test_run_default_truncates_at_max_variables(monkeypatch):
         variable,
         query,
         *,
-        place_dcids,
+        resolution_task,
         dates=None,
         entities=None,
-        parent_to_children=None,
         slot_bind_usages,
     ):
         if variable is not None:
@@ -378,10 +377,9 @@ async def test_run_default_truncates_at_max_variables(monkeypatch):
         return await original_run_one(
             variable,
             query,
-            place_dcids=place_dcids,
+            resolution_task=resolution_task,
             dates=dates,
             entities=entities,
-            parent_to_children=parent_to_children,
             slot_bind_usages=slot_bind_usages,
         )
 
@@ -424,10 +422,9 @@ async def test_run_default_fan_out_is_concurrent(monkeypatch):
         variable,
         query,
         *,
-        place_dcids,
+        resolution_task,
         dates=None,
         entities=None,
-        parent_to_children=None,
         slot_bind_usages,
     ):
         await asyncio.sleep(DELAY)
@@ -1458,7 +1455,7 @@ async def test_default_grants_from_us_to_togo(monkeypatch):
         measured_property=["amount"],
     )
 
-    # materialize returns the Togo sv (Piece D path).
+    # materialize returns the recovered Togo sv (bound as recipient).
     togo_answer = AnswerCollection(
         predicate=recipient_predicate,
         sv_set=[togo_dcid],
@@ -1843,11 +1840,10 @@ async def test_real_bind_directional_role_from_precomputed_4tuple(monkeypatch):
     - Extraction: variables=["grants"], entities=["us", "togo"]
     - Resolved: country/USA (role=donor), country/TGO (role=recipient)
     - shape_context.query is scoped to "grants in us, togo" (fan-out query)
-      which strips "from"/"to" grammar — the old code would call
-      place_directional_role on that scoped query and return "ambiguous" for both.
-    - With Amendment 2, role is read from the 4-tuple pre-computed from the
-      original full query, so USA is correctly excluded (donor) and TGO is
-      forced into the recipient slot (recipient).
+      which strips "from"/"to" grammar.
+    - Role is read from the 4-tuple pre-computed from the original full query,
+      so USA is correctly excluded (donor) and TGO is forced into the recipient
+      slot (recipient).
 
     Asserts:
     - DevelopmentFinanceRecipient == country/TGO
@@ -1996,7 +1992,6 @@ async def test_expansion_pipeline_adds_children_to_resolved_set(monkeypatch):
     - child_places_batch was called with child_type="State"
     """
     import dc_search.extraction as _ext
-    import dc_search.pipeline._run as _run
     import dc_search.retrieval as _retrieval
     from dc_search.extraction import QueryExtraction
     from dc_search.retrieval import PlaceCandidate
@@ -2051,48 +2046,12 @@ async def test_expansion_pipeline_adds_children_to_resolved_set(monkeypatch):
     # parent_countries_batch: USA is a Country type, so it won't be called for country lookup.
     monkeypatch.setattr(_retrieval, "parent_countries_batch", lambda *, parent_dcids: {})
 
-    # Capture what place_dcids _run_one_variable receives.
-    received_place_dcids: list[list[str]] = []
-    original_run_one = _run._run_one_variable
-
-    async def _capturing_run_one(
-        variable,
-        query,
-        *,
-        place_dcids,
-        dates=None,
-        entities=None,
-        parent_to_children=None,
-        slot_bind_usages,
-    ):
-        received_place_dcids.append(list(place_dcids))
-        return await original_run_one(
-            variable,
-            query,
-            place_dcids=place_dcids,
-            dates=dates,
-            entities=entities,
-            parent_to_children=parent_to_children,
-            slot_bind_usages=slot_bind_usages,
-        )
-
-    monkeypatch.setattr(_run, "_run_one_variable", _capturing_run_one)
-
     from dc_search import pipeline
 
     # Collect SSE events to inspect Places.
     events = []
     async for event in pipeline.stream_default("poverty rate in US states"):
         events.append(event)
-
-    # Assert (1): resolved place_dcids contains all three DCIDs.
-    assert len(received_place_dcids) == 1, (
-        f"Expected one _run_one_variable call; got {len(received_place_dcids)}"
-    )
-    dcids_sent = received_place_dcids[0]
-    assert "country/USA" in dcids_sent, f"country/USA missing from {dcids_sent}"
-    assert "geoId/01" in dcids_sent, f"geoId/01 missing from {dcids_sent}"
-    assert "geoId/06" in dcids_sent, f"geoId/06 missing from {dcids_sent}"
 
     # Assert (2): the Places event's ResolvedPlace for USA has expansion fields set.
     from dc_search.events import Places

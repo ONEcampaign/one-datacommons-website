@@ -11,6 +11,7 @@
    ============================================================ */
 
 const { useState } = React;
+const STRINGS = window.STRINGS;  // editable UI copy — see strings.js
 
 /* ---------------------------------------------------------- */
 /* NORMALIZERS — flatten each response into [{dcid, ...}, ...] */
@@ -104,7 +105,7 @@ function Latency({ ms, error, pending, streaming }) {
   return <span className="latency">{Math.round(ms)} ms</span>;
 }
 
-function RawJson({ data, label = "Raw JSON" }) {
+function RawJson({ data, label = STRINGS.common.rawJson }) {
   const [open, setOpen] = useState(false);
   if (!data) return null;
   return (
@@ -130,14 +131,14 @@ function Skeleton() {
 
 function PanelHead({ method, endpoint, latency, error, pending, streaming }) {
   const labels = {
-    resolve:  "Resolve",
-    dcsearch: "dc-search",
-    detect:   "explore/detect",
+    resolve:  STRINGS.panels.resolve.label,
+    dcsearch: STRINGS.panels.dcsearch.label,
+    detect:   STRINGS.panels.detect.label,
   };
   const subtitles = {
-    resolve:  "Indicator-embedding lookup",
-    dcsearch: "LLM-assisted predicate paradigm",
-    detect:   "Structured intent (places, vars, classifications)",
+    resolve:  STRINGS.panels.resolve.subtitle,
+    dcsearch: STRINGS.panels.dcsearch.subtitle,
+    detect:   STRINGS.panels.detect.subtitle,
   };
   // Display the path only — the base URL (configurable via ?base=) would
   // otherwise wrap inconsistently across the three panel headers.
@@ -147,7 +148,7 @@ function PanelHead({ method, endpoint, latency, error, pending, streaming }) {
       <div className="panel-head-l">
         <span className="panel-method-name">
           <span className="swatch" /> {labels[method]}
-          {streaming && <span className="streaming-pulse" title="Streaming via SSE" />}
+          {streaming && <span className="streaming-pulse" title={STRINGS.panels.streamingTitle} />}
         </span>
         <span className="panel-method-sub">{subtitles[method]}</span>
         <span className="panel-endpoint mono" title={endpoint}>{path}</span>
@@ -171,12 +172,11 @@ function PanelError({ message }) {
   return (
     <div className="panel-body empty">
       <div style={{ fontWeight: 700, color: "hsl(var(--red))", marginBottom: 6 }}>
-        Request failed
+        {STRINGS.panels.error.title}
       </div>
       <div style={{ maxWidth: "32ch" }}>{message}</div>
       <div style={{ marginTop: 12, fontSize: 11, fontStyle: "italic" }}>
-        Endpoint unreachable from this origin. Check the host is up and CORS-enabled,
-        or repoint the page with <span className="mono">?base=&lt;url&gt;</span>.
+        {STRINGS.panels.error.hintLead} <span className="mono">?base=&lt;url&gt;</span>{STRINGS.panels.error.hintTail}
       </div>
     </div>
   );
@@ -257,17 +257,17 @@ function VariableCard({
         <div className="vcard-foot">
           {score != null && (
             <span className="vcard-chip vcard-score">
-              <span className="vcard-chip-k">score</span> {score.toFixed(3)}
+              <span className="vcard-chip-k">{STRINGS.card.score}</span> {score.toFixed(3)}
             </span>
           )}
           {availability === true && (
-            <span className="vcard-chip vcard-avail-yes" title="Data exists at the resolved place">
-              <span className="vcard-dot vcard-dot-yes" /> data
+            <span className="vcard-chip vcard-avail-yes" title={STRINGS.card.dataTitle}>
+              <span className="vcard-dot vcard-dot-yes" /> {STRINGS.card.data}
             </span>
           )}
           {availability === false && (
-            <span className="vcard-chip vcard-avail-no" title="Place resolved but no data found">
-              <span className="vcard-dot vcard-dot-no" /> no data
+            <span className="vcard-chip vcard-avail-no" title={STRINGS.card.noDataTitle}>
+              <span className="vcard-dot vcard-dot-no" /> {STRINGS.card.noData}
             </span>
           )}
           {dateRange && (dateRange.earliest || dateRange.latest) && (
@@ -281,7 +281,7 @@ function VariableCard({
       )}
 
       {!isDcidOnly && matchedSentence && (
-        <div className="vcard-match" title="Retrieval sentence this DCID matched">
+        <div className="vcard-match" title={STRINGS.card.matchTitle}>
           “{matchedSentence}”
         </div>
       )}
@@ -329,7 +329,7 @@ function ContainedInExpansion({ interp, streaming }) {
   if (expanded.length === 0 && streaming) {
     return (
       <div className="contained-in-pending">
-        <span className="streaming-pulse" /> expanding to children…
+        <span className="streaming-pulse" /> {STRINGS.containedIn.pending}
       </div>
     );
   }
@@ -338,43 +338,51 @@ function ContainedInExpansion({ interp, streaming }) {
   if (expanded.length === 0) {
     return (
       <div className="contained-in-empty">
-        contained-in detected — no children expanded
+        {STRINGS.containedIn.empty}
       </div>
     );
   }
 
-  // expanded — one parent block per expanded place
+  // expanded — collapsed by default; the child list is supplementary detail
+  // (the "Understood as" chips already summarize the intent + child count),
+  // so it sits behind an on-demand disclosure like the header "How it works".
+  const totalChildren = expanded.reduce((sum, p) => sum + p.children.length, 0);
   return (
-    <div className="contained-in-block">
-      <SectionHead right={`${expanded.length} parent${expanded.length !== 1 ? "s" : ""}`}>
-        Contained-in expansion
-      </SectionHead>
-      {expanded.map((p, i) => {
-        const n = p.children.length;
-        const capped = n >= CHILD_PLACE_CAP;
-        return (
-          <div className="contained-in-parent" key={p.dcid || p.input_name || i}>
-            <div className="contained-in-head">
-              <span>{p.name || p.input_name}</span>
-              <span> → {p.child_type} · </span>
-              <span>{n} {capped ? "children (server cap)" : `child${n !== 1 ? "ren" : ""}`}</span>
+    <details className="contained-in">
+      <summary className="contained-in-summary">
+        {STRINGS.containedIn.heading}
+        <span className="contained-in-summary-meta">
+          {totalChildren} {totalChildren !== 1 ? "children" : "child"}
+        </span>
+      </summary>
+      <div className="contained-in-content">
+        {expanded.map((p, i) => {
+          const n = p.children.length;
+          const capped = n >= CHILD_PLACE_CAP;
+          return (
+            <div className="contained-in-parent" key={p.dcid || p.input_name || i}>
+              <div className="contained-in-head">
+                <span>{p.name || p.input_name}</span>
+                <span> → {p.child_type} · </span>
+                <span>{n} {capped ? "children (server cap)" : `child${n !== 1 ? "ren" : ""}`}</span>
+              </div>
+              <ExpandableList
+                items={p.children}
+                defaultCount={12}
+                expandLabel="child"
+                expandLabelPlural="children"
+                renderItem={(c, j) => (
+                  <span className="contained-in-child" key={(c.dcid || "") + j}>
+                    <span className="contained-in-child-name">{c.name || c.dcid}</span>
+                    {c.dcid && <span className="contained-in-child-dcid">{c.dcid}</span>}
+                  </span>
+                )}
+              />
             </div>
-            <ExpandableList
-              items={p.children}
-              defaultCount={8}
-              expandLabel="child"
-              expandLabelPlural="children"
-              renderItem={(c, j) => (
-                <span className="contained-in-child-chip" key={(c.dcid || "") + j}>
-                  <span className="interp-chip-v">{c.name || c.dcid}</span>
-                  {c.dcid && <span className="interp-chip-extra">{c.dcid}</span>}
-                </span>
-              )}
-            />
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+    </details>
   );
 }
 
@@ -401,17 +409,17 @@ function ResolvePanel({ state, endpoint, query }) {
 
 function ResolveBody({ resp, query }) {
   const items = normalizeResolve(resp);
-  if (!items.length) return <div className="panel-body empty">No candidates.</div>;
+  if (!items.length) return <div className="panel-body empty">{STRINGS.resolve.empty}</div>;
 
   return (
     <div className="panel-body">
       <InterpretationStrip
-        kind="Query sent"
+        kind={STRINGS.common.querySent}
         items={[{ value: query, kind: "node" }]}
       />
 
       <SectionHead right={`${items.length} candidate${items.length !== 1 ? "s" : ""}`}>
-        Indicator-embedding hits
+        {STRINGS.resolve.heading}
       </SectionHead>
 
       <ExpandableList
@@ -426,7 +434,7 @@ function ResolveBody({ resp, query }) {
             name={r.name}
             score={r.score}
             matchedSentence={r.matched_sentence}
-            source="embedding"
+            source={STRINGS.resolve.sourceTag}
           />
         )}
       />
@@ -467,16 +475,16 @@ function DcSearchBody({ resp, streaming, state }) {
 
   // Build interpretation chips
   const chips = [];
-  for (const v of interp.variables || []) chips.push({ label: "var", value: v, kind: "variable" });
+  for (const v of interp.variables || []) chips.push({ label: STRINGS.dcSearch.chipVar, value: v, kind: "variable" });
   // Intent pill before places so it reads "intent, then the places it applies to"
-  if (interp.contained_in) chips.push({ label: "intent", value: "contained-in", kind: "intent" });
+  if (interp.contained_in) chips.push({ label: STRINGS.dcSearch.chipIntent, value: STRINGS.dcSearch.chipContainedIn, kind: "intent" });
   for (const p of interp.places || []) {
     const children = p.children || [];
     const note = (p.expanded && p.child_type && children.length)
       ? `→ ${children.length} × ${p.child_type}`
       : undefined;
     chips.push({
-      label: "place",
+      label: STRINGS.dcSearch.chipPlace,
       value: p.name || p.input_name,
       extra: p.dcid,
       kind: "place",
@@ -484,7 +492,7 @@ function DcSearchBody({ resp, streaming, state }) {
     });
   }
   for (const d of interp.dates || [])
-    chips.push({ label: "date", value: formatDate(d), kind: "date" });
+    chips.push({ label: STRINGS.dcSearch.chipDate, value: formatDate(d), kind: "date" });
 
   // Counts: filled vs total expected (for "x of N done" indicator while streaming)
   const filled = answers.filter(a => a != null).length;
@@ -498,23 +506,23 @@ function DcSearchBody({ resp, streaming, state }) {
 
   return (
     <div className="panel-body">
-      {chips.length > 0 && <InterpretationStrip kind="Understood as" items={chips} />}
+      {chips.length > 0 && <InterpretationStrip kind={STRINGS.common.understoodAs} items={chips} />}
 
       <ContainedInExpansion interp={interp} streaming={streaming} />
 
       {showStreamingHint && (
         <div className="interp-strip" style={{ borderLeftColor: "hsl(var(--green))" }}>
-          <div className="interp-strip-label">Streaming</div>
+          <div className="interp-strip-label">{STRINGS.dcSearch.streamingLabel}</div>
           <div style={{ fontSize: 12, color: "hsl(var(--grey-italian))" }}>
-            Waiting for interpretation event…
+            {STRINGS.dcSearch.streamingWaiting}
           </div>
         </div>
       )}
 
       {(truncated || timedOut) && (
         <div className="banner-warn">
-          {truncated && <span>⚠ <strong>truncated</strong> — extraction returned more variables than cap. </span>}
-          {timedOut && <span>⚠ <strong>timed out</strong> — some branches did not finish within budget. </span>}
+          {truncated && <span>⚠ <strong>{STRINGS.dcSearch.banner.truncatedTag}</strong> {STRINGS.dcSearch.banner.truncatedText} </span>}
+          {timedOut && <span>⚠ <strong>{STRINGS.dcSearch.banner.timedOutTag}</strong> {STRINGS.dcSearch.banner.timedOutText} </span>}
         </div>
       )}
 
@@ -528,7 +536,7 @@ function DcSearchBody({ resp, streaming, state }) {
               : `${answers.length} branch${answers.length !== 1 ? "es" : ""} · ${totalVars} variable${totalVars !== 1 ? "s" : ""}`
           }
         >
-          Resolved branches
+          {STRINGS.dcSearch.resolvedBranches}
         </SectionHead>
       )}
 
@@ -546,7 +554,7 @@ function AnswerSkeleton({ idx, timedOut }) {
     <div className={`answer-collection answer-skeleton ${timedOut ? "is-timedout" : ""}`} style={{ "--idx": idx }}>
       <div className="answer-collection-head">
         <div className="answer-label-row">
-          <span className="answer-tag answer-tag-pending">{timedOut ? "timed out" : "loading"}</span>
+          <span className="answer-tag answer-tag-pending">{timedOut ? STRINGS.dcSearch.skeletonTimedOut : STRINGS.dcSearch.skeletonLoading}</span>
           <span className="answer-label-val sk-shimmer-text" />
         </div>
       </div>
@@ -570,7 +578,7 @@ function AskBanner({ ask }) {
   return (
     <div className="ask-banner">
       <div className="ask-banner-head">
-        <span className="ask-banner-tag">clarification</span>
+        <span className="ask-banner-tag">{STRINGS.dcSearch.clarificationTag}</span>
         <span className="mono ask-banner-reason">{ask.reason}</span>
       </div>
       <div className="ask-banner-msg">{ask.message}</div>
@@ -595,13 +603,13 @@ function AnswerCollectionCard({ answer, idx }) {
         <div className="answer-label-wrap">
           <div className="answer-label-row">
             {isClarification ? (
-              <span className="answer-tag answer-tag-clar">clarification</span>
+              <span className="answer-tag answer-tag-clar">{STRINGS.dcSearch.clarificationTag}</span>
             ) : (
               <span className={`answer-tag answer-tag-${isTopic ? "topic" : "vars"}`}>
-                {isTopic ? "topic" : "variables"}
+                {isTopic ? STRINGS.dcSearch.topicTag : STRINGS.dcSearch.variablesTag}
               </span>
             )}
-            <span className="answer-label-val">{answer.variable_label || "—"}</span>
+            <span className="answer-label-val">{answer.variable_label || STRINGS.common.none}</span>
           </div>
           {isTopic && answer.topic_name && (
             <div className="topic-title" title={answer.topic_name}>{answer.topic_name}</div>
@@ -619,7 +627,7 @@ function AnswerCollectionCard({ answer, idx }) {
       {!isClarification && variables.length > 0 && (
         <>
           <div className="answer-svset-label">
-            {isTopic ? "Member variables" : "Resolved variables"}
+            {isTopic ? STRINGS.dcSearch.memberVariables : STRINGS.dcSearch.resolvedVariables}
             <span className="answer-svset-count">· {variables.length}</span>
           </div>
 
@@ -659,7 +667,7 @@ function InlineClarification({ clar }) {
         </ul>
       )}
       {clar.reason && (
-        <div className="inline-clar-reason">reason: <span className="mono">{clar.reason}</span></div>
+        <div className="inline-clar-reason">{STRINGS.dcSearch.reasonLabel} <span className="mono">{clar.reason}</span></div>
       )}
     </div>
   );
@@ -797,7 +805,7 @@ function DetectBody({ resp, query }) {
   if (resp.failure) {
     return (
       <div className="panel-body">
-        <InterpretationStrip kind="Query sent" items={[{ value: query, kind: "node" }]} />
+        <InterpretationStrip kind={STRINGS.common.querySent} items={[{ value: query, kind: "node" }]} />
         <div className="banner-warn">
           <strong>{resp.failure}</strong>
         </div>
@@ -819,17 +827,17 @@ function DetectBody({ resp, query }) {
   // Build the "Understood as" interpretation strip.
   const chips = [];
   for (const dcid of entities) {
-    chips.push({ label: "place", value: nameOf(dcid), extra: dcid !== nameOf(dcid) ? dcid : undefined, kind: "place" });
+    chips.push({ label: STRINGS.detect.chipPlace, value: nameOf(dcid), extra: dcid !== nameOf(dcid) ? dcid : undefined, kind: "place" });
   }
   for (const dcid of nonPlaceEnts) {
-    chips.push({ label: "entity", value: nameOf(dcid), extra: dcid !== nameOf(dcid) ? dcid : undefined, kind: "node" });
+    chips.push({ label: STRINGS.detect.chipEntity, value: nameOf(dcid), extra: dcid !== nameOf(dcid) ? dcid : undefined, kind: "node" });
   }
   if (childType) {
-    chips.push({ label: "child type", value: childType, kind: "date" });
+    chips.push({ label: STRINGS.detect.chipChildType, value: childType, kind: "date" });
   }
   for (const c of classifications) {
     const f = formatClassification(c);
-    if (f) chips.push({ label: "intent", value: f.type, extra: f.extra, kind: "variable" });
+    if (f) chips.push({ label: STRINGS.detect.chipIntent, value: f.type, extra: f.extra, kind: "variable" });
   }
 
   const items = normalizeDetect(resp);
@@ -838,7 +846,7 @@ function DetectBody({ resp, query }) {
 
   return (
     <div className="panel-body">
-      {chips.length > 0 && <InterpretationStrip kind="Understood as" items={chips} />}
+      {chips.length > 0 && <InterpretationStrip kind={STRINGS.common.understoodAs} items={chips} />}
 
       {userMessages.length > 0 && userMessages.some(m => m && m.trim()) && (
         <div className="banner-info">
@@ -848,10 +856,10 @@ function DetectBody({ resp, query }) {
 
       {(cmpEntities.length > 0 || cmpVars.length > 0) && (
         <div className="detect-cmp">
-          <span className="detect-cmp-tag">comparison</span>
+          <span className="detect-cmp-tag">{STRINGS.detect.comparisonTag}</span>
           {cmpEntities.length > 0 && (
             <span className="detect-cmp-row">
-              <span className="detect-cmp-k">places</span>
+              <span className="detect-cmp-k">{STRINGS.detect.comparisonPlaces}</span>
               {cmpEntities.map((e, i) => (
                 <code key={i} title={e}>{nameOf(e)}</code>
               ))}
@@ -859,7 +867,7 @@ function DetectBody({ resp, query }) {
           )}
           {cmpVars.length > 0 && (
             <span className="detect-cmp-row">
-              <span className="detect-cmp-k">vars</span>
+              <span className="detect-cmp-k">{STRINGS.detect.comparisonVars}</span>
               {cmpVars.map((v, i) => (
                 <code key={i} title={v}>{nameOf(v)}</code>
               ))}
@@ -880,12 +888,12 @@ function DetectBody({ resp, query }) {
             : "—"
         }
       >
-        Detected variables
+        {STRINGS.detect.heading}
       </SectionHead>
 
       {items.length === 0 ? (
         <div className="panel-body empty" style={{ padding: 0, fontSize: 12 }}>
-          No variables detected. The pipeline ran but found no statvars or topics matching the query.
+          {STRINGS.detect.empty}
         </div>
       ) : (
         <ExpandableList
@@ -894,7 +902,7 @@ function DetectBody({ resp, query }) {
           expandLabel="variable"
           renderItem={(v, i) => (
             <div className={`detect-vrow ${v.isTopic ? "is-topic" : ""}`} key={v.dcid + i}>
-              {v.isTopic && <span className="detect-topic-tag">topic</span>}
+              {v.isTopic && <span className="detect-topic-tag">{STRINGS.detect.topicTag}</span>}
               <VariableCard
                 idx={i}
                 dcid={v.dcid}
@@ -921,10 +929,10 @@ function Telemetry({ method, state }) {
     const ent = raw && raw.entities && raw.entities[0];
     const n = ent ? (ent.candidates || []).length : 0;
     return (
-      <ExpanderShell label="Telemetry" open={open} setOpen={setOpen}>
-        <TelemetryRow k="latency" v={latency != null ? `${Math.round(latency)} ms` : "—"} />
-        <TelemetryRow k="candidates" v={n} />
-        <TelemetryRow k="resolver" v="indicator (embedding lookup)" />
+      <ExpanderShell label={STRINGS.telemetry.label} open={open} setOpen={setOpen}>
+        <TelemetryRow k={STRINGS.telemetry.latency} v={latency != null ? `${Math.round(latency)} ms` : "—"} />
+        <TelemetryRow k={STRINGS.telemetry.candidates} v={n} />
+        <TelemetryRow k={STRINGS.telemetry.resolver} v={STRINGS.telemetry.resolverValue} />
       </ExpanderShell>
     );
   }
@@ -940,13 +948,13 @@ function Telemetry({ method, state }) {
     const dc              = raw.dc                 || raw.debug?.dc || "main";
     const topicCount      = variables.filter(v => v && v.startsWith("dc/topic/")).length;
     return (
-      <ExpanderShell label="Telemetry" open={open} setOpen={setOpen}>
-        <TelemetryRow k="latency" v={latency != null ? `${Math.round(latency)} ms` : "—"} />
-        <TelemetryRow k="topics"   v={topicCount} />
-        <TelemetryRow k="statvars" v={variables.length - topicCount} />
-        <TelemetryRow k="entities" v={entities.length} />
-        <TelemetryRow k="comparison" v={`${cmpEntities.length} places · ${cmpVars.length} vars`} />
-        <TelemetryRow k="classifications" v={classifications.length} />
+      <ExpanderShell label={STRINGS.telemetry.label} open={open} setOpen={setOpen}>
+        <TelemetryRow k={STRINGS.telemetry.latency} v={latency != null ? `${Math.round(latency)} ms` : "—"} />
+        <TelemetryRow k={STRINGS.telemetry.topics}   v={topicCount} />
+        <TelemetryRow k={STRINGS.telemetry.statvars} v={variables.length - topicCount} />
+        <TelemetryRow k={STRINGS.telemetry.entities} v={entities.length} />
+        <TelemetryRow k={STRINGS.telemetry.comparison} v={`${cmpEntities.length} places · ${cmpVars.length} vars`} />
+        <TelemetryRow k={STRINGS.telemetry.classifications} v={classifications.length} />
         <TelemetryRow k="childEntityType" v={childType} mono />
         <TelemetryRow k="dc" v={dc} mono />
       </ExpanderShell>
@@ -971,7 +979,7 @@ function Telemetry({ method, state }) {
       <TelemetryRow k="n_shapes" v={t.n_shapes} />
       {itp && <TelemetryRow k="contained_in" v={String(!!itp.contained_in)} />}
       {itp && itp.contained_in && (
-        <TelemetryRow k="children" v={`${itpChildTotal} · ${itpChildTypes}`} mono />
+        <TelemetryRow k={STRINGS.telemetry.children} v={`${itpChildTotal} · ${itpChildTypes}`} mono />
       )}
       {raw.truncated && (
         <TelemetryRow k="truncated" v="true" valStyle={{ color: "hsl(var(--red))" }} />
@@ -981,7 +989,7 @@ function Telemetry({ method, state }) {
       )}
 
       <div className="telemetry-llm">
-        <TelemetryRow k="llm tokens" v={`${totalIn} in / ${totalOut} out`} />
+        <TelemetryRow k={STRINGS.telemetry.llmTokens} v={`${totalIn} in / ${totalOut} out`} />
         {(t.llm_usage || []).map((u, i) => (
           <div className="telemetry-llm-row" key={i}>
             <span className="step">{u.step}</span>

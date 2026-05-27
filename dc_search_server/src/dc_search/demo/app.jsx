@@ -3,6 +3,7 @@
    ============================================================ */
 
 const { useState, useEffect, useCallback } = React;
+const STRINGS = window.STRINGS;  // editable UI copy — see strings.js
 
 /* ============================================================
    CONFIG — baked-in defaults.
@@ -347,7 +348,7 @@ function runDcSearchSSE(baseUrl, query, setState) {
       ...prev,
       status: "error",
       streaming: false,
-      error: p.detail || "Unknown error",
+      error: p.detail || STRINGS.common.unknownError,
     })),
   };
 
@@ -430,15 +431,22 @@ function App() {
       {/* ---------- Header ---------- */}
       <header className="header">
         <h1 className="header-title">
-          Search comparison
+          {STRINGS.app.title}
           <span className="header-title-rule" aria-hidden="true" />
         </h1>
-        <p className="header-sub">
-          For one natural-language query: <strong>dc-search</strong> (LLM-assisted
-          predicate paradigm), <strong>Resolve</strong> (embedding-based statvar lookup),
-          and <strong>explore/detect</strong> (the structured intent extractor that
-          feeds <span className="mono">/explore</span> — places, variables, classifications).
-        </p>
+        <p className="header-sub">{STRINGS.app.tagline}</p>
+        <details className="howitworks">
+          <summary className="howitworks-summary">{STRINGS.app.howItWorks.summary}</summary>
+          <div className="howitworks-content">
+            <p className="howitworks-body">{STRINGS.app.howItWorks.body}</p>
+            <p className="howitworks-compared-label">{STRINGS.app.howItWorks.comparedLabel}</p>
+            <ul className="howitworks-compared">
+              {STRINGS.app.howItWorks.compared.map(c => (
+                <li key={c.name}><strong>{c.name}</strong> — {c.desc}</li>
+              ))}
+            </ul>
+          </div>
+        </details>
       </header>
 
       {/* ---------- Query bar ---------- */}
@@ -472,23 +480,23 @@ function QueryBar({ query, setQuery, customQuery, setCustomQuery, onRunCustom })
       <div className="querybar-input">
         <input
           type="text"
-          placeholder="Type a query…"
+          placeholder={STRINGS.queryBar.placeholder}
           value={customQuery}
           onChange={e => setCustomQuery(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter") onRunCustom(); }}
-          aria-label="Custom query"
+          aria-label={STRINGS.queryBar.inputAria}
         />
         <button
           className="btn-run"
           onClick={onRunCustom}
           disabled={!customQuery.trim()}
         >
-          Run query
+          {STRINGS.queryBar.run}
         </button>
       </div>
 
-      <div className="querybar-suggest" aria-label="Sample queries">
-        <span className="querybar-suggest-label">Try:</span>
+      <div className="querybar-suggest" aria-label={STRINGS.queryBar.suggestAria}>
+        <span className="querybar-suggest-label">{STRINGS.queryBar.tryLabel}</span>
         {window.SAMPLE_QUERIES.map((s, i) => (
           <React.Fragment key={s.q}>
             <button
