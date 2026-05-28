@@ -1576,11 +1576,25 @@ async def test_default_grants_from_us_to_togo(monkeypatch):
         measured_property=["amount"],
     )
 
-    # materialize returns the recovered Togo sv (bound as recipient).
+    # materialize returns the fully-enriched Togo answer. ProjectionEnrichmentHook
+    # populates variables + availability inside the hook chain; this mock skips
+    # the chain, so we pre-populate what the chain would have produced. The
+    # enrichment behavior itself is unit-tested via TestProjectionEnrichmentHook.
+    from dc_search.predicate import ResolvedVariable
+
     togo_answer = AnswerCollection(
         predicate=recipient_predicate,
         sv_set=[togo_dcid],
         confidence="high",
+        variables=[
+            ResolvedVariable(
+                dcid=togo_dcid,
+                name="Health [Grants to Togo]",
+                population_type="DevelopmentFinance",
+                measured_property="amount",
+                available_at_place=True,
+            )
+        ],
     )
     monkeypatch.setattr(
         _hooks, "materialize_many", lambda predicates, candidates, *, ctx: togo_answer
@@ -1698,10 +1712,25 @@ async def test_default_malaria_grants_nigeria(monkeypatch):
         measured_property=["amount"],
     )
 
+    # Pre-populated to match what ProjectionEnrichmentHook would produce inside
+    # the hook chain. See note on the parallel mock in
+    # test_default_grants_from_us_to_togo.
+    from dc_search.predicate import ResolvedVariable
+
     nga_answer = AnswerCollection(
         predicate=nga_predicate,
         sv_set=[nga_dcid],
         confidence="high",
+        caveats=["interpreted_place_as_recipient"],
+        variables=[
+            ResolvedVariable(
+                dcid=nga_dcid,
+                name="Health [Grants to Nigeria]",
+                population_type="DevelopmentFinance",
+                measured_property="amount",
+                available_at_place=None,
+            )
+        ],
     )
     monkeypatch.setattr(
         _hooks, "materialize_many", lambda predicates, candidates, *, ctx: nga_answer

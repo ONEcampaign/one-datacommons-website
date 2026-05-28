@@ -399,8 +399,7 @@ def _role_for_dcid(
 
     The role was determined in the pipeline from the ORIGINAL full query — not
     from the per-variable scoped shape_query — so "from X to Y" grammar is
-    correctly resolved even when ``shape_context.query`` is a scoped phrase like
-    "grants in us, Togo" (Amendment 2 reconciliation).
+    correctly resolved even when ``shape_context.query`` is a scoped phrase.
     """
     for rp_dcid, _rp_name, _rp_surface, rp_role in resolved_places:
         if rp_dcid == dcid:
@@ -461,6 +460,159 @@ def _explode_constraints(
             row[slot] = val
         result.append(row)
     return tuple(result)
+
+
+# ---------------------------------------------------------------------------
+# Recipient-set explosion: explicit, single-call-site trigger
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class RecipientSetExplosion:
+    """Decision output for the recipient-set explosion step.
+
+    ``slot_to_children`` maps slot → child DCIDs when the explosion fires
+    (empty dict when it doesn't).  ``outer_conditions_met`` is True when the
+    shape-level gates (DevelopmentFinance + contained_in + parent_to_children
+    non-empty) all hold — i.e. this query *should* have been a candidate.
+    Used by ``log_recipient_set_near_miss`` to distinguish a true non-candidate
+    from a near-miss where one inner condition silently suppressed the feature.
+    """
+
+    slot_to_children: dict[str, frozenset[str]]
+    outer_conditions_met: bool
+    inner_trace: tuple[tuple[str, bool], ...]
+    """Ordered (condition_name, matched) pairs for the *per-slot* inner loop.
+
+    Reports the most-progressed slot's state: any-slot-offerable, any-slot-
+    parent-bound, any-slot-recipient-role, any-slot-children-resolved. A bool
+    is True when *at least one* slot reached that step. The trace tells you
+    which step the feature gave up at when outer conditions matched."""
+
+    @property
+    def fired(self) -> bool:
+        return bool(self.slot_to_children)
+
+
+def decide_recipient_set_explosion(
+    *,
+    chosen_shape: Shape,
+    shape_context: ShapeContext,
+    constraints: dict[str, str | list[str] | None],
+) -> RecipientSetExplosion:
+    """One named decision for the recipient-set explosion trigger.
+
+    This is the *only* place that decides whether a predicate's
+    ``constraint_sets`` should be populated with child place DCIDs. Today the
+    decision is CRS_DAC-specific (DevelopmentFinance + contained_in + parent
+    expansion). When a second dataset needs an analogous capability, extend
+    the decision logic here — keeping all conditions in one place is the point.
+
+    Returns a ``RecipientSetExplosion`` describing the decision plus a trace
+    so callers can emit near-miss telemetry (see
+    ``log_recipient_set_near_miss``).
+    """
+    pop_ok = chosen_shape.population_type == "DevelopmentFinance"
+    contained_ok = bool(shape_context.contained_in)
+    ptc_ok = bool(shape_context.parent_to_children)
+    outer_ok = pop_ok and contained_ok and ptc_ok
+
+    if not outer_ok:
+        return RecipientSetExplosion(
+            slot_to_children={},
+            outer_conditions_met=False,
+            inner_trace=(
+                ("population_type_devfinance", pop_ok),
+                ("contained_in_detected", contained_ok),
+                ("parent_to_children_nonempty", ptc_ok),
+            ),
+        )
+
+    any_slot_offerable = False
+    any_slot_parent_bound = False
+    any_slot_recipient = False
+    any_slot_children_resolved = False
+    slot_to_children: dict[str, frozenset[str]] = {}
+
+    for slot, slot_values in chosen_shape.slot_taxonomy.items():
+        offerable = offerable_places_for_slot(
+            resolved_places=shape_context.resolved_places,
+            slot_values=slot_values,
+        )
+        if not offerable:
+            continue
+        any_slot_offerable = True
+
+        parent_dcid = constraints.get(slot)
+        if parent_dcid is None or not isinstance(parent_dcid, str):
+            # Multi-value LLM binding (list[str]) can't identify a single
+            # parent aggregate; fall through to scalar/explode (fail-open).
+            continue
+        any_slot_parent_bound = True
+
+        if parent_dcid not in shape_context.parent_to_children:
+            continue
+
+        parent_role = _role_for_dcid(shape_context.resolved_places, parent_dcid)
+        if parent_role == "donor":
+            # Donor-side contained-in: children stay as observation entities.
+            continue
+        any_slot_recipient = True
+
+        child_entries = shape_context.parent_to_children[parent_dcid]
+        offerable_set = set(offerable)
+        child_dcids = tuple(
+            child_dcid
+            for child_dcid, _child_name in child_entries
+            if child_dcid in offerable_set or _namespace_match(child_dcid, slot_values)
+        )
+        if not child_dcids:
+            continue
+        any_slot_children_resolved = True
+
+        slot_to_children[slot] = frozenset(child_dcids)
+        # Only one slot triggers per predicate (recipient slot is scalar).
+        break
+
+    return RecipientSetExplosion(
+        slot_to_children=slot_to_children,
+        outer_conditions_met=True,
+        inner_trace=(
+            ("slot_offerable", any_slot_offerable),
+            ("parent_bound_scalar", any_slot_parent_bound),
+            ("parent_role_is_recipient", any_slot_recipient),
+            ("children_resolved", any_slot_children_resolved),
+        ),
+    )
+
+
+def log_recipient_set_near_miss(
+    explosion: RecipientSetExplosion,
+    *,
+    query: str,
+) -> None:
+    """Warn when the recipient-set explosion almost fired but didn't.
+
+    Failure mode flagged: outer gates passed (DevFinance + contained_in +
+    parent_to_children) but no slot completed all per-slot checks. An upstream
+    change (extraction, place hierarchy, role detection) silently suppressed
+    the feature; the trace identifies which step failed first.
+
+    Non-candidate queries (outer gates failed) are *not* logged — every
+    non-DevFinance query in the system would otherwise log."""
+    if explosion.fired:
+        return
+    if not explosion.outer_conditions_met:
+        return
+
+    failed = [name for name, ok in explosion.inner_trace if not ok]
+    logger.warning(
+        "recipient_set near-miss: outer gates passed but inner suppressed; "
+        "failed_at=%s trace=%s query=%r",
+        failed[0] if failed else "<unknown>",
+        explosion.inner_trace,
+        query,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -631,87 +783,39 @@ async def bind(
                         defaulted_recipient = True
                     # else: slot bound to a different value by LLM — keep as-is.
 
-    # Set-binding branch for DevelopmentFinance + contained_in queries.
-    # Fires when the predicate has a parent DCID (recipient or defaulted)
-    # in an offerable slot AND that parent has children in the expansion map.
-    #
-    # Result: parent stays in constraints[slot] (scalar, aggregated);
-    # child DCIDs go into recipient_constraint_sets[slot] (set-valued).
-    # Children's ambiguous 4-tuples carry input_surface=None, so they don't
-    # trigger independent scalar-binding — the parent already claims the slot.
-    #
-    # Non-triggering paths: recipient_constraint_sets defaults to {} so
-    # non-DevFinance / non-contained / multi-value / donor-side paths
-    # emit scalar predicates (today's behavior).
-    recipient_constraint_sets: dict[str, frozenset[str]] = {}
+    # Recipient-set explosion: ONE named decision (see
+    # decide_recipient_set_explosion) centralizes the check logic. The decision
+    # plus its trace is threaded into log_recipient_set_near_miss so silent
+    # suppressions become loud — failures surface via telemetry instead of
+    # silent recall loss.
+    explosion = decide_recipient_set_explosion(
+        chosen_shape=chosen_shape,
+        shape_context=shape_context,
+        constraints=constraints,
+    )
 
-    if (
-        chosen_shape.population_type == "DevelopmentFinance"
-        and shape_context.contained_in
-        and shape_context.parent_to_children
-    ):
-        for slot, slot_values in chosen_shape.slot_taxonomy.items():
-            offerable = offerable_places_for_slot(
-                resolved_places=shape_context.resolved_places,
-                slot_values=slot_values,
-            )
-            if not offerable:
-                continue
-
-            # Only proceed when the scalar constraint value in this slot is a
-            # parent with children (i.e. the parent is the aggregate recipient).
-            parent_dcid = constraints.get(slot)
-            if parent_dcid is None:
-                continue
-            if not isinstance(parent_dcid, str):
-                # Multi-value LLM binding (list[str]) can't identify a single
-                # parent aggregate; fall through to scalar/explode (fail-open).
-                continue
-            if parent_dcid not in shape_context.parent_to_children:
-                continue
-
-            # Confirm the parent's role is recipient or ambiguous-defaulted
-            # (not donor — we never build a set for a donor-side parent).
-            parent_role = _role_for_dcid(shape_context.resolved_places, parent_dcid)
-            if parent_role == "donor":
-                # Donor-side contained-in: children stay as observation entities.
-                continue
-
-            # Gather child DCIDs that are offerable to this slot (namespace match).
-            # ``offerable`` already includes children present in resolved_places
-            # (they are 4-tuples with input_surface=None, role="ambiguous"); the
-            # namespace-match helper covers any child not in resolved_places.
-            child_entries = shape_context.parent_to_children[parent_dcid]
-            offerable_set = set(offerable)
-            child_dcids = tuple(
-                child_dcid
-                for child_dcid, _child_name in child_entries
-                if child_dcid in offerable_set or _namespace_match(child_dcid, slot_values)
+    # Asserted invariant of the decision: no child DCID leaks into
+    # constraints[slot] (parent must occupy the scalar slot).
+    for slot, child_dcids in explosion.slot_to_children.items():
+        for child_dcid in child_dcids:
+            assert constraints.get(slot) != child_dcid, (
+                f"Child DCID {child_dcid!r} must not be scalar-bound in "
+                f"constraints[{slot!r}]."
             )
 
-            if not child_dcids:
-                # No offerable children — fall through to scalar aggregate path.
-                continue
-
-            # Guard: no child DCID should have leaked into constraints[slot] from
-            # the LLM or the directional loop (parent occupies the scalar slot).
-            for child_dcid in child_dcids:
-                assert constraints.get(slot) != child_dcid, (
-                    f"Child DCID {child_dcid!r} must not be scalar-bound in "
-                    f"constraints[{slot!r}] — parent {parent_dcid!r} occupies it."
-                )
-
-            recipient_constraint_sets[slot] = frozenset(child_dcids)
-            # Only one slot triggers per predicate (recipient slot is scalar).
-            break
-
-    # Explode list-valued slots into N scalar Predicates.
-    # Attach constraint_sets only when a 1-tuple is produced (single predicate).
-    # If >1 (cross-product from multiple list-valued slots), degrade to scalar
-    # aggregate — emit plain predicates with constraint_sets={} (today's behavior).
-    # This ensures SetValuedRecipientHook fires on at most one predicate.
+    # Explode list-valued slots (e.g. multi-purpose) into N scalar Predicates,
+    # then attach the recipient projection to *every* resulting predicate.
+    # Projection composes with cross-product: "EU and UK aid to African
+    # countries" becomes (EU × per-country) ∪ (UK × per-country) rather than
+    # silently collapsing to the two scalar aggregates only. The recipient
+    # slot itself is always scalar when projection fires (the explosion
+    # decision rejects list-valued recipient bindings), so projection sets
+    # don't multiply the cross-product cardinality.
     constraint_dicts = _explode_constraints(constraints)
-    attach_sets = recipient_constraint_sets if len(constraint_dicts) == 1 else {}
+    attach_sets = explosion.slot_to_children
+
+    log_recipient_set_near_miss(explosion, query=shape_context.query)
+
     predicates = tuple(
         Predicate(
             population_type=chosen_shape.population_type,

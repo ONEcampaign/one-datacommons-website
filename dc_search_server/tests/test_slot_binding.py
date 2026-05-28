@@ -936,13 +936,17 @@ async def test_set_binding_no_children_falls_back_to_scalar(
 
 
 @pytest.mark.asyncio
-async def test_set_binding_i3_compound_query_degrades_to_scalar(
+async def test_set_binding_projection_composes_with_cross_product(
     crs_dac_candidates,
 ) -> None:
-    """Recipient parent + 2-value purpose list → set binding dropped.
+    """Recipient parent + 2-value purpose list → BOTH predicates carry projection.
 
-    When _explode_constraints yields >1 predicate (multi-valued slot),
-    both predicates must have constraint_sets == {}.
+    Used to silently collapse: when ``_explode_constraints`` yielded >1
+    predicate, the recipient projection was dropped and the user got only
+    scalar aggregates back. Now projection composes with cross-product:
+    each of the N exploded predicates carries the same child set on the
+    recipient slot, so "malaria and HIV grants to Nigerian sub-regions"
+    fans out into (malaria × per-region) ∪ (HIV × per-region).
     """
     ctx = _crs_dac_ctx_with_places_and_contained_in(
         "malaria or HIV grants to Nigeria sub-regions",
@@ -959,8 +963,9 @@ async def test_set_binding_i3_compound_query_degrades_to_scalar(
         },
         crs_dac_candidates,
     )
-    # LLM emits 2-element purpose list → cross-product yields 2 predicates.
-    # DAC/* namespace is distinct from country/*, so purpose list is not collapsed.
+    # 2-element purpose list → cross-product yields 2 predicates.
+    # country/* namespace is distinct from DAC/*, so the directional post-correction
+    # for DevFinance shapes doesn't touch the purpose slot (no offerable places there).
     mock = _make_generate_structured(
         0,
         {
@@ -977,10 +982,11 @@ async def test_set_binding_i3_compound_query_degrades_to_scalar(
     assert len(result.predicates) == 2, (
         "2-value purpose list must produce 2 predicates (cross-product)"
     )
+    expected_children = frozenset({"country/NGA_Abia", "country/NGA_Lagos"})
     for pred in result.predicates:
-        assert pred.constraint_sets == {}, (
-            "I3: set binding must be DROPPED when explode yields >1 predicate"
-        )
+        assert (
+            pred.constraint_sets.get("DevelopmentFinanceRecipient") == expected_children
+        ), "Projection must compose with cross-product, not collapse to scalar"
 
 
 @pytest.mark.asyncio
@@ -1058,3 +1064,227 @@ async def test_set_binding_list_recipient_graceful_degrade(
             "Multi-value recipient binding must degrade to scalar aggregate "
             "(constraint_sets == {})"
         )
+
+
+# ---------------------------------------------------------------------------
+# decide_recipient_set_explosion: pin individual conditions
+# ---------------------------------------------------------------------------
+
+
+class TestDecideRecipientSetExplosion:
+    """Direct unit tests for ``decide_recipient_set_explosion``.
+
+    The decision used to be a multi-condition AND-chain scattered across
+    ``bind()``; promoting it to a single named function lets each condition be
+    pinned individually here. A regression that flips any of these conditions
+    will land on a specific test instead of disappearing silently."""
+
+    def _shape_context(
+        self,
+        *,
+        query: str,
+        crs_dac_candidates,
+        resolved_places=(("DAC/Africa", "Africa", "african countries", "recipient"),),
+        contained_in: bool = True,
+        parent_to_children: dict | None = None,
+    ):
+        ptc = (
+            parent_to_children
+            if parent_to_children is not None
+            else {"DAC/Africa": (("country/KEN", "Kenya"), ("country/TGO", "Togo"))}
+        )
+        return build_shape_context(
+            query,
+            crs_dac_candidates,
+            resolved_places=resolved_places,
+            contained_in=contained_in,
+            parent_to_children=ptc,
+        )
+
+    def _devfinance_shape(self, shape_context):
+        for s in shape_context.shapes:
+            if s.population_type == "DevelopmentFinance":
+                return s
+        pytest.fail("no DevelopmentFinance shape in fixture")
+
+    def test_fires_on_recipient_parent_with_children(self, crs_dac_candidates):
+        from dc_search.slot_binding import decide_recipient_set_explosion
+
+        ctx = self._shape_context(
+            query="malaria grants to african countries",
+            crs_dac_candidates=crs_dac_candidates,
+        )
+        shape = self._devfinance_shape(ctx)
+        explosion = decide_recipient_set_explosion(
+            chosen_shape=shape,
+            shape_context=ctx,
+            constraints={
+                "DevelopmentFinancePurpose": "DAC/Malariacontrol",
+                "DevelopmentFinanceRecipient": "DAC/Africa",
+                "DevelopmentFinanceScheme": "ODAGrants",
+            },
+        )
+        assert explosion.fired is True
+        assert explosion.outer_conditions_met is True
+        assert explosion.slot_to_children["DevelopmentFinanceRecipient"] == frozenset(
+            {"country/KEN", "country/TGO"}
+        )
+
+    def test_skips_when_population_type_not_devfinance(self, crs_dac_candidates):
+        from dc_search.slot_binding import decide_recipient_set_explosion
+
+        ctx = self._shape_context(
+            query="malaria grants to african countries",
+            crs_dac_candidates=crs_dac_candidates,
+        )
+        shape = self._devfinance_shape(ctx)
+        # Mock a non-DevFinance shape by passing population_type via dataclass replace.
+        from dataclasses import replace
+
+        non_devfin = replace(shape, population_type="Person")
+        explosion = decide_recipient_set_explosion(
+            chosen_shape=non_devfin,
+            shape_context=ctx,
+            constraints={},
+        )
+        assert explosion.fired is False
+        assert explosion.outer_conditions_met is False
+        # The failed condition is named in the trace.
+        assert ("population_type_devfinance", False) in explosion.inner_trace
+
+    def test_skips_when_contained_in_false(self, crs_dac_candidates):
+        from dc_search.slot_binding import decide_recipient_set_explosion
+
+        ctx = self._shape_context(
+            query="malaria grants to Nigeria",
+            crs_dac_candidates=crs_dac_candidates,
+            resolved_places=(("country/NGA", "Nigeria", "Nigeria", "recipient"),),
+            contained_in=False,
+            parent_to_children={},
+        )
+        shape = self._devfinance_shape(ctx)
+        explosion = decide_recipient_set_explosion(
+            chosen_shape=shape,
+            shape_context=ctx,
+            constraints={"DevelopmentFinanceRecipient": "country/NGA"},
+        )
+        assert explosion.fired is False
+        assert explosion.outer_conditions_met is False
+        assert ("contained_in_detected", False) in explosion.inner_trace
+
+    def test_skips_when_donor_role_parent(self, crs_dac_candidates):
+        from dc_search.slot_binding import decide_recipient_set_explosion
+
+        ctx = self._shape_context(
+            query="grants from african countries",
+            crs_dac_candidates=crs_dac_candidates,
+            resolved_places=(("DAC/Africa", "Africa", "african countries", "donor"),),
+        )
+        shape = self._devfinance_shape(ctx)
+        explosion = decide_recipient_set_explosion(
+            chosen_shape=shape,
+            shape_context=ctx,
+            constraints={"DevelopmentFinanceRecipient": "DAC/Africa"},
+        )
+        assert explosion.fired is False
+        assert explosion.outer_conditions_met is True
+        # parent_role_is_recipient must be False — donor parent.
+        assert ("parent_role_is_recipient", False) in explosion.inner_trace
+
+    def test_skips_when_parent_is_list_valued(self, crs_dac_candidates):
+        from dc_search.slot_binding import decide_recipient_set_explosion
+
+        ctx = self._shape_context(
+            query="malaria grants to africa and asia",
+            crs_dac_candidates=crs_dac_candidates,
+        )
+        shape = self._devfinance_shape(ctx)
+        explosion = decide_recipient_set_explosion(
+            chosen_shape=shape,
+            shape_context=ctx,
+            constraints={
+                "DevelopmentFinanceRecipient": ["DAC/Africa", "DAC/Asia"],
+            },
+        )
+        assert explosion.fired is False
+        assert explosion.outer_conditions_met is True
+        # parent_bound_scalar must be False — list[str] doesn't pick a single parent.
+        assert ("parent_bound_scalar", False) in explosion.inner_trace
+
+    def test_skips_when_parent_unbound(self, crs_dac_candidates):
+        from dc_search.slot_binding import decide_recipient_set_explosion
+
+        ctx = self._shape_context(
+            query="malaria grants to african countries",
+            crs_dac_candidates=crs_dac_candidates,
+        )
+        shape = self._devfinance_shape(ctx)
+        explosion = decide_recipient_set_explosion(
+            chosen_shape=shape,
+            shape_context=ctx,
+            constraints={"DevelopmentFinanceRecipient": None},
+        )
+        assert explosion.fired is False
+        assert ("parent_bound_scalar", False) in explosion.inner_trace
+
+
+class TestLogRecipientSetNearMiss:
+    """Near-miss telemetry: silent disappearance becomes a logged warning."""
+
+    def test_no_log_when_explosion_fired(self, caplog, crs_dac_candidates):
+        from dc_search.slot_binding import (
+            RecipientSetExplosion,
+            log_recipient_set_near_miss,
+        )
+
+        explosion = RecipientSetExplosion(
+            slot_to_children={"DevelopmentFinanceRecipient": frozenset({"country/KEN"})},
+            outer_conditions_met=True,
+            inner_trace=(),
+        )
+        with caplog.at_level("WARNING", logger="dc_search.slot_binding"):
+            log_recipient_set_near_miss(
+                explosion, query="malaria grants to african countries"
+            )
+        assert "near-miss" not in caplog.text
+
+    def test_no_log_when_outer_conditions_failed(self, caplog):
+        from dc_search.slot_binding import (
+            RecipientSetExplosion,
+            log_recipient_set_near_miss,
+        )
+
+        explosion = RecipientSetExplosion(
+            slot_to_children={},
+            outer_conditions_met=False,
+            inner_trace=(("population_type_devfinance", False),),
+        )
+        with caplog.at_level("WARNING", logger="dc_search.slot_binding"):
+            log_recipient_set_near_miss(explosion, query="x")
+        assert "near-miss" not in caplog.text
+
+    def test_logs_when_outer_passed_but_inner_suppressed(self, caplog):
+        from dc_search.slot_binding import (
+            RecipientSetExplosion,
+            log_recipient_set_near_miss,
+        )
+
+        explosion = RecipientSetExplosion(
+            slot_to_children={},
+            outer_conditions_met=True,
+            inner_trace=(
+                ("slot_offerable", True),
+                ("parent_bound_scalar", True),
+                ("parent_role_is_recipient", False),
+                ("children_resolved", False),
+            ),
+        )
+        with caplog.at_level("WARNING", logger="dc_search.slot_binding"):
+            log_recipient_set_near_miss(
+                explosion, query="grants from african countries"
+            )
+        assert "near-miss" in caplog.text
+        assert "parent_role_is_recipient" in caplog.text
+        assert "grants from african countries" in caplog.text
+
+

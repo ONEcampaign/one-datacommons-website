@@ -22,11 +22,14 @@ from dc_search.retrieval import (
 )
 
 from .context import Hook, HookContext, HookResult
+from .crs_dac_recipient_set import CrsDacRecipientSetHook
 from .date_helpers import _overlaps, _union_range, _year
 from .materialization import _build_variables, materialize_many, materialize_via_hooks
+from .projection_enrichment import ProjectionEnrichmentHook
 from .registry import (
     HOOKS,
-    CrsDacSvgExpansionHook,
+    CrsDacRetrievalRecoveryHook,
+    CrsDacWildcardExpansionHook,
     DateFilterHook,
     DenominatorImplicitHook,
     DonorIsObservationFacetHook,
@@ -38,7 +41,6 @@ from .registry import (
     TopicExpansionHook,
     WeakRetrievalTopicDumpHook,
 )
-from .set_recipient import SetValuedRecipientHook
 
 __all__ = [
     "dc_call_was_degraded",
@@ -54,16 +56,18 @@ __all__ = [
     "HOOKS",
     "materialize_many",
     "materialize_via_hooks",
-    "CrsDacSvgExpansionHook",
+    "CrsDacRecipientSetHook",
+    "CrsDacRetrievalRecoveryHook",
+    "CrsDacWildcardExpansionHook",
     "DateFilterHook",
     "DenominatorImplicitHook",
     "DonorIsObservationFacetHook",
     "EmptyResultHook",
     "PlaceAvailabilityHook",
+    "ProjectionEnrichmentHook",
     "RetrievalQualityHook",
     "SdgAskClarificationHook",
     "SetCapHook",
-    "SetValuedRecipientHook",
     "TopicExpansionHook",
     "WeakRetrievalTopicDumpHook",
     "_build_variables",

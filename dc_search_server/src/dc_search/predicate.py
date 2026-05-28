@@ -173,6 +173,14 @@ class AnswerCollection(BaseModel):
     """Display description for the topic on the topic short-circuit path; ``None`` otherwise."""
     answer_kind: Literal["variables", "topic"] = "variables"
     """Distinguishes topic short-circuit answers (``"topic"``) from ordinary SV answers."""
+    handled_by: frozenset[str] = Field(default_factory=frozenset, exclude=True)
+    """Typed control-flow channel: hook names that have already produced output.
+
+    Hooks add their ``name`` here when they fire a materializing branch, so
+    downstream hooks can short-circuit on a typed signal instead of pattern-
+    matching user-facing ``caveats``.  ``exclude=True``: internal to the hook
+    chain, never serialized.  Fail-open paths must NOT add to ``handled_by``
+    (the no-op branch is invisible to downstream coordination by design)."""
 
 
 class AskClarification(BaseModel):

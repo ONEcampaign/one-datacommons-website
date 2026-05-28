@@ -9,7 +9,7 @@ def _year(date_str: str | None) -> int | None:
     """Leading 4-digit year of an ISO date string, or None.
 
     Compares mixed-granularity dates ("2015", "2015-03", "2015-03-01") at year
-    granularity per the brief. Returns None for None/empty/unparseable input.
+    granularity. Returns None for None/empty/unparseable input.
     """
     if not date_str:
         return None

@@ -36,8 +36,10 @@ from ._helpers import (
     _resolve_confidence,
 )
 from .context import Hook, HookContext, HookResult
+from .crs_dac_recipient_set import HOOK_NAME as _CRS_RECIPIENT_SET_HOOK_NAME
+from .crs_dac_recipient_set import CrsDacRecipientSetHook
 from .date_helpers import _overlaps, _range_for, _union_range
-from .set_recipient import SetValuedRecipientHook
+from .projection_enrichment import ProjectionEnrichmentHook
 
 logger = logging.getLogger(__name__)
 
@@ -217,12 +219,12 @@ def _build_variables_from_features(
     features: dict[str, StatVarFeatures],
     ctx: HookContext,
 ) -> list[ResolvedVariable]:
-    """Build ResolvedVariable list for Piece D recovered SVs using fetched features.
+    """Build ResolvedVariable list for recovered SVs using fetched features.
 
     Same projection as materialization._build_variables, but draws features
     from the freshly-fetched ``features`` dict rather than ctx.raw_candidates,
     which does not contain recovered DCIDs.  availability/date_range use ctx
-    as-is; S6 will recompute them against the donor set if needed.
+    as-is; downstream hooks will recompute them against the donor set if needed.
     """
     return _project_variables(sv_set, features, ctx)
 
@@ -243,17 +245,19 @@ def _observed_crs_svg_dcids(sv_set: list[str], candidates: tuple[StatVarFeatures
 
 
 @dataclass(frozen=True, slots=True)
-class CrsDacSvgExpansionHook:
-    """Build the CRS_DAC SVG DCID and expand sv_set via SVG traversal.
+class CrsDacRetrievalRecoveryHook:
+    """Recover CRS_DAC SVs via SVG traversal when embedding retrieval surfaced none.
 
-    Fires when ``predicate.population_type == "DevelopmentFinance"``.
+    Fires when DevFinance + ``sv_set`` is empty + the recipient-set hook did
+    not already materialize. The SV namespace is known (we can synthesize the
+    SVG DCID from the bound slots), so we ask the graph directly instead of
+    bailing under_specified on a retrieval miss.
 
-    For wildcard predicates, walks ``<-memberOf`` via ``variable_group`` to
-    expand the sv_set beyond the initial-k retrieval cap.  Adds
-    ``retrieval_weak`` caveat when the SVG cannot be verified.
+    Returns ``AskClarification(under_specified)`` only when SVG traversal
+    finds nothing either — that's a real data gap, not a retrieval gap.
     """
 
-    name: str = "crs_dac_svg_expansion"
+    name: str = "crs_dac_retrieval_recovery"
 
     def applies(
         self,
@@ -270,69 +274,108 @@ class CrsDacSvgExpansionHook:
         result: AnswerCollection,
         ctx: HookContext,
     ) -> HookResult:
-        # SetValuedRecipientHook already materialized the per-country family and
-        # added the set_valued_recipient caveat.  No need to run the scalar SVG path.
-        # On fail-open (no caveat) the set hook left result unchanged, so we proceed.
-        if predicate.constraint_sets.get("DevelopmentFinanceRecipient") and (
-            "set_valued_recipient" in result.caveats
-        ):
+        # CrsDacRecipientSetHook already materialized the per-country family;
+        # short-circuit so we don't redo the scalar SVG path. Typed handshake
+        # via handled_by — the caveat is user-facing and must not double as IPC.
+        if _CRS_RECIPIENT_SET_HOOK_NAME in result.handled_by:
+            return result
+
+        # Only the empty-sv_set branch lives here; the wildcard expansion
+        # branch is a separate hook.
+        if result.sv_set:
             return result
 
         svg_dcid = _build_crs_svg_dcid(predicate)
 
-        # Piece D: when the retrieved pool is empty (bound recipient absent from
-        # retrieval results), attempt SVG recovery before bailing under_specified.
-        # `variable_group` is fetched here only; the wildcard-expansion branch
-        # below has a separate code path (mutually exclusive).
-        if not result.sv_set:
-            try:
-                vg = _hooks_pkg.variable_group(dcid=svg_dcid)
-                recovered: list[str] = []
-                if vg.child_vars:
-                    recovered = [v["dcid"] for v in vg.child_vars]
-                elif vg.child_groups:
-                    child_group_dcids = tuple(g["dcid"] for g in vg.child_groups)
-                    group_to_svs = child_vars_of_groups(svg_group_dcids=child_group_dcids)
-                    recovered = [sv for svs in group_to_svs.values() for sv in svs]
-                if recovered:
-                    if len(recovered) > _CRS_DAC_SV_CAP:
-                        recovered = recovered[:_CRS_DAC_SV_CAP]
-                        recovered_caveats = _caveats("set_valued_answer", base=list(result.caveats))
-                    else:
-                        recovered_caveats = list(result.caveats)
-                    # Fetch features for recovered DCIDs so display has names.
-                    # Backup availability fetch in the post-materialize step will
-                    # recompute against the donor set if needed.
-                    features = _hooks_pkg.stat_var_features_batch(sv_dcids=recovered)
-                    # Build variables inline using the fetched features so the
-                    # hook result is self-consistent (names present).
-                    recovered_variables = _build_variables_from_features(recovered, features, ctx)
-                    return result.model_copy(
-                        update={
-                            "sv_set": recovered,
-                            "svg_dcids": (svg_dcid,),
-                            "caveats": recovered_caveats,
-                            "confidence": _resolve_confidence(
-                                current=result.confidence, upgrade_to="high"
-                            ),
-                            "variables": recovered_variables,
-                        }
-                    )
-            except Exception:
-                logger.warning(
-                    "CRS_DAC Piece D recovery failed for %s; falling back to under_specified",
-                    svg_dcid,
+        try:
+            vg = _hooks_pkg.variable_group(dcid=svg_dcid)
+            recovered: list[str] = []
+            if vg.child_vars:
+                recovered = [v["dcid"] for v in vg.child_vars]
+            elif vg.child_groups:
+                child_group_dcids = tuple(g["dcid"] for g in vg.child_groups)
+                group_to_svs = child_vars_of_groups(svg_group_dcids=child_group_dcids)
+                recovered = [sv for svs in group_to_svs.values() for sv in svs]
+            if recovered:
+                if len(recovered) > _CRS_DAC_SV_CAP:
+                    recovered = recovered[:_CRS_DAC_SV_CAP]
+                    recovered_caveats = _caveats("set_valued_answer", base=list(result.caveats))
+                else:
+                    recovered_caveats = list(result.caveats)
+                # Fetch features for recovered DCIDs so display has names.
+                # Availability is recomputed against the donor set by
+                # ProjectionEnrichmentHook downstream.
+                features = _hooks_pkg.stat_var_features_batch(sv_dcids=recovered)
+                recovered_variables = _build_variables_from_features(recovered, features, ctx)
+                return result.model_copy(
+                    update={
+                        "sv_set": recovered,
+                        "svg_dcids": (svg_dcid,),
+                        "caveats": recovered_caveats,
+                        "confidence": _resolve_confidence(
+                            current=result.confidence, upgrade_to="high"
+                        ),
+                        "variables": recovered_variables,
+                    }
                 )
-            return AskClarification(
-                reason="under_specified",
-                message=(
-                    "No matching CRS_DAC statistical variables were found for the "
-                    "supplied purpose/recipient/scheme combination. Please narrow "
-                    "or broaden your query."
-                ),
+        except Exception:
+            logger.warning(
+                "CRS_DAC retrieval recovery failed for %s; falling back to under_specified",
+                svg_dcid,
             )
+        return AskClarification(
+            reason="under_specified",
+            message=(
+                "No matching CRS_DAC statistical variables were found for the "
+                "supplied purpose/recipient/scheme combination. Please narrow "
+                "or broaden your query."
+            ),
+        )
 
-        # sv_set non-empty — proceed with the existing wildcard-expansion path.
+
+@dataclass(frozen=True, slots=True)
+class CrsDacWildcardExpansionHook:
+    """Verify the CRS_DAC SVG name and expand sv_set for wildcard predicates.
+
+    Fires when DevFinance + ``sv_set`` is non-empty + the recipient-set hook
+    did not already materialize. Two responsibilities:
+
+    1. Drift check: synthesized SVG DCID should equal what candidates declare
+       via ``memberOf``. Mismatch means the import's naming recipe has moved;
+       log so recall doesn't quietly rot. Recover via observed memberOf when
+       synthesis fails for a fully-bound predicate.
+    2. Wildcard expansion: when a slot is wildcarded, walk ``<-memberOf`` via
+       ``variable_group`` to expand sv_set beyond the initial-k retrieval cap.
+
+    Adds ``retrieval_weak`` caveat when SVG cannot be verified.
+    """
+
+    name: str = "crs_dac_wildcard_expansion"
+
+    def applies(
+        self,
+        predicate: Predicate,
+        candidates: tuple[StatVarFeatures, ...],
+        ctx: HookContext,
+    ) -> bool:
+        del candidates, ctx
+        return predicate.population_type == "DevelopmentFinance"
+
+    def run(
+        self,
+        predicate: Predicate,
+        result: AnswerCollection,
+        ctx: HookContext,
+    ) -> HookResult:
+        # CrsDacRecipientSetHook already materialized; short-circuit.
+        if _CRS_RECIPIENT_SET_HOOK_NAME in result.handled_by:
+            return result
+
+        # Only the non-empty-sv_set branch lives here.
+        if not result.sv_set:
+            return result
+
+        svg_dcid = _build_crs_svg_dcid(predicate)
         has_wildcards = any(v is None for v in predicate.constraints.values())
         sv_set = list(result.sv_set)
         caveats = list(result.caveats)
@@ -340,9 +383,7 @@ class CrsDacSvgExpansionHook:
         observed = _observed_crs_svg_dcids(result.sv_set, ctx.raw_candidates)
 
         # Drift check: for a fully-bound predicate the synthesized DCID should
-        # equal the group the candidates actually declare via memberOf. A
-        # mismatch means the import's naming recipe has moved out from under
-        # _build_crs_svg_dcid — log it instead of letting recall quietly rot.
+        # equal the group the candidates actually declare via memberOf.
         if not has_wildcards and observed and svg_dcid not in observed:
             logger.warning(
                 "CRS_DAC SVG drift: synthesized %s absent from candidate memberOf %s",
@@ -397,7 +438,6 @@ class CrsDacSvgExpansionHook:
                     caveats.append("retrieval_weak")
 
         # Confidence: fully-bound (no wildcards) + SVG verifies → high.
-        # Anything else stays at the universal materializer's default (medium).
         upgrade = "high" if svg_verified and not has_wildcards else None
         return result.model_copy(
             update={
@@ -694,14 +734,6 @@ class DateFilterHook:
             return bool(d.start or d.end)
 
         dates = [d for d in ctx.dates if d.kind in ("point", "range") and _has_usable_bound(d)]
-        # TEMP DEBUG (remove after between-range investigation)
-        logger.warning(
-            "DATEFILTER_DEBUG entry raw=%s usable=%s places=%s n_sv=%d",
-            [(d.kind, d.start, d.end) for d in ctx.dates],
-            [(d.kind, d.start, d.end) for d in dates],
-            ctx.place_dcids,
-            len(result.sv_set),
-        )
         if not dates:
             return result
 
@@ -751,14 +783,6 @@ class DateFilterHook:
                     keep.append(v)
 
         if len(keep) == len(sv_set):
-            # TEMP DEBUG (remove after between-range investigation)
-            logger.warning(
-                "DATEFILTER_DEBUG no-drop window=%s n_sv=%d n_base=%d base_ranges=%s",
-                (window.kind, window.start, window.end),
-                len(sv_set),
-                len(base),
-                dict(list(base_ranges.items())[:6]),
-            )
             return result
 
         caveats = _caveats("date_filtered", base=list(result.caveats))
@@ -775,8 +799,9 @@ HOOKS: tuple[Hook, ...] = (
     TopicExpansionHook(),
     WeakRetrievalTopicDumpHook(),
     SdgAskClarificationHook(),
-    SetValuedRecipientHook(),
-    CrsDacSvgExpansionHook(),
+    CrsDacRecipientSetHook(),
+    CrsDacRetrievalRecoveryHook(),
+    CrsDacWildcardExpansionHook(),
     DonorIsObservationFacetHook(),
     DenominatorImplicitHook(),
     DateFilterHook(),
@@ -784,4 +809,10 @@ HOOKS: tuple[Hook, ...] = (
     PlaceAvailabilityHook(),
     RetrievalQualityHook(),
     EmptyResultHook(),
+    # Terminal: enrich variables + stamp interpreted_place_as_recipient when
+    # the donor set differs from the full resolved set. Always-applies; the
+    # work is gated on ctx flags inside run() so non-projection queries pay
+    # nothing. Must run last — depends on the final sv_set after every other
+    # hook has had a chance to add/filter.
+    ProjectionEnrichmentHook(),
 )

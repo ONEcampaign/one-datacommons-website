@@ -71,6 +71,22 @@ class HookContext:
     did not apply are not recorded.  The reference is frozen; the dict contents
     are mutated in place by the dispatcher.
     """
+    all_resolved_dcids: tuple[str, ...] = ()
+    """Full set of place DCIDs resolved from the query, before donor-narrowing.
+
+    ``place_dcids`` carries the *donor* subset (resolved places minus any place
+    bound as a constraint value).  ``all_resolved_dcids`` carries the union, so
+    downstream hooks can detect when the two differ (a recipient was bound) and
+    re-derive availability against the donor set rather than the full set.
+
+    Empty when no places were resolved.  Set by the orchestrator (defaults to
+    empty for unit tests that don't exercise the post-materialize path)."""
+    defaulted_recipient: bool = False
+    """True when the recipient slot was assigned by the unqualified-place default.
+
+    Set by the orchestrator from ``BindResult.defaulted_recipient``.  Drives the
+    ``interpreted_place_as_recipient`` user-facing caveat in the projection
+    enrichment hook."""
 
 
 HookResult = AnswerCollection | AskClarification

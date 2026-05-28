@@ -102,7 +102,12 @@ def materialize_many(
     """Materialise a tuple of predicates and union the results."""
     if len(predicates) == 1:
         result = materialize_via_hooks(predicates[0], candidates, ctx=ctx)
-        if isinstance(result, AnswerCollection):  # I3 guard
+        if isinstance(result, AnswerCollection) and not result.variables:
+            # Hook chain didn't populate variables (the common case for
+            # non-projection queries) — fill them from raw_candidates.
+            # When ProjectionEnrichmentHook or CrsDacRetrievalRecoveryHook
+            # already produced variables with enriched availability/names,
+            # leave them alone.
             result = result.model_copy(update={"variables": _build_variables(result.sv_set, ctx)})
         return result
 
@@ -156,6 +161,23 @@ def materialize_many(
     if len(unioned_svs) >= SetCapHook().threshold:
         unioned_caveats = _caveats("set_valued_answer", base=unioned_caveats)
 
+    # Preserve per-sub-result variable enrichment (backup-fetched names for
+    # hook-added SVs, donor-narrowed availability/date_range from each
+    # sub-pred's ProjectionEnrichmentHook). Rebuilding from ctx.raw_candidates
+    # would lose both: raw_candidates excludes hook-added SVs and
+    # ctx.place_availability is the pre-donor-narrow value. Fall back to
+    # _build_variables only for SVs no sub-result enriched (sub-preds whose
+    # hook chain produced an AnswerCollection with empty variables).
+    var_by_dcid: dict[str, ResolvedVariable] = {}
+    for ac in accumulated:
+        for v in ac.variables:
+            var_by_dcid.setdefault(v.dcid, v)
+    missing = [d for d in unioned_svs if d not in var_by_dcid]
+    if missing:
+        for v in _build_variables(missing, ctx):
+            var_by_dcid[v.dcid] = v
+    unioned_variables = [var_by_dcid[d] for d in unioned_svs]
+
     return AnswerCollection(
         predicate=accumulated[0].predicate,
         sv_set=unioned_svs,
@@ -163,5 +185,5 @@ def materialize_many(
         collection_dcid=accumulated[0].collection_dcid,
         confidence=merged_confidence,
         caveats=unioned_caveats,
-        variables=_build_variables(unioned_svs, ctx),
+        variables=unioned_variables,
     )

@@ -7,9 +7,9 @@ given constraint slot based on DCID-namespace membership.
 
 Pipeline position:
     pipeline._build_resolved_places_triples calls place_directional_role (once per query,
-        from the ORIGINAL full query — not per-variable scoped shape_query; Amendment 2).
+        from the ORIGINAL full query — not per-variable scoped shape_query).
     slot_binding.bind() calls offerable_places_for_slot and reads pre-computed role from
-        the 4-tuple — it no longer calls place_directional_role directly.
+        the 4-tuple.
     pipeline._run_one_variable calls classify_place_roles (post-bind).
 """
 

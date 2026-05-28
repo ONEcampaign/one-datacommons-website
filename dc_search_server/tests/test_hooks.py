@@ -10,19 +10,27 @@ import pytest
 from dc_search import retrieval
 from dc_search.extraction import ExtractedDate
 from dc_search.hooks import (
-    CrsDacSvgExpansionHook,
+    CrsDacRecipientSetHook,
+    CrsDacWildcardExpansionHook,
     DateFilterHook,
     DenominatorImplicitHook,
     HookContext,
     PlaceAvailabilityHook,
     RetrievalQualityHook,
     SetCapHook,
-    SetValuedRecipientHook,
     WeakRetrievalTopicDumpHook,
     materialize_many,
     materialize_via_hooks,
 )
-from dc_search.predicate import AnswerCollection, AskClarification, Caveat, Confidence, Predicate
+from dc_search.hooks.crs_dac_recipient_set import HOOK_NAME as _CRS_RECIPIENT_SET_HOOK_NAME
+from dc_search.predicate import (
+    AnswerCollection,
+    AskClarification,
+    Caveat,
+    Confidence,
+    Predicate,
+    ResolvedVariable,
+)
 from dc_search.retrieval import StatVarFeatures, VariableGroupInfo
 
 # ---------------------------------------------------------------------------
@@ -124,7 +132,7 @@ def _make_ctx(
 
 
 # ---------------------------------------------------------------------------
-# CrsDacSvgExpansionHook: synthesis and group recovery
+# CrsDac SVG hooks: synthesis, retrieval recovery, and wildcard expansion
 # ---------------------------------------------------------------------------
 
 
@@ -709,6 +717,133 @@ def test_materialize_many_unions_two_recipients() -> None:
     assert len(result.svg_dcids) == 2
 
 
+def test_materialize_many_preserves_enriched_variables_from_subresults() -> None:
+    """N-tuple union preserves each sub-result's enriched variables.
+
+    For cross-product × projection queries ("malaria and HIV grants to African
+    countries"), each sub-predicate's ProjectionEnrichmentHook builds variables
+    with backup-fetched names and donor-narrowed availability. The union must
+    not rebuild from ``ctx.raw_candidates`` / pre-narrow ``ctx.place_availability``
+    — both would silently overwrite that enrichment.
+    """
+    predicates = (_ken_predicate(), _tgo_predicate())
+    # ctx has empty place set + None availability, so _build_variables(ctx)
+    # alone would emit available_at_place=None and names taken straight from
+    # raw_candidates ("COVID grants to Kenya"/"...Togo"). Distinct markers
+    # below let us catch a clobber.
+    ctx = HookContext(
+        place_dcids=(),
+        place_availability=None,
+        retrieval_scores={_KEN_SV: 0.9, _TGO_SV: 0.7},
+        raw_candidates=tuple(_MULTI_CANDIDATES),
+    )
+
+    enriched_ken = ResolvedVariable(
+        dcid=_KEN_SV, name="ENRICHED_KEN", available_at_place=True
+    )
+    enriched_tgo = ResolvedVariable(
+        dcid=_TGO_SV, name="ENRICHED_TGO", available_at_place=True
+    )
+
+    def _fake_materialize(
+        pred: Predicate,
+        candidates: list[StatVarFeatures],
+        *,
+        ctx: HookContext,
+    ) -> AnswerCollection:
+        recipient = pred.constraints.get("DevelopmentFinanceRecipient")
+        var = enriched_ken if recipient == "country/KEN" else enriched_tgo
+        return AnswerCollection(
+            predicate=pred,
+            sv_set=[var.dcid],
+            svg_dcids=(),
+            collection_dcid=None,
+            confidence="high",
+            caveats=[],
+            variables=[var],
+        )
+
+    with patch(
+        "dc_search.hooks.materialization.materialize_via_hooks",
+        side_effect=_fake_materialize,
+    ):
+        result = materialize_many(predicates, _MULTI_CANDIDATES, ctx=ctx)
+
+    assert isinstance(result, AnswerCollection)
+    by_dcid = {v.dcid: v for v in result.variables}
+    assert by_dcid[_KEN_SV].name == "ENRICHED_KEN"
+    assert by_dcid[_KEN_SV].available_at_place is True
+    assert by_dcid[_TGO_SV].name == "ENRICHED_TGO"
+    assert by_dcid[_TGO_SV].available_at_place is True
+    # Variable order tracks sv_set order, not accumulation order.
+    assert [v.dcid for v in result.variables] == result.sv_set
+
+
+def test_materialize_many_falls_back_for_unenriched_subresults() -> None:
+    """N-tuple union falls back to ctx-build for sub-results with empty variables.
+
+    A sub-predicate whose hook chain didn't trigger projection enrichment
+    returns an AnswerCollection with empty ``variables`` (the 1-tuple branch
+    handles that via its ``if not result.variables`` guard; the N-tuple path
+    needs the equivalent in the union step). This test mixes one enriched
+    sub-result with one bare one and confirms both DCIDs are represented.
+    """
+    predicates = (_ken_predicate(), _tgo_predicate())
+    ctx = HookContext(
+        place_dcids=(),
+        place_availability=None,
+        retrieval_scores={_KEN_SV: 0.9, _TGO_SV: 0.7},
+        raw_candidates=tuple(_MULTI_CANDIDATES),
+    )
+
+    enriched_ken = ResolvedVariable(
+        dcid=_KEN_SV, name="ENRICHED_KEN", available_at_place=True
+    )
+
+    def _fake_materialize(
+        pred: Predicate,
+        candidates: list[StatVarFeatures],
+        *,
+        ctx: HookContext,
+    ) -> AnswerCollection:
+        recipient = pred.constraints.get("DevelopmentFinanceRecipient")
+        if recipient == "country/KEN":
+            return AnswerCollection(
+                predicate=pred,
+                sv_set=[_KEN_SV],
+                svg_dcids=(),
+                collection_dcid=None,
+                confidence="high",
+                caveats=[],
+                variables=[enriched_ken],
+            )
+        return AnswerCollection(
+            predicate=pred,
+            sv_set=[_TGO_SV],
+            svg_dcids=(),
+            collection_dcid=None,
+            confidence="medium",
+            caveats=[],
+            variables=[],
+        )
+
+    with patch(
+        "dc_search.hooks.materialization.materialize_via_hooks",
+        side_effect=_fake_materialize,
+    ):
+        result = materialize_many(predicates, _MULTI_CANDIDATES, ctx=ctx)
+
+    assert isinstance(result, AnswerCollection)
+    by_dcid = {v.dcid: v for v in result.variables}
+    # Enriched sub-result survives untouched.
+    assert by_dcid[_KEN_SV].name == "ENRICHED_KEN"
+    assert by_dcid[_KEN_SV].available_at_place is True
+    # Bare sub-result gets the ctx-build fallback (name from raw_candidates,
+    # tri-state availability None because place_dcids is empty).
+    assert by_dcid[_TGO_SV].name == "COVID grants to Togo"
+    assert by_dcid[_TGO_SV].available_at_place is None
+
+
 def test_materialize_many_mixed_clarification_retrieval_weak() -> None:
     """One sub-predicate returns retrieval_weak → AnswerCollection with partial_result."""
     ken_pred = _ken_predicate()
@@ -742,7 +877,16 @@ def test_materialize_many_mixed_clarification_under_specified() -> None:
     )
     ctx = _make_ctx(_MULTI_CANDIDATES)
 
-    with patch("dc_search.hooks.variable_group", return_value=_KEN_VG):
+    # bad_pred's synthesized SVG resolves to an empty group; CrsDacRetrievalRecoveryHook
+    # falls through to under_specified. ken_pred's SVG resolves to a populated VG so
+    # the AnswerCollection from that sub-predicate stays valid up to the point where
+    # bad_pred poisons the union.
+    def _vg_side_effect(*, dcid: str) -> VariableGroupInfo:
+        if "KEN" in dcid:
+            return _KEN_VG
+        return _UNVERIFIED_VG
+
+    with patch("dc_search.hooks.variable_group", side_effect=_vg_side_effect):
         result = materialize_many((ken_pred, bad_pred), _MULTI_CANDIDATES, ctx=ctx)
 
     assert isinstance(result, AskClarification)
@@ -1933,7 +2077,7 @@ class TestBuildVariables:
 
 
 # ===========================================================================
-# SetValuedRecipientHook tests
+# CrsDacRecipientSetHook tests
 # ===========================================================================
 
 # Probe-confirmed DCIDs: purpose=DAC/Malariacontrol, scheme=ODAGrants,
@@ -1992,17 +2136,17 @@ _MOCK_ARCS_BASE = {
 }
 
 
-class TestSetValuedRecipientHook:
-    """Unit tests for SetValuedRecipientHook (inverse-arc materialization)."""
+class TestCrsDacRecipientSetHook:
+    """Unit tests for CrsDacRecipientSetHook (inverse-arc materialization)."""
 
     def test_applies_true_for_devfinance_with_recipient_constraint_set(self):
-        hook = SetValuedRecipientHook()
+        hook = CrsDacRecipientSetHook()
         pred, _ = _set_pred()
         assert hook.applies(pred, (), _set_ctx()) is True
 
     def test_applies_false_no_constraint_sets(self):
         """Scalar DevelopmentFinance predicate → applies() False (zero added fetches)."""
-        hook = SetValuedRecipientHook()
+        hook = CrsDacRecipientSetHook()
         pred = Predicate(
             population_type="DevelopmentFinance",
             measured_property="DevelopmentFinanceFlow",
@@ -2012,7 +2156,7 @@ class TestSetValuedRecipientHook:
 
     def test_applies_false_non_devfinance(self):
         """Non-DevelopmentFinance predicate → applies() False."""
-        hook = SetValuedRecipientHook()
+        hook = CrsDacRecipientSetHook()
         pred = Predicate(
             population_type="Person",
             measured_property="count",
@@ -2023,7 +2167,7 @@ class TestSetValuedRecipientHook:
 
     def test_applies_false_empty_constraint_sets(self):
         """Empty constraint_sets → applies() False."""
-        hook = SetValuedRecipientHook()
+        hook = CrsDacRecipientSetHook()
         pred = Predicate(
             population_type="DevelopmentFinance",
             measured_property="DevelopmentFinanceFlow",
@@ -2046,7 +2190,7 @@ class TestSetValuedRecipientHook:
 
     def test_family_intersect_per_country_union_with_aggregate(self):
         """Family intersect → per-country union; aggregate from result.sv_set stays first."""
-        hook = SetValuedRecipientHook()
+        hook = CrsDacRecipientSetHook()
         pred, result = _set_pred()  # children = KEN, TGO; seed sv_set = [AFRICA_SV]
         ctx = _set_ctx()
 
@@ -2079,11 +2223,11 @@ class TestSetValuedRecipientHook:
 
     def test_i1_aggregate_survives_cap(self, monkeypatch):
         """I1: aggregate (in result.sv_set) survives the SV cap."""
-        import dc_search.hooks.set_recipient as _sr
+        import dc_search.hooks.crs_dac_recipient_set as _sr
 
         monkeypatch.setattr(_sr, "_CRS_DAC_SV_CAP", 2)
 
-        hook = SetValuedRecipientHook()
+        hook = CrsDacRecipientSetHook()
         pred, result = _set_pred()
         ctx = _set_ctx()
 
@@ -2103,7 +2247,7 @@ class TestSetValuedRecipientHook:
 
     def test_i4_order_independence(self):
         """I4: different frozenset literals for the same children produce identical results."""
-        hook = SetValuedRecipientHook()
+        hook = CrsDacRecipientSetHook()
         # Two predicates with the same child DCIDs but different frozenset construction.
         pred_a = Predicate(
             population_type="DevelopmentFinance",
@@ -2163,7 +2307,7 @@ class TestSetValuedRecipientHook:
         It should only appear in out.sv_set because it was seeded in result.sv_set
         (scalar aggregate path), never via the suffix filter.
         """
-        hook = SetValuedRecipientHook()
+        hook = CrsDacRecipientSetHook()
         # Add the -F aggregate to the family mock.
         arcs_with_f = {
             "DAC/Malariacontrol": frozenset({
@@ -2196,7 +2340,7 @@ class TestSetValuedRecipientHook:
 
     def test_wildcard_guard_purpose_none(self):
         """Wildcard purpose=None → fail-open, svs_by_inverse_arcs NOT called."""
-        hook = SetValuedRecipientHook()
+        hook = CrsDacRecipientSetHook()
         pred, result = _set_pred(purpose=None)
         ctx = _set_ctx()
 
@@ -2208,7 +2352,7 @@ class TestSetValuedRecipientHook:
 
     def test_wildcard_guard_scheme_none(self):
         """Wildcard scheme=None → fail-open, svs_by_inverse_arcs NOT called."""
-        hook = SetValuedRecipientHook()
+        hook = CrsDacRecipientSetHook()
         pred, result = _set_pred(scheme=None)
         ctx = _set_ctx()
 
@@ -2220,7 +2364,7 @@ class TestSetValuedRecipientHook:
 
     def test_fail_open_empty_family(self):
         """svs_by_inverse_arcs returns {} (empty family) → fail-open, result unchanged."""
-        hook = SetValuedRecipientHook()
+        hook = CrsDacRecipientSetHook()
         pred, result = _set_pred()
         ctx = _set_ctx()
 
@@ -2231,7 +2375,7 @@ class TestSetValuedRecipientHook:
 
     def test_fail_open_empty_per_country(self):
         """Family non-empty but no member suffix matches child ISO3 → fail-open."""
-        hook = SetValuedRecipientHook()
+        hook = CrsDacRecipientSetHook()
         pred, result = _set_pred(children=frozenset({"country/ZZZ"}))  # ZZZ not in family
         ctx = _set_ctx()
 
@@ -2245,7 +2389,7 @@ class TestSetValuedRecipientHook:
 
     def test_fail_open_on_exception(self):
         """svs_by_inverse_arcs raises → fail-open, result unchanged."""
-        hook = SetValuedRecipientHook()
+        hook = CrsDacRecipientSetHook()
         pred, result = _set_pred()
         ctx = _set_ctx()
 
@@ -2258,24 +2402,65 @@ class TestSetValuedRecipientHook:
         assert out is result
 
     def test_crs_hook_i2_guard_no_op_after_set_hook(self):
-        """CRS hook I2 guard: when set_valued_recipient caveat present, run() returns unchanged."""
-        hook = CrsDacSvgExpansionHook()
+        """CRS hook short-circuits when recipient-set hook signalled success via handled_by.
+
+        Typed channel — the caveat ``set_valued_recipient`` is user-facing and
+        must not double as inter-hook IPC.
+        """
+        hook = CrsDacWildcardExpansionHook()
         pred, result = _set_pred()
-        # Simulate that SetValuedRecipientHook already fired and added the caveat.
-        result_with_caveat = result.model_copy(update={"caveats": ["set_valued_recipient"]})
+        # Simulate that CrsDacRecipientSetHook already fired and registered itself.
+        result_handled = result.model_copy(
+            update={"handled_by": frozenset({_CRS_RECIPIENT_SET_HOOK_NAME})}
+        )
         ctx = _set_ctx()
 
-        out = hook.run(pred, result_with_caveat, ctx)
+        out = hook.run(pred, result_handled, ctx)
 
-        assert out is result_with_caveat  # no-op, sv_set preserved
+        assert out is result_handled  # no-op, sv_set preserved
 
-    def test_crs_hook_proceeds_on_set_pred_without_caveat(self):
-        """CRS hook proceeds normally when set predicate has NO set_valued_recipient caveat.
+    def test_crs_hook_skip_ignores_user_facing_caveat(self):
+        """The skip guard reads handled_by, not caveats — caveat string is not IPC."""
+        hook = CrsDacWildcardExpansionHook()
+        pred, result = _set_pred(sv_set=[_AFRICA_SV])
+        # Caveat present but handled_by empty: simulates a downstream renaming
+        # of the caveat literal that used to silently disable the skip guard.
+        result_caveat_only = result.model_copy(
+            update={"caveats": ["set_valued_recipient"]}
+        )
+        ctx = _set_ctx(candidates=[
+            StatVarFeatures(
+                dcid=_AFRICA_SV,
+                name="Malaria grants Africa",
+                population_type=["DevelopmentFinance"],
+                measured_property=["DevelopmentFinanceFlow"],
+                stat_type=["measuredValue"],
+                member_of=["ONE/g/DevelopmentFinance_DevelopmentFinancePurpose-DACMalariacontrol_DevelopmentFinanceRecipient-DACAfrica_DevelopmentFinanceScheme-ODAGrants"],
+            )
+        ])
+        vg = VariableGroupInfo(
+            dcid="ONE/g/DevelopmentFinance_DevelopmentFinancePurpose-DACMalariacontrol_DevelopmentFinanceRecipient-DACAfrica_DevelopmentFinanceScheme-ODAGrants",
+            name="Malaria Africa",
+            parents=[],
+            child_groups=[],
+            child_vars=[{"dcid": _AFRICA_SV, "name": "Africa Malaria"}],
+        )
+        with patch("dc_search.hooks.variable_group", return_value=vg):
+            out = hook.run(pred, result_caveat_only, ctx)
 
-        This is the fail-open path: the set hook returned result unchanged (empty family),
-        so the CRS hook must handle the scalar aggregate path.
+        assert isinstance(out, AnswerCollection)
+        # Hook did NOT short-circuit on the caveat alone — it ran the scalar
+        # SVG path. svg_dcids being populated proves the guard didn't fire.
+        assert out.svg_dcids
+
+    def test_crs_hook_proceeds_on_set_pred_without_handled_by(self):
+        """CRS hook proceeds normally when handled_by does not register the set hook.
+
+        Fail-open path: the set hook returned result unchanged (empty family
+        etc.), so handled_by stays empty and the CRS hook handles the scalar
+        aggregate path.
         """
-        hook = CrsDacSvgExpansionHook()
+        hook = CrsDacWildcardExpansionHook()
         pred, result = _set_pred(sv_set=[_AFRICA_SV])
         ctx = _set_ctx(candidates=[
             StatVarFeatures(
@@ -2287,7 +2472,7 @@ class TestSetValuedRecipientHook:
                 member_of=["ONE/g/DevelopmentFinance_DevelopmentFinancePurpose-DACMalariacontrol_DevelopmentFinanceRecipient-DACAfrica_DevelopmentFinanceScheme-ODAGrants"],
             )
         ])
-        # No set_valued_recipient caveat → I2 guard does NOT fire → CRS hook proceeds.
+        # handled_by lacks the recipient-set hook → skip guard does NOT fire → CRS hook proceeds.
         vg = VariableGroupInfo(
             dcid="ONE/g/DevelopmentFinance_DevelopmentFinancePurpose-DACMalariacontrol_DevelopmentFinanceRecipient-DACAfrica_DevelopmentFinanceScheme-ODAGrants",
             name="Malaria Africa",
@@ -2507,3 +2692,310 @@ class TestSlice8AvailabilityTriState:
 
         assert isinstance(result, AnswerCollection)
         assert "set_valued_recipient" in result.caveats
+
+
+# ===========================================================================
+# ProjectionEnrichmentHook tests
+# ===========================================================================
+
+
+from dc_search.hooks import ProjectionEnrichmentHook  # noqa: E402
+
+
+def _enrichment_pred() -> Predicate:
+    """Minimal DevFinance predicate with recipient bound (TGO)."""
+    return Predicate(
+        population_type="DevelopmentFinance",
+        measured_property="amount",
+        constraints={"DevelopmentFinanceRecipient": "country/TGO"},
+    )
+
+
+def _enrichment_ctx(
+    *,
+    all_resolved: tuple[str, ...] = ("country/USA", "country/TGO"),
+    donor: tuple[str, ...] = ("country/USA",),
+    raw_candidates: tuple[StatVarFeatures, ...] = (),
+    defaulted_recipient: bool = False,
+) -> HookContext:
+    return HookContext(
+        place_dcids=donor,
+        place_availability=None,
+        retrieval_scores={},
+        raw_candidates=raw_candidates,
+        all_resolved_dcids=all_resolved,
+        defaulted_recipient=defaulted_recipient,
+    )
+
+
+class TestProjectionEnrichmentHook:
+    """ProjectionEnrichmentHook owns the work that used to live in the
+    orchestrator's post-materialize block: backup feature fetch, availability
+    recompute against the donor set, variable rebuild, and the
+    ``interpreted_place_as_recipient`` caveat."""
+
+    def test_applies_always_true(self):
+        """Always-applies — work is gated by ctx flags inside ``run``."""
+        hook = ProjectionEnrichmentHook()
+        pred = _enrichment_pred()
+        assert hook.applies(pred, (), _enrichment_ctx()) is True
+
+    def test_skip_when_donor_equals_resolved_and_no_added_svs(self):
+        """No projection (donor == resolved) + no hook-added SVs → zero-cost passthrough."""
+        hook = ProjectionEnrichmentHook()
+        pred = _enrichment_pred()
+        sv_dcid = "ONE/CRS_DAC/Malaria-ODAGrants-USA"
+        candidate = StatVarFeatures(
+            dcid=sv_dcid,
+            name="Malaria USA",
+            population_type=["DevelopmentFinance"],
+            measured_property=["amount"],
+        )
+        ctx = _enrichment_ctx(
+            all_resolved=("country/USA",),
+            donor=("country/USA",),
+            raw_candidates=(candidate,),
+        )
+        result = AnswerCollection(
+            predicate=pred,
+            sv_set=[sv_dcid],
+            confidence="medium",
+        )
+        out = hook.run(pred, result, ctx)
+        # No enrichment performed: variables stay as the input (empty here).
+        assert out.variables == []
+
+    def test_enriches_when_hook_added_svs_not_in_retrieval(self):
+        """sv_set contains a DCID absent from retrieved features → backup fetch
+        + variable rebuild populates names."""
+        hook = ProjectionEnrichmentHook()
+        pred = _enrichment_pred()
+        added_dcid = "ONE/CRS_DAC/Malariacontrol-ODAGrants-TGO"
+        added_features = StatVarFeatures(
+            dcid=added_dcid,
+            name="Malaria TGO grants",
+            population_type=["DevelopmentFinance"],
+            measured_property=["amount"],
+        )
+        ctx = _enrichment_ctx(
+            all_resolved=("country/USA", "country/TGO"),
+            donor=("country/USA",),
+            raw_candidates=(),  # added_dcid absent → triggers backup fetch
+        )
+        result = AnswerCollection(
+            predicate=pred,
+            sv_set=[added_dcid],
+            confidence="high",
+        )
+
+        with (
+            patch("dc_search.hooks.stat_var_features_batch", return_value={
+                added_dcid: added_features,
+            }),
+            patch(
+                "dc_search.pipeline._availability._resolve_union_availability_with_ranges",
+                return_value=(frozenset({added_dcid}), {added_dcid: ("2010", "2020")}, False),
+            ),
+        ):
+            out = hook.run(pred, result, ctx)
+
+        names = [v.name for v in out.variables]
+        assert "Malaria TGO grants" in names
+        # Donor non-empty + availability says SV is present at donor.
+        assert all(v.available_at_place is True for v in out.variables)
+        # Date range piped through from the recompute.
+        assert out.variables[0].date_range is not None
+        assert out.variables[0].date_range.earliest == "2010"
+
+    def test_enriches_when_donor_narrows(self):
+        """donor != all_resolved (recipient was bound) → availability recomputed
+        against donor, not against the full place set."""
+        hook = ProjectionEnrichmentHook()
+        pred = _enrichment_pred()
+        sv_dcid = "ONE/CRS_DAC/Malariacontrol-ODAGrants-TGO"
+        feature = StatVarFeatures(
+            dcid=sv_dcid,
+            name="Malaria TGO grants",
+            population_type=["DevelopmentFinance"],
+            measured_property=["amount"],
+        )
+        ctx = _enrichment_ctx(
+            all_resolved=("country/USA", "country/TGO"),  # full set
+            donor=("country/USA",),                        # TGO bound as recipient
+            raw_candidates=(feature,),
+        )
+        result = AnswerCollection(
+            predicate=pred, sv_set=[sv_dcid], confidence="high",
+        )
+
+        with patch(
+            "dc_search.pipeline._availability._resolve_union_availability_with_ranges",
+            return_value=(frozenset({sv_dcid}), {}, False),
+        ) as mock_avail:
+            out = hook.run(pred, result, ctx)
+
+        # Donor-only call (not the full place set).
+        mock_avail.assert_called_once()
+        args, _kwargs = mock_avail.call_args
+        assert args[0] == ["country/USA"], "Availability must be recomputed against donor"
+        assert out.variables[0].available_at_place is True
+
+    def test_empty_donor_omits_availability(self):
+        """All resolved places bound as recipients → donor set empty → availability
+        is None (omitted), not False — matches the prior orchestrator contract."""
+        hook = ProjectionEnrichmentHook()
+        pred = _enrichment_pred()
+        sv_dcid = "ONE/CRS_DAC/Malariacontrol-ODAGrants-NGA"
+        feature = StatVarFeatures(
+            dcid=sv_dcid,
+            name="Malaria NGA grants",
+            population_type=["DevelopmentFinance"],
+            measured_property=["amount"],
+        )
+        ctx = _enrichment_ctx(
+            all_resolved=("country/NGA",),
+            donor=(),  # NGA is the recipient → no donors left
+            raw_candidates=(feature,),
+        )
+        result = AnswerCollection(
+            predicate=pred, sv_set=[sv_dcid], confidence="high",
+        )
+
+        out = hook.run(pred, result, ctx)
+
+        assert all(v.available_at_place is None for v in out.variables)
+        assert all(v.date_range is None for v in out.variables)
+
+    def test_stamps_interpreted_place_as_recipient_caveat(self):
+        """``ctx.defaulted_recipient=True`` → caveat appended idempotently."""
+        hook = ProjectionEnrichmentHook()
+        pred = _enrichment_pred()
+        sv_dcid = "ONE/CRS_DAC/Malariacontrol-ODAGrants-NGA"
+        ctx = _enrichment_ctx(
+            all_resolved=("country/NGA",),
+            donor=(),
+            defaulted_recipient=True,
+        )
+        result = AnswerCollection(
+            predicate=pred, sv_set=[sv_dcid], confidence="high",
+        )
+
+        out = hook.run(pred, result, ctx)
+        assert "interpreted_place_as_recipient" in out.caveats
+
+    def test_does_not_double_stamp_caveat(self):
+        """Caveat already present → not duplicated."""
+        hook = ProjectionEnrichmentHook()
+        pred = _enrichment_pred()
+        sv_dcid = "ONE/CRS_DAC/Malariacontrol-ODAGrants-NGA"
+        ctx = _enrichment_ctx(
+            all_resolved=("country/NGA",),
+            donor=(),
+            defaulted_recipient=True,
+        )
+        result = AnswerCollection(
+            predicate=pred,
+            sv_set=[sv_dcid],
+            confidence="high",
+            caveats=["interpreted_place_as_recipient"],
+        )
+
+        out = hook.run(pred, result, ctx)
+        assert out.caveats.count("interpreted_place_as_recipient") == 1
+
+    def test_no_caveat_when_defaulted_recipient_false(self):
+        """Explicit role ('grants from us to togo') → no caveat."""
+        hook = ProjectionEnrichmentHook()
+        pred = _enrichment_pred()
+        sv_dcid = "ONE/CRS_DAC/Malariacontrol-ODAGrants-TGO"
+        ctx = _enrichment_ctx(defaulted_recipient=False)
+        result = AnswerCollection(
+            predicate=pred, sv_set=[sv_dcid], confidence="high",
+        )
+
+        out = hook.run(pred, result, ctx)
+        assert "interpreted_place_as_recipient" not in out.caveats
+
+    def test_patches_availability_when_upstream_built_variables(self):
+        """Recovery hook produced complete variables (correct names) but its
+        availability was computed against the pre-donor place set.  When the
+        donor set differs, ProjectionEnrichmentHook must re-derive
+        ``available_at_place`` from the donor-narrow availability and patch
+        the existing variables in place — preserving names, replacing
+        availability + date_range only.
+
+        Regression test for a real bug: Piece D recovery + donor narrowing
+        previously skipped the recompute entirely, leaving stale availability."""
+        hook = ProjectionEnrichmentHook()
+        pred = _enrichment_pred()
+        sv_dcid = "ONE/CRS_DAC/Malariacontrol-ODAGrants-TGO"
+        # Upstream hook (e.g. CrsDacRetrievalRecoveryHook) populated variables
+        # with names already, but the availability value reflects the WRONG
+        # place set: True against the union including the bound recipient.
+        upstream_variables = [
+            ResolvedVariable(
+                dcid=sv_dcid,
+                name="Malaria TGO grants",  # name set by upstream's fetch
+                available_at_place=True,    # stale: union(USA, TGO) availability
+            )
+        ]
+        ctx = _enrichment_ctx(
+            all_resolved=("country/USA", "country/TGO"),
+            donor=("country/USA",),
+            raw_candidates=(),  # SV not in retrieval pool (Piece D scenario)
+        )
+        result = AnswerCollection(
+            predicate=pred,
+            sv_set=[sv_dcid],
+            confidence="high",
+            variables=upstream_variables,
+        )
+
+        # Donor-set availability says the SV is NOT available at USA alone.
+        with (
+            patch(
+                "dc_search.pipeline._availability._resolve_union_availability_with_ranges",
+                return_value=(frozenset(), {}, False),
+            ),
+            patch(
+                "dc_search.hooks.stat_var_features_batch",
+            ) as mock_fetch,
+        ):
+            out = hook.run(pred, result, ctx)
+
+        # Name preserved from upstream — no redundant feature fetch.
+        assert out.variables[0].name == "Malaria TGO grants"
+        mock_fetch.assert_not_called()
+        # Availability re-derived against the donor set: empty avail → False.
+        assert out.variables[0].available_at_place is False
+
+    def test_backup_fetch_failure_is_fail_open(self):
+        """stat_var_features_batch raises → names remain None, no crash."""
+        hook = ProjectionEnrichmentHook()
+        pred = _enrichment_pred()
+        added_dcid = "ONE/CRS_DAC/Malariacontrol-ODAGrants-TGO"
+        ctx = _enrichment_ctx(
+            all_resolved=("country/USA", "country/TGO"),
+            donor=("country/USA",),
+            raw_candidates=(),
+        )
+        result = AnswerCollection(
+            predicate=pred, sv_set=[added_dcid], confidence="high",
+        )
+
+        with (
+            patch(
+                "dc_search.hooks.stat_var_features_batch",
+                side_effect=RuntimeError("transient mixer error"),
+            ),
+            patch(
+                "dc_search.pipeline._availability._resolve_union_availability_with_ranges",
+                return_value=(frozenset(), {}, False),
+            ),
+        ):
+            out = hook.run(pred, result, ctx)
+
+        # Variable still constructed (the projection ran) but name is None.
+        assert len(out.variables) == 1
+        assert out.variables[0].dcid == added_dcid
+        assert out.variables[0].name is None

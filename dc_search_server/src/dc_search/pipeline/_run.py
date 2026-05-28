@@ -675,8 +675,18 @@ async def _materialize(
     availability_degraded: bool = False,
     dcid_to_sentence: dict[str, str] | None = None,
     dcid_to_date_range: dict[str, tuple[str | None, str | None]] | None = None,
+    all_resolved_dcids: tuple[str, ...] = (),
+    defaulted_recipient: bool = False,
 ) -> AnswerCollection | AskClarification:
-    """Materialize via hooks (via to_thread for blocking mixer HTTP calls)."""
+    """Materialize via hooks (via to_thread for blocking mixer HTTP calls).
+
+    ``place_dcids`` is the *donor* subset; ``all_resolved_dcids`` is the union
+    before donor-narrowing. The terminal ``ProjectionEnrichmentHook`` reads
+    both: when they differ, it recomputes availability/date-ranges against
+    the donor set (the bound recipient would otherwise show up as a phantom
+    observation entity). ``defaulted_recipient`` drives the
+    ``interpreted_place_as_recipient`` caveat in the same hook.
+    """
     hook_ctx = HookContext(
         place_dcids=tuple(place_dcids),
         place_availability=union_avail if union_avail else None,
@@ -686,6 +696,8 @@ async def _materialize(
         availability_degraded=availability_degraded,
         dcid_to_sentence=dcid_to_sentence or {},
         dcid_to_date_range=dcid_to_date_range or {},
+        all_resolved_dcids=all_resolved_dcids,
+        defaulted_recipient=defaulted_recipient,
     )
     answer = await asyncio.to_thread(
         hooks_module.materialize_many, predicates, feature_list, ctx=hook_ctx
@@ -906,12 +918,17 @@ async def _run_one_variable(
         )
 
         # Materialize via hooks using the donor set as the entity set.
+        # Enrichment (donor-set availability recompute, backup feature fetch,
+        # interpreted_place_as_recipient caveat) runs as the terminal
+        # ProjectionEnrichmentHook inside the chain — the orchestrator just
+        # threads the inputs it needs (all_resolved_dcids, defaulted_recipient)
+        # through HookContext.
         answer = await _materialize(
             predicates,
             feature_list,
             list(donor_dcids),
             # Pre-bind availability/ranges were computed against the full place_dcids;
-            # they are superseded by the post-materialize enrichment when needed.
+            # ProjectionEnrichmentHook supersedes them when the donor set differs.
             union_avail,
             retrieval_scores,
             variable,
@@ -919,75 +936,9 @@ async def _run_one_variable(
             availability_degraded=avail_degraded,
             dcid_to_sentence=dcid_to_sentence,
             dcid_to_date_range=dcid_to_date_range,
+            all_resolved_dcids=tuple(place_dcids),
+            defaulted_recipient=defaulted_recipient,
         )
-
-        # Post-materialize enrichment: recompute availability + variables when:
-        #   • a recipient was bound (donor set differs from full place set), OR
-        #   • recovered DCIDs absent from initial retrieval (e.g. CRS_DAC Piece D)
-        # Non-recipient-bound queries skip this block entirely (zero cost).
-        if isinstance(answer, AnswerCollection):
-            retrieved_dcids: set[str] = {f.dcid for f in feature_list}
-            needs_enrichment = tuple(place_dcids) != donor_dcids or bool(
-                set(answer.sv_set) - retrieved_dcids
-            )
-            if needs_enrichment:
-                final_sv_set = list(answer.sv_set)
-
-                # Backup feature fetch: collect any DCIDs still missing from raw_candidates.
-                # This catches any gaps not covered by the S5 hook.
-                missing_dcids = [d for d in final_sv_set if d not in retrieved_dcids]
-                merged_features: dict[str, StatVarFeatures] = {f.dcid: f for f in feature_list}
-                if missing_dcids:
-                    try:
-                        extra = await asyncio.to_thread(
-                            retrieval.stat_var_features_batch, sv_dcids=missing_dcids
-                        )
-                        merged_features.update(extra)
-                    except Exception:
-                        pass  # fail-open: names remain None for missing DCIDs
-
-                # Recompute availability + date_range against the donor set over the
-                # final sv_set. Omit availability (None, not False) when donor_dcids
-                # is empty — all places bound as recipients, so no observation entities.
-                if donor_dcids:
-                    try:
-                        new_avail, new_ranges, new_degraded = await asyncio.to_thread(
-                            _resolve_union_availability_with_ranges,
-                            list(donor_dcids),
-                            tuple(final_sv_set),
-                        )
-                    except Exception:
-                        new_avail = frozenset()
-                        new_ranges = {}
-                        new_degraded = False
-                else:
-                    new_avail = None
-                    new_ranges = {}
-                    new_degraded = False
-
-                # Rebuild variables with updated features, availability, and ranges.
-                enrich_ctx = HookContext(
-                    place_dcids=donor_dcids,
-                    place_availability=new_avail,
-                    retrieval_scores=retrieval_scores,
-                    raw_candidates=tuple(merged_features.values()),
-                    dates=dates or [],
-                    availability_degraded=new_degraded,
-                    dcid_to_sentence=dcid_to_sentence,
-                    dcid_to_date_range=new_ranges,
-                )
-                answer = answer.model_copy(
-                    update={"variables": hooks_module._build_variables(final_sv_set, enrich_ctx)}
-                )
-
-            # Stamp interpreted_place_as_recipient caveat when the recipient role was
-            # assigned by the unqualified-place default (not by explicit "to X" cue).
-            if defaulted_recipient and "interpreted_place_as_recipient" not in answer.caveats:
-                answer = answer.model_copy(
-                    update={
-                        "caveats": [*answer.caveats, "interpreted_place_as_recipient"],
-                    }
-                )
 
         return _VariableResult(outcome=answer, n_candidates=n_candidates, n_shapes=n_shapes)
     finally:
