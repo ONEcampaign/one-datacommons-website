@@ -40,6 +40,7 @@ from dc_search.interpretation import (
 )
 from dc_search.place_role import classify_place_roles, place_directional_role
 from dc_search.predicate import AnswerCollection, AskClarification, Predicate
+from dc_search.retrieval import StatVarFeatures
 from dc_search.shape import ShapeContext, build_shape_context
 from dc_search.telemetry import TelemetryLLMUsage, Usage
 
@@ -501,6 +502,29 @@ async def _expand_children(
                 combined.append(child_dcid)
                 seen.add(child_dcid)
 
+    # Pre-warm place_names_batch for the combined parent+children set so that
+    # _build_resolved_places and _build_resolved_places_triples (which both call
+    # place_names_batch(combined) concurrently after this task resolves) get cache
+    # hits instead of cold round-trips (~300-500 ms each on contained-in queries).
+    # We already have all the data: parent names/types from names_map (fetched
+    # above), and child names from child_places_batch (typeOf not available for
+    # children, but downstream consumers only use typeOf for parent DCIDs).
+    if combined:
+        combined_names: dict[str, tuple[str | None, str | None]] = {}
+        # Seed parents from the names_map already fetched at the top of this function.
+        for dcid in parent_dcids:
+            combined_names[dcid] = names_map.get(dcid, (None, None))
+        # Seed children from the (dcid, name) pairs returned by child_places_batch.
+        for p in parent_dcids:
+            for child_dcid, child_name in parent_to_children.get(p, ()):
+                if child_dcid not in combined_names:
+                    combined_names[child_dcid] = (child_name, None)
+        combined_key = tuple(sorted(combined))
+        with retrieval._cache_lock:
+            # Only seed if not already present (e.g. a second call in the same session).
+            if combined_key not in retrieval._place_names_cache:
+                retrieval._place_names_cache[combined_key] = combined_names
+
     return (combined, parent_to_children, parent_to_child_type)
 
 
@@ -578,7 +602,7 @@ async def _rerank_by_availability(
     return sv_dcids, union_avail, dcid_to_date_range, avail_degraded
 
 
-async def _fetch_features(sv_dcids: list[str]) -> list:
+async def _fetch_features(sv_dcids: list[str]) -> list[StatVarFeatures]:
     """Batch-fetch StatVarFeatures for the filtered SV DCIDs."""
     features_dict = await asyncio.to_thread(retrieval.stat_var_features_batch, sv_dcids=sv_dcids)
     return list(features_dict.values())
@@ -813,13 +837,20 @@ async def _run_one_variable(
         if topic_answer is not None:
             return _VariableResult(outcome=topic_answer, n_candidates=n_candidates)
 
-        # Availability re-rank (against the full resolved place set, before donor narrowing).
-        sv_dcids, union_avail, dcid_to_date_range, avail_degraded = await _rerank_by_availability(
-            sv_dcids, place_dcids
+        # Re-rank and feature fetch are order-independent (features keyed by DCID),
+        # so overlap them. Post-gather sort restores availability-priority order
+        # for downstream consumers (_build_shape, materialize_many).
+        (
+            (sv_dcids, union_avail, dcid_to_date_range, avail_degraded),
+            features_unordered,
+        ) = await asyncio.gather(
+            _rerank_by_availability(sv_dcids, place_dcids),
+            _fetch_features(sv_dcids),
         )
-
-        # Feature fetch.
-        feature_list = await _fetch_features(sv_dcids)
+        rerank_pos = {d: i for i, d in enumerate(sv_dcids)}
+        feature_list = sorted(
+            features_unordered, key=lambda f: rerank_pos.get(f.dcid, len(sv_dcids))
+        )
 
         # Build (dcid, canonical_name, input_surface, role) 4-tuples for the default endpoint.
         # Role is computed from the ORIGINAL full `query` — NOT from the per-variable
@@ -905,7 +936,7 @@ async def _run_one_variable(
                 # Backup feature fetch: collect any DCIDs still missing from raw_candidates.
                 # This catches any gaps not covered by the S5 hook.
                 missing_dcids = [d for d in final_sv_set if d not in retrieved_dcids]
-                merged_features: dict[str, object] = {f.dcid: f for f in feature_list}
+                merged_features: dict[str, StatVarFeatures] = {f.dcid: f for f in feature_list}
                 if missing_dcids:
                     try:
                         extra = await asyncio.to_thread(
