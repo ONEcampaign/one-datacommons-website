@@ -1,0 +1,464 @@
+/* ============================================================
+   Search Comparison — responsive overrides (mobile / tablet)
+   Loaded AFTER styles.css; contains only additive @media rules.
+   Edit the base look in styles.css; edit breakpoint behaviour here.
+
+   Breakpoint contract:
+     Tablet  ≤ 960px → 2-column grid; relax cross-column min-heights
+     Mobile  ≤ 640px → 1-column stack; stacked query bar; chip tap
+                        targets; tighter density; overflow guards
+     Small   ≤ 414px → extra density tightening for the narrowest phones
+   ============================================================ */
+
+/* ########## LAYOUT & STRUCTURE ########## */
+
+/* ============================================================
+   TABLET  (≤ 960px) — 2-column grid
+   ============================================================ */
+@media (max-width: 960px) {
+
+  /* Drop from 3 to 2 columns. Keep gap but trim slightly so panels
+     breathe without needing a scroll at ~768px. */
+  .layout-side {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-md);
+  }
+
+  /* Cross-column alignment min-heights are only meaningful when ALL
+     three panels sit side-by-side. With 2 columns the third panel
+     wraps, so forcing the heights just creates dead whitespace.
+     Reset to auto so each section shrinks to its content. */
+  .panel-body         { min-height: 0; }
+  .panel-footer       { min-height: 0; }
+  .panel-method-sub   { min-height: 0; }
+  .interp-strip       { min-height: 0; }
+
+}
+
+/* ============================================================
+   MOBILE  (≤ 640px) — single-column stack
+   ============================================================ */
+@media (max-width: 640px) {
+
+  /* Single column — panels stack vertically and fill the full width. */
+  .layout-side {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-sm);
+  }
+
+  /* Tighten horizontal padding so panels occupy maximum usable width.
+     styles.css already reduces top/bottom at ≤900px; we only touch
+     the inline (left/right) padding here. */
+  .app {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  /* Reduce offset shadows from 8px → 4px so the right edge of the
+     shadow stays inside the viewport and does not trigger
+     horizontal scrolling at 360–414px widths. */
+  .panel.method-resolve  { box-shadow: 4px 4px 0 0 hsl(var(--blue-dc)); }
+  .panel.method-dcsearch { box-shadow: 4px 4px 0 0 hsl(var(--green)); }
+  .panel.method-detect   { box-shadow: 4px 4px 0 0 hsl(var(--purple)); }
+
+}
+
+/* ########## HEADER & QUERY BAR ########## */
+
+/* ============================================================
+   TABLET  ≤ 960px — light adjustments
+   ============================================================ */
+@media (max-width: 960px) {
+
+  /* Shrink the decorative rule so it doesn't crowd the title
+     on medium-width screens. */
+  .header-title-rule {
+    max-width: 160px;
+  }
+
+  /* Clamp the header sub-line so it doesn't over-stretch. */
+  .header-sub {
+    max-width: 60ch;
+  }
+
+}
+
+/* ============================================================
+   MOBILE  ≤ 640px — primary responsive work
+   ============================================================ */
+@media (max-width: 640px) {
+
+  /* ---------- Header ---------- */
+
+  .header {
+    gap: 6px;
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+  }
+
+  /* Keep title legible; hide the decorative rule — it breaks the
+     flex row layout on very narrow screens. */
+  .header-title {
+    font-size: 18px;
+    gap: 8px;
+  }
+
+  .header-title-rule {
+    display: none;
+  }
+
+  /* Ensure the subtitle never forces horizontal overflow. */
+  .header-sub {
+    max-width: 100%;
+    font-size: 13px;
+  }
+
+  /* ---------- "How it works" disclosure ---------- */
+
+  /* Expand to full width so the hit area is comfortable. */
+  .howitworks-summary {
+    width: 100%;
+  }
+
+  .howitworks-content {
+    max-width: 100%;
+  }
+
+  .howitworks-body {
+    font-size: 13px;
+  }
+
+  .howitworks-compared {
+    font-size: 13px;
+  }
+
+  /* ---------- Query bar — outer wrapper ---------- */
+
+  .querybar {
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  /* ---------- Query input row: stack vertically ---------- */
+
+  /* Stack input + button so the button can go full width and
+     get a proper touch height instead of being squeezed. */
+  .querybar-input {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  /* Keep font-size at 16px to prevent iOS auto-zoom on focus. */
+  .querybar-input input[type="text"] {
+    font-size: 16px;
+    padding: 12px 14px;
+    width: 100%;
+  }
+
+  /* Full-width button with a comfortable 44px touch target. */
+  .btn-run {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 22px;
+    font-size: 13px;
+  }
+
+  /* ---------- Sample-query suggestions: chip style ---------- */
+
+  /* Switch from an inline text list to a wrapping chip row. */
+  .querybar-suggest {
+    gap: 8px 6px;
+    align-items: flex-start;
+    padding-top: 4px;
+  }
+
+  /* Keep the "TRY:" label readable alongside the chips. */
+  .querybar-suggest-label {
+    font-size: 10px;
+    margin-right: 2px;
+    /* Align label vertically with chip text. */
+    line-height: 2.6;
+  }
+
+  /* Pill chip: bordered, padded, comfortable tap target. */
+  .suggest {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 10px;
+    min-height: 36px;
+    border: 1.5px solid hsl(var(--grey));
+    border-radius: 2px;
+    background: hsl(var(--white));
+    font-size: 12px;
+    text-decoration: none;
+    color: hsl(var(--grey-italian));
+    /* Smooth the border on hover/active state. */
+    transition: border-color var(--duration, 160ms) var(--ease, ease),
+                color        var(--duration, 160ms) var(--ease, ease),
+                background   var(--duration, 160ms) var(--ease, ease);
+  }
+
+  .suggest:hover {
+    border-color: hsl(var(--black));
+    color: hsl(var(--black));
+    background: hsl(var(--grey-light));
+    text-decoration: none;
+  }
+
+  .suggest.is-active {
+    border-color: hsl(var(--black));
+    color: hsl(var(--black));
+    background: hsl(var(--grey-light));
+    text-decoration: none;
+  }
+
+  /* Hide the · dot separators — chips are self-separating. */
+  .suggest-sep {
+    display: none;
+  }
+
+}
+
+/* ########## IN-PANEL CONTENT DENSITY & TOUCH TARGETS ########## */
+
+/* ============================================================
+   MOBILE — max-width: 640px
+   ============================================================ */
+@media (max-width: 640px) {
+
+  /* ----------------------------------------------------------
+     PANEL HEAD — tighten padding; let the mono endpoint wrap
+     instead of clipping silently via ellipsis on a full-width
+     single-column panel.
+     ---------------------------------------------------------- */
+  .panel-head {
+    padding: var(--space-xs) var(--space-sm);
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+  }
+
+  .panel-endpoint {
+    white-space: normal;          /* allow wrapping */
+    overflow-wrap: break-word;    /* break long paths at any char */
+    word-break: break-all;        /* belt-and-suspenders for mono paths */
+    text-overflow: clip;          /* no ellipsis once we wrap */
+    max-width: 100%;              /* never push the panel wider */
+  }
+
+  /* ----------------------------------------------------------
+     PANEL BODY — reduce padding so full-width cards gain
+     usable horizontal space. min-height left alone (layout agent).
+     ---------------------------------------------------------- */
+  .panel-body {
+    padding: var(--space-sm);     /* 16px token; base is --space-md (20px) */
+  }
+
+  /* ----------------------------------------------------------
+     INTERPRETATION STRIP — lighter chip padding on narrow widths.
+     min-height left alone (layout agent owns alignment).
+     ---------------------------------------------------------- */
+  .interp-strip {
+    padding: 6px 8px;
+  }
+
+  .interp-strip-chips {
+    gap: 3px;
+  }
+
+  .interp-chip {
+    font-size: 11px;              /* do not shrink below; already minimum */
+    padding: 3px 7px;             /* slightly taller for legibility */
+    max-width: 100%;
+  }
+
+  /* ----------------------------------------------------------
+     EXPAND / DISCLOSURE BUTTONS — bump to ~44px effective tap
+     height per touch guidelines. These are tapped frequently.
+     ---------------------------------------------------------- */
+  .expand-toggle {
+    padding: 12px 12px;           /* base: 6px 10px → adds vertical space */
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .expander {
+    padding: 10px 0;              /* base: 4px 0 → ~44px with line-height */
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .contained-in-summary {
+    padding: 10px 0;              /* base has no vertical padding */
+    min-height: 44px;
+    align-items: center;
+  }
+
+  /* ----------------------------------------------------------
+     VARIABLE CARD — reduce side padding slightly; dcid and
+     chip text must never overflow the card width.
+     ---------------------------------------------------------- */
+  .vcard {
+    padding: 8px 10px;            /* base: 10px 12px */
+  }
+
+  .vcard-dcid {
+    font-size: 12px;              /* keep; already comfortable */
+    word-break: break-all;
+    overflow-wrap: anywhere;
+    max-width: 100%;
+  }
+
+  .vcard-name {
+    font-size: 13px;              /* keep; don't shrink */
+    overflow-wrap: break-word;
+  }
+
+  .vcard-desc {
+    font-size: 12px;              /* keep */
+  }
+
+  .vcard-foot {
+    gap: 4px 3px;                 /* tighter column gap on narrow width */
+  }
+
+  .vcard-chip {
+    white-space: normal;          /* allow chip text to wrap rather than clip */
+    overflow-wrap: break-word;
+    word-break: break-all;
+    max-width: 100%;
+  }
+
+  /* ----------------------------------------------------------
+     ANSWER COLLECTION / TOPIC BLOCKS
+     ---------------------------------------------------------- */
+  .answer-collection {
+    padding: 10px;                /* base: 12px — trim a touch */
+  }
+
+  .answer-label-val {
+    font-size: 14px;              /* keep; it's the hero label */
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  .topic-title {
+    font-size: 13px;              /* keep */
+    overflow-wrap: break-word;
+  }
+
+  .topic-desc {
+    font-size: 12px;              /* keep */
+    max-width: 100%;              /* remove 60ch cap so it fills the card */
+    overflow-wrap: break-word;
+  }
+
+  /* ----------------------------------------------------------
+     SECTION HEAD — allow right-side label to wrap rather than
+     push past card edge.
+     ---------------------------------------------------------- */
+  .section-head {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  /* ----------------------------------------------------------
+     TELEMETRY — prevent long values from pushing layout wide.
+     Let key/value wrap to stacked rows on very narrow widths.
+     ---------------------------------------------------------- */
+  .telemetry {
+    font-size: 11px;              /* keep */
+  }
+
+  .telemetry-row {
+    flex-wrap: wrap;
+    gap: 2px 8px;
+  }
+
+  .telemetry-val {
+    word-break: break-all;
+    overflow-wrap: anywhere;
+    max-width: 100%;
+  }
+
+  /* ----------------------------------------------------------
+     RAW JSON — already scrolls/wraps in base styles; ensure
+     it can never push the page width. Reduce max-height slightly
+     to leave more room for other content in a single column.
+     ---------------------------------------------------------- */
+  .raw-json {
+    max-height: 240px;            /* base: 320px — a bit less on phone */
+    max-width: 100%;
+    overflow-x: auto;             /* belt-and-suspenders */
+    white-space: pre-wrap;        /* already set; keep */
+    word-break: break-all;        /* already set; keep */
+    font-size: 11px;              /* keep; legible at this size */
+  }
+
+} /* end @media (max-width: 640px) */
+
+
+/* ============================================================
+   SMALL PHONE — max-width: 414px (e.g. iPhone SE, Galaxy S10e)
+   ============================================================ */
+@media (max-width: 414px) {
+
+  /* ----------------------------------------------------------
+     Further tighten panel padding and card padding to squeeze
+     every pixel on the narrowest devices.
+     ---------------------------------------------------------- */
+  .panel-head {
+    padding: 6px var(--space-xs);
+  }
+
+  .panel-body {
+    padding: var(--space-xs);     /* 12px token */
+  }
+
+  .interp-strip {
+    padding: 4px 6px;
+  }
+
+  .vcard {
+    padding: 7px 8px;
+  }
+
+  .answer-collection {
+    padding: 8px;
+  }
+
+  /* ----------------------------------------------------------
+     Ensure touch targets remain at least 44px tall.
+     ---------------------------------------------------------- */
+  .expand-toggle {
+    min-height: 44px;
+    padding: 12px 8px;
+  }
+
+  .expander {
+    min-height: 44px;
+  }
+
+  .contained-in-summary {
+    min-height: 44px;
+  }
+
+  /* ----------------------------------------------------------
+     Mono text & JSON: hard guard against page-width expansion.
+     ---------------------------------------------------------- */
+  .vcard-dcid {
+    font-size: 11.5px;            /* slight reduction; stays readable */
+  }
+
+  .raw-json {
+    max-height: 200px;
+    font-size: 10.5px;
+  }
+
+  .panel-endpoint {
+    font-size: 10px;
+  }
+
+} /* end @media (max-width: 414px) */
