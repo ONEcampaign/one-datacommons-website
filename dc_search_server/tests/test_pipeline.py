@@ -1104,7 +1104,7 @@ async def test_run_default_contained_in_threads_to_shape_context(monkeypatch):
     child_dcids = (("country/KEN", "Kenya"), ("country/TGO", "Togo"))
     parent_to_children_map = {parent_dcid: child_dcids}
 
-    async def _mock_resolve(query, entities, *, contained_in=False):
+    async def _mock_resolve(query, entities, *, contained_in_parents=()):
         return PlaceResolution(
             dcids=(parent_dcid, "country/KEN", "country/TGO"),
             parent_to_children=parent_to_children_map,
@@ -1131,7 +1131,7 @@ async def test_run_default_contained_in_threads_to_shape_context(monkeypatch):
             QueryExtraction(
                 entities=["african countries"],
                 variables=["malaria grants"],
-                contained_in=True,
+                contained_in_parents=["african countries"],
             ),
             _EXTRACT_USAGE,
         )
@@ -2155,7 +2155,7 @@ async def test_expansion_pipeline_adds_children_to_resolved_set(monkeypatch):
                 variables=["poverty rate"],
                 entities=["United States"],
                 dates=[],
-                contained_in=True,
+                contained_in_parents=["United States"],
             ),
             _EXTRACT_USAGE,
         )
@@ -2229,6 +2229,94 @@ async def test_expansion_pipeline_adds_children_to_resolved_set(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_expansion_scoped_to_contained_in_parents_donor_kept_whole(monkeypatch):
+    """Mixed query: only the entity in contained_in_parents expands; the other stays whole.
+
+    "malaria grants France to African countries" → entities=[France, Africa],
+    contained_in_parents=[Africa]. Asserts:
+    - Africa expands (expanded=True, children present);
+    - France is kept whole (expanded=False, no children) even though, as a Country,
+      it HAS a default child type — it is simply not in the expand set;
+    - child_places_batch is called only with Africa as the parent (France never fetched).
+    This is the donor-not-expanded behavior, achieved with no donor/recipient logic.
+    """
+    import dc_search.extraction as _ext
+    import dc_search.retrieval as _retrieval
+    from dc_search.events import Places
+    from dc_search.extraction import QueryExtraction
+    from dc_search.retrieval import PlaceCandidate
+
+    _patch_all(monkeypatch)
+
+    africa = "undata-geo/G00134000"
+
+    async def _mock_extract(query, *, model=None):
+        return (
+            QueryExtraction(
+                variables=["malaria grants"],
+                entities=["France", "Africa"],
+                dates=[],
+                contained_in_parents=["Africa"],
+            ),
+            _EXTRACT_USAGE,
+        )
+
+    monkeypatch.setattr(_ext, "extract", _mock_extract)
+    monkeypatch.setattr(
+        _retrieval,
+        "resolve_places_batch",
+        lambda *, names: {
+            "France": (PlaceCandidate(dcid="country/FRA"),),
+            "Africa": (PlaceCandidate(dcid=africa),),
+        },
+    )
+    monkeypatch.setattr(
+        _retrieval,
+        "place_names_batch",
+        lambda *, dcids: {
+            "country/FRA": ("France", "Country"),
+            africa: ("Africa", "Continent"),
+            "country/KEN": ("Kenya", "Country"),
+            "country/TGO": ("Togo", "Country"),
+        },
+    )
+
+    child_batch_calls: list[dict] = []
+
+    def _mock_child_places_batch(*, parent_dcids, child_type, cap=200):
+        child_batch_calls.append({"parent_dcids": parent_dcids, "child_type": child_type})
+        return {africa: (("country/KEN", "Kenya"), ("country/TGO", "Togo"))}
+
+    monkeypatch.setattr(_retrieval, "child_places_batch", _mock_child_places_batch)
+    monkeypatch.setattr(_retrieval, "parent_countries_batch", lambda *, parent_dcids: {})
+
+    from dc_search import pipeline
+
+    events = []
+    async for event in pipeline.stream_default("malaria grants France to African countries"):
+        events.append(event)
+
+    places = next(e for e in events if isinstance(e, Places)).places
+    by_dcid = {p.dcid: p for p in places}
+
+    # Africa expanded with its children present.
+    assert africa in by_dcid, "Africa missing from Places event"
+    assert by_dcid[africa].expanded is True
+    assert {c.dcid for c in by_dcid[africa].children} == {"country/KEN", "country/TGO"}
+
+    # France kept whole — present, but not expanded and no children.
+    assert "country/FRA" in by_dcid, "France (donor) dropped from resolved set"
+    assert by_dcid["country/FRA"].expanded is False
+    assert by_dcid["country/FRA"].children == []
+
+    # child_places_batch fetched children for Africa ONLY — France was never expanded.
+    assert len(child_batch_calls) == 1
+    assert child_batch_calls[0]["parent_dcids"] == (africa,), (
+        f"expected only Africa expanded; got {child_batch_calls[0]['parent_dcids']}"
+    )
+
+
+@pytest.mark.asyncio
 async def test_expansion_back_compat_no_child_fetch_when_contained_in_false(monkeypatch):
     """contained_in=False (default) must make zero child_places_batch / parent_countries_batch
     calls and return PlaceResolution with empty maps — byte-identical to the pre-expansion path.
@@ -2249,7 +2337,7 @@ async def test_expansion_back_compat_no_child_fetch_when_contained_in_false(monk
                 variables=["poverty rate"],
                 entities=["Kenya"],
                 dates=[],
-                contained_in=False,
+                contained_in_parents=[],
             ),
             _EXTRACT_USAGE,
         )

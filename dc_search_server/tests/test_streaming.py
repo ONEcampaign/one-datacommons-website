@@ -908,7 +908,7 @@ async def test_perf_interpretation_before_places_under_slow_resolve(
     _patch_all(monkeypatch)
 
     # SLOW place resolution — sleeps before returning
-    async def _slow_resolve_place_dcids(query, entities, *, contained_in=False):
+    async def _slow_resolve_place_dcids(query, entities, *, contained_in_parents=()):
         from dc_search.pipeline import PlaceResolution
 
         await asyncio.sleep(0.2)
@@ -1219,7 +1219,7 @@ async def test_resolution_failure_does_not_orphan_retrieve_task(
 
     monkeypatch.setattr(_run, "_retrieve", _slow_retrieve)
 
-    async def _failing_resolve(query, entities, *, contained_in=False):
+    async def _failing_resolve(query, entities, *, contained_in_parents=()):
         await retrieve_started.wait()  # ensure retrieve_task is in flight before we fail
         raise RuntimeError("simulated resolution failure")
 
@@ -1275,7 +1275,7 @@ async def test_cancel_during_resolution_cleans_up_retrieve_task(
 
     monkeypatch.setattr(_run, "_retrieve", _slow_retrieve)
 
-    async def _blocking_resolve(query, entities, *, contained_in=False):
+    async def _blocking_resolve(query, entities, *, contained_in_parents=()):
         await release_resolve.wait()  # suspends the await resolution_task inside the body
         # PlaceResolution has THREE required fields (frozen/slots, no defaults).
         return _run.PlaceResolution(dcids=(), parent_to_children={}, parent_to_child_type={})

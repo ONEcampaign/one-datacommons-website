@@ -413,8 +413,14 @@ async def _short_circuit_topic(
 
 async def _expand_children(
     parent_dcids: list[str],
+    expand_dcids: frozenset[str] | None = None,
 ) -> tuple[list[str], dict[str, tuple[tuple[str, str | None], ...]], dict[str, str]]:
     """Resolve each parent to its immediate children.
+
+    ``expand_dcids`` restricts expansion to that subset of ``parent_dcids`` (the
+    entities the query flagged as contained-in parents); parents outside it are
+    kept whole — present in the combined result but contributing no children. When
+    None, every parent is expanded (legacy whole-query behavior).
 
     Returns ``(combined_dcids, parent_to_children, parent_to_child_type)``.
     Fully fail-open — any network step failure leaves parents intact and the
@@ -432,9 +438,12 @@ async def _expand_children(
         p: names_map.get(p, (None, None))[1] for p in parent_dcids
     }
 
+    # Only this subset is expanded; the rest are kept whole (no child fetch).
+    to_expand = [p for p in parent_dcids if expand_dcids is None or p in expand_dcids]
+
     # Admin-area parents need a country lookup for the per-country remap.
     admin_parents = [
-        p for p in parent_dcids if place_hierarchy.needs_parent_country(parent_type[p])
+        p for p in to_expand if place_hierarchy.needs_parent_country(parent_type[p])
     ]
     countries: dict[str, str | None] = {}
     if admin_parents:
@@ -449,7 +458,7 @@ async def _expand_children(
     # by child type for one fetch per type.
     parent_to_child_type: dict[str, str] = {}
     groups: dict[str, list[str]] = {}  # child_type -> [parent_dcids]
-    for p in parent_dcids:
+    for p in to_expand:
         if parent_type[p] == "Country":
             # Country parents use their own DCID as the country arg.
             country = p
@@ -529,7 +538,10 @@ async def _expand_children(
 
 
 async def _resolve_place_dcids(
-    query: str, entities: list[str] | None, *, contained_in: bool = False
+    query: str,
+    entities: list[str] | None,
+    *,
+    contained_in_parents: tuple[str, ...] = (),
 ) -> PlaceResolution:
     """Resolve place names to DCIDs for availability re-rank.
 
@@ -537,12 +549,13 @@ async def _resolve_place_dcids(
     list (no place found). Never falls back to token path.
 
     Simple endpoint (entities=None): use deterministic extract_place_tokens.
-    ``contained_in`` is always False for the simple endpoint.
+    ``contained_in_parents`` is always empty for the simple endpoint.
 
-    When ``contained_in=True`` (default endpoint only), expands each resolved
-    parent to include its immediate child places in the resolved set. The
-    contained_in=False path is byte-identical to the old list[str] behavior
-    (no extra fetches; short-circuits before any child/country call).
+    ``contained_in_parents`` names the subset of ``entities`` to expand into their
+    immediate child places (e.g. "Africa" in "grants France to African countries",
+    leaving "France" whole). Entities not in this list resolve to a single DCID and
+    contribute no children. Empty list -> no expansion, byte-identical to the old
+    list[str] behavior (short-circuits before any child/country call).
     """
     if entities is not None:
         # Default endpoint: trust LLM-extracted names authoritatively.
@@ -551,26 +564,34 @@ async def _resolve_place_dcids(
             return PlaceResolution(dcids=(), parent_to_children={}, parent_to_child_type={})
         # Resolve to DCIDs via mixer in one batched call.
         resolved = await asyncio.to_thread(retrieval.resolve_places_batch, names=tuple(entities))
-        # Iterate in order to match input entity ordering.
+        # Iterate in order to match input entity ordering, tracking which resolved
+        # DCIDs came from contained-in parent entities (matched by surface name).
+        expand_names = {n.strip().casefold() for n in contained_in_parents}
         n_unresolved = 0
         parent_dcids: list[str] = []
+        expand_dcids: set[str] = set()
         for name in entities:
             candidates = resolved.get(name)
             if candidates:
-                parent_dcids.append(candidates[0].dcid)
+                dcid = candidates[0].dcid
+                parent_dcids.append(dcid)
+                if name.strip().casefold() in expand_names:
+                    expand_dcids.add(dcid)
             else:
                 n_unresolved += 1
         if n_unresolved:
             logger.debug("resolve_place_dcids: %d entity/entities unresolved", n_unresolved)
 
-        # Short-circuit when not expanding — byte-identical resolved set to today.
-        if not contained_in:
+        # Short-circuit when nothing to expand — byte-identical resolved set to today.
+        if not expand_dcids:
             return PlaceResolution(
                 dcids=tuple(parent_dcids), parent_to_children={}, parent_to_child_type={}
             )
 
-        # Expansion path: fetch children and build combined DCID set.
-        combined, parent_to_children, parent_to_child_type = await _expand_children(parent_dcids)
+        # Expansion path: expand only the flagged parents; keep the rest whole.
+        combined, parent_to_children, parent_to_child_type = await _expand_children(
+            parent_dcids, frozenset(expand_dcids)
+        )
         return PlaceResolution(
             dcids=tuple(combined),
             parent_to_children=parent_to_children,
@@ -1118,7 +1139,9 @@ async def stream_default(query: str) -> AsyncIterator[Event]:
         # Start tasks after Interpretation is yielded.
         dcid_task: asyncio.Task[PlaceResolution] = asyncio.create_task(
             _resolve_place_dcids(
-                query, extracted_entities, contained_in=extraction_result.contained_in
+                query,
+                extracted_entities,
+                contained_in_parents=tuple(extraction_result.contained_in_parents),
             )
         )
         place_event_task: asyncio.Task[list[ResolvedPlace]] = asyncio.create_task(
@@ -1180,7 +1203,11 @@ async def stream_default(query: str) -> AsyncIterator[Event]:
 
     # DCID-only resolution task; fan-out branches await this.
     dcid_task = asyncio.create_task(
-        _resolve_place_dcids(query, extracted_entities, contained_in=extraction_result.contained_in)
+        _resolve_place_dcids(
+            query,
+            extracted_entities,
+            contained_in_parents=tuple(extraction_result.contained_in_parents),
+        )
     )
 
     # Places-event task; awaits dcid_task then does name fetch + assembly.

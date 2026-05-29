@@ -84,23 +84,35 @@ class QueryExtraction(BaseModel):
             "timeless query."
         ),
     )
-    contained_in: bool = Field(
-        default=False,
+    contained_in_parents: list[str] = Field(
+        default_factory=list,
         description=(
-            "True ONLY when the query asks about the places CONTAINED IN a named "
-            "parent — signalled by a plural child-place-type word tied to the parent "
-            '("US states", "African countries", "counties in California", "districts '
-            'of India") or phrasing like "across", "within each", "in each". The '
-            "`entities` list still names the PARENT(S) ONLY — never enumerate the "
-            'children. Leave false for an ordinary single-place query where "in" just '
-            'locates the measure ("poverty in Kenya", "life expectancy in Japan"): '
-            "those name one place, not its contents. Leave false when "
-            '"across"/"within" modifies a concept rather than a named parent place '
-            '("GDP across sectors", "trends across time") — there is no parent place '
-            "to expand. contained_in requires BOTH a named parent in `entities` AND "
-            "a request for the places inside it."
+            "The subset of `entities` to expand into the places they CONTAIN. Add an "
+            "entity here when the query asks about the places INSIDE it rather than the "
+            'place itself ("African countries" → "Africa"; "counties in California" → '
+            '"California"; "districts of India" → "India"; "across US states" → '
+            '"United States"). Leave a plainly-named place out when the query is about '
+            'that place itself ("poverty in Kenya", "aid to Africa", "France"), even '
+            "when another entity in the SAME query is a contained-in parent — decide "
+            "per entity. Zero, one, or several entities may qualify, independently of "
+            "each other and of any role a place plays in the query (a donor/source "
+            "place is expanded only if the query asks for the places inside IT). Each "
+            "value MUST appear verbatim in `entities`, which still names the PARENT(S) "
+            "ONLY — never enumerate the children here or in `entities`. Empty when no "
+            'entity is being broken into its contents, including when "across"/"within" '
+            'modifies a concept rather than a place ("GDP across sectors").'
         ),
     )
+
+    @property
+    def contained_in(self) -> bool:
+        """True when at least one entity is flagged for contained-in expansion.
+
+        Derived view of ``contained_in_parents`` for boolean consumers (the
+        interpretation echo, logging). Expansion itself is scoped per-entity off
+        the list, not this flag.
+        """
+        return bool(self.contained_in_parents)
 
 
 # ---------------------------------------------------------------------------
@@ -135,11 +147,18 @@ Example (non-English) — "esperanza de vida en España y Alemania desde 2010":
 
 Example (contained-in) — "poverty rate in US states":
 {"variables": ["poverty rate"], "entities": ["United States"],
- "dates": [], "contained_in": true}
+ "dates": [], "contained_in_parents": ["United States"]}
 
-Counter-example (contained_in must be false) — "GDP across sectors":
+Example (mixed — one place expands, one does not) —
+"malaria grants from France to African countries":
+{"variables": ["malaria grants"], "entities": ["France", "Africa"],
+ "dates": [], "contained_in_parents": ["Africa"]}
+(France is named as one place; only "African countries" asks for the places inside
+Africa — so only "Africa" is expanded, regardless of which place is the funder.)
+
+Counter-example (contained_in_parents must be empty) — "GDP across sectors":
 {"variables": ["GDP"], "entities": [],
- "dates": [], "contained_in": false}
+ "dates": [], "contained_in_parents": []}
 (Here "across" modifies a concept, not a named parent place — no parent to expand.)
 """
 
