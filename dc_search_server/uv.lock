@@ -484,7 +484,7 @@ requires-dist = [
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
     { name = "python-dotenv", specifier = ">=1.0" },
-    { name = "resolvekit", extras = ["parsing"], specifier = "==0.1.4" },
+    { name = "resolvekit", extras = ["parsing"], specifier = "==0.1.5" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32" },
     { name = "uvicorn-worker", specifier = ">=0.2" },
@@ -1537,7 +1537,7 @@ wheels = [
 
 [[package]]
 name = "resolvekit"
-version = "0.1.4"
+version = "0.1.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "packaging" },
@@ -1546,9 +1546,9 @@ dependencies = [
     { name = "rapidfuzz" },
     { name = "symspellpy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/17/77/e8ba0abd3bf75e90603c5618761bfa1c3df9707891f07edd41b79400fb1d/resolvekit-0.1.4.tar.gz", hash = "sha256:aa4c26921487202e189be3e610f96a94b6068835420bac6d45ed2f56a234744f", size = 2331119, upload-time = "2026-06-12T07:48:41.826Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/06/0e/515f29c9a107221c2117ed34552dd46ee1d81e2d723efbe9283f5c696d78/resolvekit-0.1.5.tar.gz", hash = "sha256:b5c1942ea550427e85ece5e8f6646a139f51393239086c66a4eb340f1bc1baf3", size = 2335359, upload-time = "2026-06-12T16:46:29.214Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/09/2a/df8865bdc20e4a1c1495526c17ab331bef643dc156a0f3116e9198bd4f3b/resolvekit-0.1.4-py3-none-any.whl", hash = "sha256:208b35ea9bc02c749d6f639d29a927b7658d56ad29ecea907f922adaec67dfff", size = 2490612, upload-time = "2026-06-12T07:48:40.223Z" },
+    { url = "https://files.pythonhosted.org/packages/77/cc/345ab0bd7bec0401fa5216882fde9d26689e54673b9f07dc0f940a6a06cb/resolvekit-0.1.5-py3-none-any.whl", hash = "sha256:720ef07ec2fe2357138d8074086dcbd2422565b65c171396beac46ca8de2ccf0", size = 2496429, upload-time = "2026-06-12T16:46:27.553Z" },
 ]
 
 [package.optional-dependencies]
