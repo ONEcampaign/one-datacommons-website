@@ -90,23 +90,30 @@ RUN pip3 install --upgrade pip setuptools \
 #     /workspace/dc_search_venv/bin/python -c "import sys, resolvekit; print(sys.version)"
 # Must print 3.12.x and import cleanly before treating this Dockerfile edit as final.
 COPY --from=ghcr.io/astral-sh/uv:0.11.20 /uv /bin/uv
+# Install the standalone CPython INSIDE /workspace so it is carried into the
+# runtime stage by `COPY --from=py-servers /workspace/ .`. uv's default install
+# dir (~/.local/share/uv/python) lives OUTSIDE /workspace and is NOT copied,
+# which leaves the dc_search_venv interpreter — and thus gunicorn's shebang —
+# dangling at runtime ("cannot execute: required file not found" / exit 127).
+ENV UV_PYTHON_INSTALL_DIR=/workspace/uv-python
 RUN uv python install 3.12.13 \
-    && uv venv --python 3.12.13 /workspace/dc_search_venv
+    && uv venv --python 3.12.13 /workspace/dc_search_venv \
+    && test -x "$(readlink -f /workspace/dc_search_venv/bin/python)" \
+    && case "$(readlink -f /workspace/dc_search_venv/bin/python)" in /workspace/*) : ;; *) echo "FATAL: venv interpreter not under /workspace — would not survive COPY into runtime"; exit 1 ;; esac
 COPY dc_search_server/requirements.txt /workspace/dc_search_server/requirements.txt
 RUN uv pip install --no-cache-dir \
     --python /workspace/dc_search_venv/bin/python \
     -r /workspace/dc_search_server/requirements.txt
 
-# Pre-bake the remote resolvekit data packs the demo needs — geo.cities (Paris /
-# Nairobi / Lagos) and geo.admin1 (states/provinces + EU NUTS, so "Paris"
-# resolves cleanly) — into the image cache, so the service never downloads at
+# Pre-bake ALL remote resolvekit data packs (the full geo hierarchy: geo.cities
+# + geo.admin1–admin5) into the image cache, so the service never downloads at
 # boot: no cold-start stall, no runtime network egress, no ephemeral-disk churn.
 # The country / region / continent / org packs already ship inside the wheel.
-# ~200 MB on disk; admin2–admin5 are deliberately NOT baked (hundreds of MB,
-# unused by the demo). The runtime stage runs OFFLINE (RESOLVEKIT_OFFLINE=1) and
-# loads only what's baked here.
+# ~810 MB on disk (~1.6 GB resident once the fuzzy indexes build — well under
+# the Cloud Run memory limit). The runtime stage runs OFFLINE
+# (RESOLVEKIT_OFFLINE=1) and loads exactly what's baked here.
 ENV RESOLVEKIT_CACHE_DIR=/workspace/resolvekit_cache
-RUN /workspace/dc_search_venv/bin/python -c "import resolvekit as rk; [rk.download(p) for p in ('geo.cities','geo.admin1')]; have={m.module_id for m in rk.modules() if getattr(m,'is_available',False)}; missing={'geo.cities','geo.admin1'}-have; assert not missing, f'packs not baked: {missing}'; print('resolvekit packs baked into image cache:', sorted(have))" \
+RUN /workspace/dc_search_venv/bin/python -c "import resolvekit as rk; rk.download_all(); have=sorted(m.module_id for m in rk.modules() if getattr(m,'is_available',False)); assert 'geo.cities' in have and any(m.startswith('geo.admin') for m in have), f'packs not baked: {have}'; print('resolvekit packs baked into image cache:', have)" \
     && find /workspace/resolvekit_cache -name '*.gz' -delete \
     && du -sh /workspace/resolvekit_cache
 
