@@ -184,10 +184,13 @@ if [[ "$ENABLE_DC_SEARCH" == "true" ]]; then
       done
       echo "Mixer is ready."
 
+      # Cap at 2 workers: each can lazily build its own ~1.6 GB resolvekit
+      # fuzzy index under query load, so worker count is the dominant memory
+      # multiplier for this service in the shared 8 GB container.
       exec /workspace/dc_search_venv/bin/gunicorn \
           --log-level info \
           --bind 0.0.0.0:7800 \
-          -w 4 \
+          -w 2 \
           -k uvicorn_worker.UvicornWorker \
           --timeout 60 \
           --pythonpath /workspace/dc_search_server/src \
