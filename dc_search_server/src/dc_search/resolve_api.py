@@ -164,9 +164,29 @@ def _get_cc() -> Any:
 
 
 # Warm both singletons at module import (best-effort; errors are swallowed).
+#
+# resolvekit's ``warm=True`` only loads pack DATA — it does NOT build the lazy
+# per-query indexes: the fuzzy/symspell structure behind resolve() (and so
+# compare/graph/bulk, which call resolve internally) and a separate structure
+# behind parse(). Those build on the FIRST real call — ~1.6 s for resolve and
+# ~4 s for parse on a fast machine. Left to runtime, the demo's page-load burst
+# (resolve + compare + graph + parse + bulk all firing at once) hits the
+# unbuilt indexes simultaneously; the builds collide and, under Cloud Run's
+# throttled (cpu_idle) CPU, every request blows past its timeout. So force the
+# builds here at import, where startup CPU boost applies and there is no request
+# deadline. After this, each query is a fast lookup.
 if _RESOLVEKIT_OK:
     try:
-        _get_resolver()
+        _warm_resolver = _get_resolver()
+        if _warm_resolver is not _RESOLVER_SENTINEL:
+            try:
+                _warm_resolver.resolve("warmup", include_entity=True)  # fuzzy index
+            except Exception:
+                pass
+            try:
+                _rk.parse("warmup")  # parse index
+            except Exception:
+                pass
     except Exception:
         pass
 
