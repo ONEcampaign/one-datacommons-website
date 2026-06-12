@@ -134,3 +134,4 @@ server/tests/test_data/webdriver_recordings/
 /dc_search_server/scripts/*
 !/dc_search_server/scripts/perf_*.py
 /.claude
+/.playwright-mcp

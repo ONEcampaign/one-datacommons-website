@@ -3,7 +3,7 @@ name = "dc-search-server"
 version = "0.1.0"
 description = "DC-Search FastAPI co-process service"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "google-genai==2.6.0",
     "pydantic>=2.12",
@@ -15,6 +15,9 @@ dependencies = [
     "cachetools>=7.0",
     "datacommons-client>=2.1.6",
     "python-dotenv>=1.0",
+    "resolvekit[parsing]==0.1.4",
+    "country-converter==1.3.2",
+    "hdx-python-country==4.1.1",
 ]
 
 [project.optional-dependencies]
@@ -35,14 +38,14 @@ where = ["src"]
 # Ship the static demo page (HTML/CSS/JS/fonts) as package data so it is
 # available at runtime for the /api/dc-search/demo mount in app.py.
 [tool.setuptools.package-data]
-dc_search = ["demo/**/*"]
+dc_search = ["demo/**/*", "resolve_demo/**/*"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py312"
 line-length = 100
 
 [tool.ruff.lint]

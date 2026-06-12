@@ -27,6 +27,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from dc_search import config, llm, pipeline, retrieval, slot_binding
+from dc_search import resolve_api as _resolve_api
 from dc_search.events import Done, Error, Event, serialize_sse
 from dc_search.interpretation import QueryInterpretation
 from dc_search.pipeline import PipelineResult
@@ -416,6 +417,16 @@ async def healthz() -> dict[str, str]:
 
 
 # ---------------------------------------------------------------------------
+# Resolvekit demo — JSON API router (registered before the static mounts so
+# exact POST routes win over the /resolve-demo/* static sub-tree).
+# Guarded: if resolvekit is absent/broken, resolve_api.router is None and the
+# import itself never raises — the service boots without the resolve endpoints.
+# ---------------------------------------------------------------------------
+
+if _resolve_api.router is not None:
+    app.include_router(_resolve_api.router)
+
+# ---------------------------------------------------------------------------
 # Demo comparison page (static)
 # ---------------------------------------------------------------------------
 # Self-contained side-by-side comparison UI (dc-search vs Resolve vs
@@ -433,4 +444,15 @@ if _DEMO_DIR.is_dir():
         "/api/dc-search/demo",
         StaticFiles(directory=_DEMO_DIR, html=True),
         name="demo",
+    )
+
+# Standalone static demo for resolvekit (entity resolution). Served at its own
+# top-level path /api/resolve-demo/ (a sibling of /api/dc-search), which needs a
+# matching nginx `location /api/resolve-demo` block routing to this service.
+_RESOLVE_DEMO_DIR = Path(__file__).parent / "resolve_demo"
+if _RESOLVE_DEMO_DIR.is_dir():
+    app.mount(
+        "/api/resolve-demo",
+        StaticFiles(directory=_RESOLVE_DEMO_DIR, html=True),
+        name="resolve_demo",
     )

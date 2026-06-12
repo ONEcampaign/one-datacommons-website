@@ -1,0 +1,254 @@
+/* ============================================================
+   ONE Data — Colors & Type
+   Sourced from the ONE Data Next.js codebase
+   (frontend/app/globals.css + frontend/tailwind.config.ts)
+   ============================================================ */
+
+/* ---------- Web fonts ---------- */
+@font-face {
+  font-family: 'Colfax';
+  src: url('./fonts/ColfaxRegular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Colfax';
+  src: url('./fonts/ColfaxMedium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Colfax';
+  src: url('./fonts/ColfaxBold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Colfax';
+  src: url('./fonts/ColfaxBlack.woff2') format('woff2');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Italian Plate No2';
+  src: url('./fonts/ItalianPlateNo2-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Italian Plate No2';
+  src: url('./fonts/ItalianPlateNo2-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* ============================================================
+     COLOR — primitives (HSL channels; wrap in hsl(...) to use)
+     ============================================================ */
+  --black: 0 0% 0%;
+  --white: 0 0% 100%;
+
+  /* Greens — "ONE green" is a deep teal; neon-green is the electric accent */
+  --green:        176 78% 29%;   /* #11827d-ish */
+  --green-light:  171 70% 80%;
+  --green-link:   171 70% 25%;
+  --green-dark:   171 80% 20%;
+  --green-washed: 171 45% 90%;   /* chat user-bubble bg */
+  --green-neon:   171 100% 51%;  /* #04ffd1 — primary accent */
+
+  /* Blues — utilitarian blue + electric blue-neon CTA */
+  --blue:        200 70% 45%;
+  --blue-light:  200 80% 80%;
+  --blue-dark:   231 80% 16%;    /* deep navy */
+  --blue-washed: 200 40% 90%;
+  --blue-dc:     214 92% 36%;    /* "data commons" / link blue */
+  --blue-neon:   229 100% 51%;   /* #0034ff — primary button bg */
+
+  --purple:      316 67% 27%;    /* deep magenta — "vivid" section */
+  --orange:      17 100% 65%;    /* warm accent */
+  --orange-light: 17 100% 90%;
+  --peach:       17 100% 74%;
+  --red:         0 100% 60%;
+  --red-clear:   0 75% 80%;
+
+  /* Greys (warm-neutral, charcoal anchored) */
+  --grey:           0 0% 90%;
+  --grey-slate:     0 0% 69%;
+  --grey-charcoal: 229 6% 13%;   /* near-black, the foreground text */
+  --grey-menu:    211 39% 11%;
+  --grey-italian:   0 0% 24%;
+  --grey-chart:     0 0% 83%;
+  --grey-dark:      0 0% 5%;
+  --grey-light:     0 0% 96%;
+
+  /* ----- Semantic / role tokens ----- */
+  --background: var(--white);
+  --foreground: var(--black);
+  --muted: var(--grey-light);
+  --muted-foreground: 0 0% 45%;
+  --border: 0 0% 90%;
+  --ring: var(--black);
+
+  /* Section background variants — each pairs bg + foreground */
+  --section-light: var(--white);            --section-light-fg: var(--black);
+  --section-dark:  var(--grey-charcoal);    --section-dark-fg:  var(--white);
+  --section-strong: var(--blue-dark);       --section-strong-fg: var(--white);
+  --section-bright: var(--blue-neon);       --section-bright-fg: var(--white);
+  --section-vivid:  var(--purple);          --section-vivid-fg:  var(--white);
+
+  /* Chart palette (sequential, used in Flourish/Charts) */
+  --chart-1: #1a9ba3;
+  --chart-2: #ff7f4c;
+  --chart-3: #081248;
+  --chart-4: #73175a;
+  --chart-5: #a3daf5;
+  --chart-6: #f2a6a6;
+  --chart-7: #4328e7;
+  --chart-8: #9654e5;
+
+  /* ============================================================
+     TYPE — Colfax sans, Italian Plate (Debt Agent accent), Courier mono
+     ============================================================ */
+  --font-sans:    'Colfax', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --font-italian: 'Italian Plate No2', 'Colfax', sans-serif;
+  --font-mono:    'Courier New', ui-monospace, monospace;
+
+  /* Weights actually shipped */
+  --fw-regular: 400;
+  --fw-medium:  500;
+  --fw-bold:    700;
+  --fw-black:   900;
+
+  /* Display + body scale (rem, anchored to 16px). Pairs from tailwind.config.ts */
+  --fs-title-3xl: 6.5rem;   --lh-title-3xl: 6.5rem;   --ls-title-3xl: -0.3rem;
+  --fs-title-2xl: 4.5rem;   --lh-title-2xl: 5.1rem;
+  --fs-title-xl:  3.75rem;  --lh-title-xl:  4rem;
+  --fs-title-lg:  2.8rem;   --lh-title-lg:  3.2rem;
+  --fs-title-reg: 2rem;     --lh-title-reg: 2.2rem;
+  --fs-title-md:  1.5rem;   --lh-title-md:  2rem;
+  --fs-title-sm:  1.25rem;  --lh-title-sm:  1.5rem;
+  --fs-title-chart: 1.625rem; --lh-title-chart: 2.2rem;
+
+  --fs-normal-xl: 2rem;     --lh-normal-xl: 2.6rem;
+  --fs-normal-lg: 1.3rem;   --lh-normal-lg: 1.9rem;
+  --fs-normal-md: 1.2rem;   --lh-normal-md: 1.7rem;
+  --fs-normal-sm: 1.1rem;   --lh-normal-sm: 1.4rem;
+  --fs-normal-xs: 0.9rem;   --lh-normal-xs: 1.2rem;
+  --fs-normal-2xs: 0.8rem;  --lh-normal-2xs: 1rem;
+
+  --fs-code-sm: 14px;       --lh-code-sm: 22px;
+
+  /* ============================================================
+     SPACING — t-shirt scale (px values from tailwind extend)
+     ============================================================ */
+  --space-none: 0;
+  --space-xxs:  4px;
+  --space-xs:   8px;
+  --space-sm:   16px;
+  --space-md:   24px;
+  --space-lg:   32px;
+  --space-xl:   64px;
+  --space-2xl:  72px;
+  --space-3xl: 128px;
+  --space-4xl: 140px;
+  --space-5xl: 168px;
+  --space-6xl: 260px;
+
+  --menu-height: 128px;
+
+  /* ============================================================
+     RADII — small and intentional. The brand mostly uses hard corners.
+     ============================================================ */
+  --radius:    8px;   /* default `rounded-lg` */
+  --radius-md: 6px;
+  --radius-sm: 4px;
+  --radius-pill: 30px;
+
+  /* ============================================================
+     SHADOWS — the signature "neon offset" cards
+     Hard 12px×12px solid shadow in the brand neon hue, plus
+     subtle drop shadows for menus / chat / tooltips
+     ============================================================ */
+  --shadow-tooltip:  0 4px 4px 0 rgba(0,0,0,0.25);
+  --shadow-standard: 0 10px 10px 0 rgba(0,0,0,0.10);
+  --shadow-menu:     0 20px 30px rgba(0,0,0,0.20);
+  --shadow-soft:     0 15px 15px rgba(0,0,0,0.10);
+  --shadow-chat:     0 4px 4px rgba(100,100,100,0.10);
+
+  --shadow-card-blue-neon:        12px 12px 0 0 hsl(var(--blue-neon));
+  --shadow-card-blue-neon-hover:  14px 14px 0 0 hsl(var(--blue-neon));
+  --shadow-card-green-neon:       12px 12px 0 0 hsl(var(--green-neon));
+  --shadow-card-green-neon-hover: 14px 14px 0 0 hsl(var(--green-neon));
+  --shadow-card-purple:           12px 12px 0 0 hsl(var(--purple));
+  --shadow-card-blue-neon-sm:     8px 8px 0 0 hsl(var(--blue-neon));
+  --shadow-card-green-neon-sm:    8px 8px 0 0 hsl(var(--green-neon));
+  --shadow-card-suggestions:      4px 4px 0 0 hsl(var(--grey-slate));
+  --shadow-card-indicators:       4px 4px 0 0 hsl(var(--orange));
+
+  /* ============================================================
+     MOTION
+     ============================================================ */
+  --duration: 300ms;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================================
+   SEMANTIC TYPE CLASSES — mirror the .type-* utilities in globals.css
+   Use these on real elements; underlying primitives stay token-driven.
+   ============================================================ */
+html { font-family: var(--font-sans); color: hsl(var(--foreground)); }
+body { font-size: 1rem; font-weight: var(--fw-regular); }
+
+.type-heading-3xl { font-size: var(--fs-title-xl); line-height: var(--lh-title-xl); font-weight: var(--fw-bold); }
+@media (min-width: 840px) { .type-heading-3xl { font-size: var(--fs-title-3xl); line-height: var(--lh-title-3xl); letter-spacing: var(--ls-title-3xl); } }
+
+.type-heading-2xl { font-size: var(--fs-title-xl); line-height: var(--lh-title-xl); font-weight: var(--fw-black); }
+@media (min-width: 840px) { .type-heading-2xl { font-size: var(--fs-title-2xl); line-height: var(--lh-title-2xl); } }
+
+.type-heading-xl  { font-size: var(--fs-title-lg); line-height: var(--lh-title-lg); font-weight: var(--fw-black); }
+@media (min-width: 840px) { .type-heading-xl { font-size: var(--fs-title-xl); line-height: var(--lh-title-xl); } }
+
+.type-heading-lg  { font-size: var(--fs-title-md); line-height: var(--lh-title-md); font-weight: var(--fw-bold); }
+@media (min-width: 840px) { .type-heading-lg { font-size: var(--fs-title-lg); line-height: var(--lh-title-lg); } }
+
+.type-heading-reg { font-size: var(--fs-title-md); line-height: var(--lh-title-md); font-weight: var(--fw-bold); }
+@media (min-width: 640px) { .type-heading-reg { font-size: var(--fs-title-reg); line-height: var(--lh-title-reg); } }
+
+.type-heading-md  { font-size: var(--fs-title-sm); line-height: var(--lh-title-sm); font-weight: var(--fw-bold); }
+@media (min-width: 640px) { .type-heading-md  { font-size: var(--fs-title-md); line-height: var(--lh-title-md); } }
+
+.type-heading-sm   { font-size: var(--fs-title-sm); line-height: var(--lh-title-sm); font-weight: var(--fw-bold); }
+.type-heading-chart{ font-size: var(--fs-title-chart); line-height: var(--lh-title-chart); font-weight: var(--fw-bold); }
+
+.type-reg-xl   { font-size: var(--fs-normal-lg); line-height: var(--lh-normal-lg); }
+@media (min-width: 640px) { .type-reg-xl   { font-size: var(--fs-normal-xl); line-height: var(--lh-normal-xl); } }
+
+.type-reg-lg   { font-size: var(--fs-normal-md); line-height: var(--lh-normal-md); }
+@media (min-width: 640px) { .type-reg-lg   { font-size: var(--fs-normal-lg); line-height: var(--lh-normal-lg); } }
+
+.type-reg-md   { font-size: var(--fs-normal-md); line-height: var(--lh-normal-md); }
+.type-reg-sm   { font-size: var(--fs-normal-sm); line-height: var(--lh-normal-sm); }
+.type-reg-xs   { font-size: var(--fs-normal-xs); line-height: var(--lh-normal-xs); }
+.type-reg-2xs  { font-size: var(--fs-normal-2xs); line-height: var(--lh-normal-2xs); }
+.type-code-sm  { font-family: var(--font-mono); font-size: var(--fs-code-sm); line-height: var(--lh-code-sm); }
+
+/* The Debt Agent uses Italian Plate for chat-markdown headings */
+.font-italian { font-family: var(--font-italian); }
+
+/* ============================================================
+   ELEMENT DEFAULTS — when these classes aren't used directly,
+   raw h1–h6/p still feel right.
+   ============================================================ */
+h1 { font-size: var(--fs-title-xl); line-height: var(--lh-title-xl); font-weight: var(--fw-black); }
+h2 { font-size: var(--fs-title-lg); line-height: var(--lh-title-lg); font-weight: var(--fw-bold); }
+h3 { font-size: var(--fs-title-md); line-height: var(--lh-title-md); font-weight: var(--fw-bold); }
+h4 { font-size: var(--fs-title-sm); line-height: var(--lh-title-sm); font-weight: var(--fw-bold); }
+p  { font-size: var(--fs-normal-sm); line-height: var(--lh-normal-sm); }
+code, pre { font-family: var(--font-mono); }

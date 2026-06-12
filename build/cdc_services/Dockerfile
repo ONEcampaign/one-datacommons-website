@@ -75,10 +75,41 @@ RUN pip3 install --upgrade pip setuptools \
     && pip3 install --no-cache-dir -r /workspace/nl_server/requirements.txt \
     && pip3 install --no-cache-dir datacommons-mcp
 
-# dc-search service — isolated venv (latest google-genai, pydantic, fastapi)
-RUN python -m venv /workspace/dc_search_venv
+# dc-search service — isolated venv on CPython 3.12 (resolvekit requires >=3.12).
+# uv provides a self-contained standalone interpreter so the venv's python binary
+# is embedded in /workspace/dc_search_venv and survives the COPY --from=py-servers
+# into the runtime stage without requiring system python3.12 there.
+#
+# Fallback (if uv-standalone proves unusable in the runtime base):
+#   RUN apt-get install -y python3.12 python3.12-venv \
+#       && python3.12 -m venv /workspace/dc_search_venv
+# Note: the slim base has no deadsnakes PPA; use direct apt packages as above.
+#
+# Deploy verification gate — run against the RUNTIME image (not just py-servers):
+#   docker run --rm <runtime-img> \
+#     /workspace/dc_search_venv/bin/python -c "import sys, resolvekit; print(sys.version)"
+# Must print 3.12.x and import cleanly before treating this Dockerfile edit as final.
+COPY --from=ghcr.io/astral-sh/uv:0.11.20 /uv /bin/uv
+RUN uv python install 3.12.13 \
+    && uv venv --python 3.12.13 /workspace/dc_search_venv
 COPY dc_search_server/requirements.txt /workspace/dc_search_server/requirements.txt
-RUN /workspace/dc_search_venv/bin/pip install --no-cache-dir -r /workspace/dc_search_server/requirements.txt
+RUN uv pip install --no-cache-dir \
+    --python /workspace/dc_search_venv/bin/python \
+    -r /workspace/dc_search_server/requirements.txt
+
+# Pre-bake the remote resolvekit data packs the demo needs — geo.cities (Paris /
+# Nairobi / Lagos) and geo.admin1 (states/provinces + EU NUTS, so "Paris"
+# resolves cleanly) — into the image cache, so the service never downloads at
+# boot: no cold-start stall, no runtime network egress, no ephemeral-disk churn.
+# The country / region / continent / org packs already ship inside the wheel.
+# ~200 MB on disk; admin2–admin5 are deliberately NOT baked (hundreds of MB,
+# unused by the demo). The runtime stage runs OFFLINE (RESOLVEKIT_OFFLINE=1) and
+# loads only what's baked here.
+ENV RESOLVEKIT_CACHE_DIR=/workspace/resolvekit_cache
+RUN /workspace/dc_search_venv/bin/python -c "import resolvekit as rk; [rk.download(p) for p in ('geo.cities','geo.admin1')]; have={m.module_id for m in rk.modules() if getattr(m,'is_available',False)}; missing={'geo.cities','geo.admin1'}-have; assert not missing, f'packs not baked: {missing}'; print('resolvekit packs baked into image cache:', sorted(have))" \
+    && find /workspace/resolvekit_cache -name '*.gz' -delete \
+    && du -sh /workspace/resolvekit_cache
+
 COPY dc_search_server/ /workspace/dc_search_server/
 
 # Copy website app script.
@@ -150,7 +181,10 @@ ENV WEBSITE_MIXER_API_ROOT=http://127.0.0.1:8081 \
     ENABLE_MCP=true \
     DC_TYPE=custom \
     DC_API_BASE_URL=http://127.0.0.1:8081/v2 \
-    CUSTOM_DC_URL=http://127.0.0.1:7070
+    CUSTOM_DC_URL=http://127.0.0.1:7070 \
+    RESOLVEKIT_CACHE_DIR=/workspace/resolvekit_cache \
+    RESOLVEKIT_OFFLINE=1 \
+    RESOLVE_DEMO_DOWNLOAD=0
 
 WORKDIR /workspace
 

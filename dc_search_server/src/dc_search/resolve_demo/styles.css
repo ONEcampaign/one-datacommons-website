@@ -1,0 +1,63 @@
+/* ============================================================
+   resolvekit demo — global page styles
+   Component-level styling lives inline in sections.jsx (a 1:1 port
+   of the design prototype). This file holds only the resets and the
+   element-level treatments the prototype defined in its <style> head.
+   ============================================================ */
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: #FFFFFF; }
+
+::selection { background: #CFF3EC; }
+
+input, textarea, button { font-family: inherit; }
+input:focus, textarea:focus {
+  outline: none;
+  border-color: #0B50BE !important;
+  box-shadow: 0 0 0 3px rgba(11, 80, 190, 0.12);
+}
+::placeholder { color: #A6A6A0; }
+a { color: inherit; }
+
+/* Thin scrollbars on scrollable panels and code blocks */
+.rk-scroll::-webkit-scrollbar { height: 7px; width: 7px; }
+.rk-scroll::-webkit-scrollbar-thumb { background: #CFCFC9; border-radius: 4px; }
+
+/* The as-of-date range slider */
+input[type=range].rk-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  background: #1A1A1A;
+  border-radius: 2px;
+}
+input[type=range].rk-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border: 1.5px solid #1A1A1A;
+  border-radius: 50%;
+  cursor: pointer;
+}
+input[type=range].rk-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border: 1.5px solid #1A1A1A;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+/* Loading skeleton pulse animation */
+@keyframes rk-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+
+/* Single-column collapse on narrow viewports */
+@media (max-width: 760px) {
+  .rk-grid-2 { grid-template-columns: 1fr !important; }
+}
