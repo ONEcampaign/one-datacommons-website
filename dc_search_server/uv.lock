@@ -484,7 +484,7 @@ requires-dist = [
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
     { name = "python-dotenv", specifier = ">=1.0" },
-    { name = "resolvekit", extras = ["parsing"], specifier = "==0.1.5" },
+    { name = "resolvekit", extras = ["parsing"], specifier = "==0.1.8" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32" },
     { name = "uvicorn-worker", specifier = ">=0.2" },
@@ -1537,7 +1537,7 @@ wheels = [
 
 [[package]]
 name = "resolvekit"
-version = "0.1.5"
+version = "0.1.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "packaging" },
@@ -1546,9 +1546,9 @@ dependencies = [
     { name = "rapidfuzz" },
     { name = "symspellpy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/06/0e/515f29c9a107221c2117ed34552dd46ee1d81e2d723efbe9283f5c696d78/resolvekit-0.1.5.tar.gz", hash = "sha256:b5c1942ea550427e85ece5e8f6646a139f51393239086c66a4eb340f1bc1baf3", size = 2335359, upload-time = "2026-06-12T16:46:29.214Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/dd/28/753794fcf2bcc8416a804ab743c9d40382077b3ad66c2dc44fdaaaa9aea2/resolvekit-0.1.8.tar.gz", hash = "sha256:bd1eb1abd76558ff0ae131229cc6b98813be725ebfa5f0a904e9b15b676fef60", size = 2336708, upload-time = "2026-06-13T07:55:36.41Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/77/cc/345ab0bd7bec0401fa5216882fde9d26689e54673b9f07dc0f940a6a06cb/resolvekit-0.1.5-py3-none-any.whl", hash = "sha256:720ef07ec2fe2357138d8074086dcbd2422565b65c171396beac46ca8de2ccf0", size = 2496429, upload-time = "2026-06-12T16:46:27.553Z" },
+    { url = "https://files.pythonhosted.org/packages/0e/69/2467c6e4beaa9d45721bf0f03e3cab6ff4234fc01a6310d60ca80e42d040/resolvekit-0.1.8-py3-none-any.whl", hash = "sha256:442e0f1a562355871ca5d6ef7273f84b28c8fe2ca0c7566b3baad030e66652f0", size = 2497984, upload-time = "2026-06-13T07:55:34.285Z" },
 ]
 
 [package.optional-dependencies]

@@ -175,6 +175,37 @@ def _get_cc() -> Any:
 # throttled (cpu_idle) CPU, every request blows past its timeout. So force the
 # builds here at import, where startup CPU boost applies and there is no request
 # deadline. After this, each query is a fast lookup.
+
+# within() filters output by entity_type but always traverses intermediate nodes,
+# so an unbounded descent walks the entire geo.admin1-admin5 subtree below the
+# countries we want (1.7-2.3 s per region). Countries sit at most 3 contained_in
+# hops below any container the demo offers (subregion->country = 1 hop;
+# continent->subregion->country = 3), and bounding to depth 3 returns the
+# identical result set as unbounded while cutting latency 5-64x.
+_WITHIN_MAX_DEPTH = 3
+
+# The /graph panel's fixed chips (mirror of resolve_demo/app.jsx). Warming
+# members_of (groups) and within (regions) at boot populates the per-member
+# entity-hydration cache and runs the containment traversal off the request path,
+# so the first user click is fast instead of paying a ~1.2 s cold penalty.
+_DEMO_GRAPH_GROUPS = (
+    "European Union",
+    "NATO",
+    "OECD",
+    "BRICS",
+    "G7",
+    "African Union",
+)
+_DEMO_GRAPH_REGIONS = (
+    "Eastern Africa",
+    "Western Africa",
+    "Western Europe",
+    "South America",
+    "Southern Asia",
+    "Africa",
+    "World Bank Low-Income Countries",
+)
+
 if _RESOLVEKIT_OK:
     try:
         _warm_resolver = _get_resolver()
@@ -187,6 +218,21 @@ if _RESOLVEKIT_OK:
                 _rk.parse("warmup")  # parse index
             except Exception:
                 pass
+            for _group in _DEMO_GRAPH_GROUPS:
+                try:
+                    _warm_resolver.members_of(_group, as_codes="iso3")
+                except Exception:
+                    pass
+            for _region in _DEMO_GRAPH_REGIONS:
+                try:
+                    _warm_resolver.within(
+                        _region,
+                        entity_type="geo.country",
+                        to="iso3",
+                        max_depth=_WITHIN_MAX_DEPTH,
+                    )
+                except Exception:
+                    pass
     except Exception:
         pass
 
@@ -875,7 +921,12 @@ else:
                 )
                 within_note = "Countries within this geographic region (geo.country edges)."
                 try:
-                    raw_within = r.within(region, entity_type="geo.country", to="iso3")
+                    raw_within = r.within(
+                        region,
+                        entity_type="geo.country",
+                        to="iso3",
+                        max_depth=_WITHIN_MAX_DEPTH,
+                    )
                 except Exception:
                     raw_within = []
                 # Filter out None values that can appear for unlinked entries.
