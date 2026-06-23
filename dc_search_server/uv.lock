@@ -484,7 +484,7 @@ requires-dist = [
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
     { name = "python-dotenv", specifier = ">=1.0" },
-    { name = "resolvekit", extras = ["parsing"], specifier = "==0.1.8" },
+    { name = "resolvekit", extras = ["parsing"], specifier = "==0.1.11" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32" },
     { name = "uvicorn-worker", specifier = ">=0.2" },
@@ -1537,7 +1537,7 @@ wheels = [
 
 [[package]]
 name = "resolvekit"
-version = "0.1.8"
+version = "0.1.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "packaging" },
@@ -1546,9 +1546,9 @@ dependencies = [
     { name = "rapidfuzz" },
     { name = "symspellpy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/dd/28/753794fcf2bcc8416a804ab743c9d40382077b3ad66c2dc44fdaaaa9aea2/resolvekit-0.1.8.tar.gz", hash = "sha256:bd1eb1abd76558ff0ae131229cc6b98813be725ebfa5f0a904e9b15b676fef60", size = 2336708, upload-time = "2026-06-13T07:55:36.41Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8f/45/db32ab33511784f907b9756462be060d519f97804e386df4c1125e6ecf2a/resolvekit-0.1.11.tar.gz", hash = "sha256:c596b7eed53e5d846c761f66565925fc37579975c7e59cbbfdf8ad031ce9cc91", size = 2345257, upload-time = "2026-06-14T21:53:35.711Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0e/69/2467c6e4beaa9d45721bf0f03e3cab6ff4234fc01a6310d60ca80e42d040/resolvekit-0.1.8-py3-none-any.whl", hash = "sha256:442e0f1a562355871ca5d6ef7273f84b28c8fe2ca0c7566b3baad030e66652f0", size = 2497984, upload-time = "2026-06-13T07:55:34.285Z" },
+    { url = "https://files.pythonhosted.org/packages/a0/40/ed4d00f0f5dff2af413983c83a8b1a5b9ee00be334168bc234e9bd0eda2a/resolvekit-0.1.11-py3-none-any.whl", hash = "sha256:1130649f869a0ad419c30c6287284099e5c7691419b421c24377d132fb728b0a", size = 2507017, upload-time = "2026-06-14T21:53:34.094Z" },
 ]
 
 [package.optional-dependencies]
