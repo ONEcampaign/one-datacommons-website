@@ -79,7 +79,7 @@ def test_interpretation_match_skip_candidates():
         output=resp,
         expected_output={"expected_status": "candidates"},
     )
-    assert ev.value is None
+    assert ev == []
 
 
 def test_interpretation_match_skip_no_data():
@@ -88,7 +88,7 @@ def test_interpretation_match_skip_no_data():
         output=resp,
         expected_output={"expected_status": "no_data"},
     )
-    assert ev.value is None
+    assert ev == []
 
 
 def test_interpretation_match_wrong_shape(worked_example_response):

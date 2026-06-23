@@ -11,7 +11,7 @@ import asyncio
 from datetime import date
 from unittest.mock import patch
 
-from qre.engine.core import resolve_async
+from qre.engine.core import resolve, resolve_async
 from qre.engine.graph import LiveGraphClient
 from qre.models import RawTextInput, ResolveRequest
 from tests.fixtures import FakeGraph, FakeLLM
@@ -83,3 +83,37 @@ class TestResolveAsyncLifecycle:
             _run("health ODA grants from USA to Ethiopia", graph=None)
 
         assert len(closed_instances) == 1
+
+
+# resolve() sync-wrapper loop safety
+
+
+class TestResolveLoopSafe:
+    """The sync resolve() must work both standalone and inside a running loop.
+
+    The Langfuse experiment runner awaits the task inside its own event loop, so a
+    bare asyncio.run() in resolve() raises "cannot be called from a running event
+    loop". These tests pin both call sites with a stubbed resolve_async.
+    """
+
+    def _patch_async(self, monkeypatch, sentinel):
+        async def fake_resolve_async(request):
+            return sentinel
+        monkeypatch.setattr("qre.engine.core.resolve_async", fake_resolve_async)
+
+    def test_standalone_call(self, monkeypatch):
+        sentinel = object()
+        self._patch_async(monkeypatch, sentinel)
+        req = ResolveRequest(input=RawTextInput(query="x"))
+        assert resolve(req) is sentinel
+
+    def test_call_from_running_loop(self, monkeypatch):
+        sentinel = object()
+        self._patch_async(monkeypatch, sentinel)
+        req = ResolveRequest(input=RawTextInput(query="x"))
+
+        async def driver():
+            # Mimics Langfuse calling the sync task from inside its loop.
+            return resolve(req)
+
+        assert asyncio.run(driver()) is sentinel

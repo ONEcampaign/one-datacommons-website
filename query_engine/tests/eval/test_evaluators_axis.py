@@ -32,7 +32,7 @@ def test_axis_classification_skips_candidates():
         candidates={"ordering": "broadest_first", "max_candidates": 5, "specs": [spec1, spec2]},
     )
     ev = axis_classification(output=resp, expected_output=_CANDIDATES_EO)
-    assert ev.value is None
+    assert ev == []
 
 
 def test_axis_classification_valid_place_dcid(worked_example_response):

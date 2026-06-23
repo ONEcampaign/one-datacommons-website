@@ -33,8 +33,8 @@ def test_behaviour_definite_pass(worked_example_response):
         metadata=_meta("definite"),
     )
     assert _get_ev(evs, "behaviour_match_definite").value == 1.0
-    assert _get_ev(evs, "behaviour_match_candidates").value is None
-    assert _get_ev(evs, "behaviour_match_no_data").value is None
+    assert _get_ev(evs, "behaviour_match_candidates") is None
+    assert _get_ev(evs, "behaviour_match_no_data") is None
 
 
 def test_behaviour_definite_fail():
@@ -60,7 +60,7 @@ def test_behaviour_candidates_pass():
         metadata=_meta("candidates"),
     )
     assert _get_ev(evs, "behaviour_match_candidates").value == 1.0
-    assert _get_ev(evs, "behaviour_match_definite").value is None
+    assert _get_ev(evs, "behaviour_match_definite") is None
 
 
 def test_behaviour_candidates_one_spec_fails():
@@ -103,7 +103,7 @@ def test_behaviour_no_data_pass():
         metadata=_meta("no_data"),
     )
     assert _get_ev(evs, "behaviour_match_no_data").value == 1.0
-    assert _get_ev(evs, "behaviour_match_definite").value is None
+    assert _get_ev(evs, "behaviour_match_definite") is None
 
 
 def test_behaviour_no_data_wrong_reason():

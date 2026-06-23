@@ -13,8 +13,10 @@ Graph-dependent evaluators are factories that close over a GraphClient:
 Graph errors MUST propagate. An evaluator must never return 1.0 on a graph exception.
 
 Checks that do not apply to a golden (e.g. interpretation_match on a candidates
-golden) return Evaluation(name=..., value=None) so run-level aggregates can
-exclude them correctly.
+golden) emit no Evaluation (return an empty list). Langfuse ingests every
+Evaluation as a score and rejects null values, so a not-applicable check must
+emit nothing rather than a null-valued score. Run-level aggregates skip the
+absent entries the same way they skipped nulls.
 """
 from __future__ import annotations
 
@@ -265,10 +267,10 @@ def _golden_value_key(slot_dict: dict):
     return vd  # str, None, or list handled as frozenset above
 
 
-def interpretation_match(*, output, expected_output, **kwargs) -> Evaluation:
+def interpretation_match(*, output, expected_output, **kwargs) -> Evaluation | list[Evaluation]:
     """Score 1.0 if the definite response matches all four golden dimensions.
 
-    Returns value=None for non-definite goldens (aggregate ignores None).
+    Emits no Evaluation for non-definite goldens (the aggregate skips absent items).
 
     Dimensions checked:
     1. shape five-tuple
@@ -277,7 +279,7 @@ def interpretation_match(*, output, expected_output, **kwargs) -> Evaluation:
     4. entities 4-tuple set comparison
     """
     if expected_output.get("expected_status") != "definite":
-        return Evaluation(name="interpretation_match", value=None)
+        return []
 
     resp = _parse_response(output)
     if resp is None or resp.root.status != "definite":
@@ -407,12 +409,12 @@ def interpretation_match(*, output, expected_output, **kwargs) -> Evaluation:
 def make_materialisation(graph: GraphClient):
     """Return an evaluator that checks coverage correctness for definite responses.
 
-    Returns value=None for non-definite goldens. Graph errors propagate.
+    Emits no Evaluation for non-definite goldens. Graph errors propagate.
     """
 
-    def materialisation(*, output, expected_output, **kwargs) -> Evaluation:
+    def materialisation(*, output, expected_output, **kwargs) -> Evaluation | list[Evaluation]:
         if expected_output.get("expected_status") != "definite":
-            return Evaluation(name="materialisation", value=None)
+            return []
 
         resp = _parse_response(output)
         if resp is None or resp.root.status != "definite":
@@ -495,16 +497,13 @@ def make_materialisation(graph: GraphClient):
 # ---------------------------------------------------------------------------
 
 
-def behaviour_by_tag(*, output, expected_output, metadata, **kwargs) -> Evaluation:
-    """Score behaviour match per expected status, emitting a tag-scoped name.
+def behaviour_by_tag(*, output, expected_output, metadata, **kwargs) -> list[Evaluation]:
+    """Score behaviour match for the item's expected status, with a tag-scoped name.
 
-    Emits behaviour_match_definite, behaviour_match_candidates, or
-    behaviour_match_no_data with value set for the matching tag and None for
-    others. Run-level aggregates average each named evaluation independently.
-
-    Returns a list of three Evaluations. Only the relevant one carries a non-None
-    value. Langfuse evaluator functions typically return a single Evaluation; this
-    one returns a list to emit per-tag names.
+    Emits exactly one of behaviour_match_definite, behaviour_match_candidates, or
+    behaviour_match_no_data, depending on the item's behaviour tag. The other two
+    buckets do not apply to this item and are not emitted. Run-level aggregates
+    average each named evaluation independently over the items that carry it.
     """
     expected_status = expected_output.get("expected_status")
     resp = _parse_response(output)
@@ -516,12 +515,12 @@ def behaviour_by_tag(*, output, expected_output, metadata, **kwargs) -> Evaluati
         expected_status,  # fall back to expected_status when tag missing
     )
 
-    def _score_definite() -> float | None:
+    def _score_definite() -> float:
         if resp is None or resp.root.status != "definite":
             return 0.0
         return 1.0
 
-    def _score_candidates() -> float | None:
+    def _score_candidates() -> float:
         if resp is None or resp.root.status != "candidates":
             return 0.0
         cs = resp.root.candidates
@@ -533,7 +532,7 @@ def behaviour_by_tag(*, output, expected_output, metadata, **kwargs) -> Evaluati
             return 0.0
         return 1.0
 
-    def _score_no_data() -> float | None:
+    def _score_no_data() -> float:
         if resp is None or resp.root.status != "no_data":
             return 0.0
         expected_reason = expected_output.get("expected_no_data_reason")
@@ -541,25 +540,18 @@ def behaviour_by_tag(*, output, expected_output, metadata, **kwargs) -> Evaluati
             return 0.0
         return 1.0
 
-    # Compute the score for the applicable bucket; others are None (skipped).
-    tag_scores: dict[str, float | None] = {
-        "definite": None,
-        "candidates": None,
-        "no_data": None,
+    # Emit only the bucket the item's behaviour tag selects; the others are not
+    # applicable to this item and are left unscored.
+    scorers = {
+        "definite": ("behaviour_match_definite", _score_definite),
+        "candidates": ("behaviour_match_candidates", _score_candidates),
+        "no_data": ("behaviour_match_no_data", _score_no_data),
     }
-    if behaviour_tag == "definite":
-        tag_scores["definite"] = _score_definite()
-    elif behaviour_tag == "candidates":
-        tag_scores["candidates"] = _score_candidates()
-    elif behaviour_tag == "no_data":
-        tag_scores["no_data"] = _score_no_data()
-
-    # Return a list so all three names are recorded; only one has a real value.
-    return [
-        Evaluation(name="behaviour_match_definite", value=tag_scores["definite"]),
-        Evaluation(name="behaviour_match_candidates", value=tag_scores["candidates"]),
-        Evaluation(name="behaviour_match_no_data", value=tag_scores["no_data"]),
-    ]
+    selected = scorers.get(behaviour_tag)
+    if selected is None:
+        return []
+    name, scorer = selected
+    return [Evaluation(name=name, value=scorer())]
 
 
 # ---------------------------------------------------------------------------
@@ -567,13 +559,13 @@ def behaviour_by_tag(*, output, expected_output, metadata, **kwargs) -> Evaluati
 # ---------------------------------------------------------------------------
 
 
-def axis_classification(*, output, expected_output, **kwargs) -> Evaluation:
+def axis_classification(*, output, expected_output, **kwargs) -> Evaluation | list[Evaluation]:
     """Score 1.0 if all slot axes are in the frozen five and where-slots bind place dcids.
 
-    Returns value=None for non-definite goldens.
+    Emits no Evaluation for non-definite goldens.
     """
     if expected_output.get("expected_status") != "definite":
-        return Evaluation(name="axis_classification", value=None)
+        return []
 
     resp = _parse_response(output)
     if resp is None or resp.root.status != "definite":

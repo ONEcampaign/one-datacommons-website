@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 from qre.engine.assemble import (
     assemble_definite,
@@ -308,6 +309,19 @@ async def _resolve_pipeline(
     timing["bind"] = _now_ms() - t0
     pipeline_steps.append(_make_pipeline_step("bind", ran=True, ms=timing["bind"]))
 
+    # The recipient is resolved deterministically (entity resolution + directional
+    # detection), so its binding does not depend on the LLM. The bind prompt omits the
+    # raw query for safety, so the LLM sees no place in the variable phrase and returns
+    # the recipient unbound; override it with the known recipient dcid.
+    # ponytail: the where slot is still offered to the LLM to keep the bind fixtures
+    # stable. Drop it from the taxonomy and re-record to stop asking entirely.
+    if recipient_dcid:
+        for b in bindings:
+            if b.axis == "where":
+                b.kind = "value"
+                b.value_dcids = [recipient_dcid]
+                break
+
     # Denominator check for per-capita queries
     if "per capita" in variable.lower() and shape_draft.meas_denom_dcid is None:
         pipeline_steps.append(_make_pipeline_step("materialise", ran=False))
@@ -550,5 +564,17 @@ def resolve(request: ResolveRequest) -> ResolveResponse:
 
     Builds LiveGraphClient and LLM from environment variables.
     For dependency injection (tests), use resolve_async(request, graph=..., llm=...).
+
+    Loop-safe: callable both standalone and from within a running event loop
+    (e.g. the Langfuse experiment runner, which awaits the task inside its loop).
+    When a loop is already running, the pipeline runs in a worker thread with its
+    own loop so asyncio.run does not nest.
     """
-    return asyncio.run(resolve_async(request))
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(resolve_async(request))
+    # ponytail: serial offload (one thread, blocks the caller); switch to an async
+    # task seam if the eval runner ever needs items resolved concurrently.
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(lambda: asyncio.run(resolve_async(request))).result()

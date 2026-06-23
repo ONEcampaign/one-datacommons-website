@@ -27,7 +27,7 @@ def test_materialisation_skips_candidates():
         candidates={"ordering": "broadest_first", "max_candidates": 5, "specs": [spec1, spec2]},
     )
     ev = make_materialisation(StubGraphClient())(output=resp, expected_output=_CANDIDATES_EO)
-    assert ev.value is None
+    assert ev == []
 
 
 def test_materialisation_breadth_pass(worked_example_response):
