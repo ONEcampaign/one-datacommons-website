@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from qre.eval.dataset import golden_to_item, item_id_for
+from qre.eval.dataset import golden_to_item, item_id_for, sync_dataset
 
 _GOLDENS_PATH = Path(__file__).resolve().parents[2] / "goldens.json"
 
@@ -62,3 +62,44 @@ def test_item_id_for_stable(all_goldens):
 def test_item_id_for_unique(all_goldens):
     ids = [item_id_for(g) for g in all_goldens]
     assert len(ids) == len(set(ids)), "item ids are not unique"
+
+
+class _CapturingLangfuse:
+    """Fake Langfuse client that records created dataset items (no network)."""
+
+    def __init__(self):
+        self.items = []
+
+    def create_dataset(self, **kwargs):
+        pass
+
+    def create_dataset_item(self, *, dataset_name, id, input, expected_output, metadata):
+        self.items.append({"id": id, "metadata": metadata})
+
+
+def test_sync_dataset_domain_filter():
+    client = _CapturingLangfuse()
+    report = sync_dataset(
+        dataset_name="ds", domain_filter="development_finance", langfuse=client
+    )
+    assert report["n"] == len(client.items)
+    assert client.items, "expected dev-finance items"
+    for it in client.items:
+        assert any(
+            isinstance(t, dict) and t.get("domain") == "development_finance"
+            for t in it["metadata"]["tags"]
+        ), it["id"]
+
+
+def test_sync_dataset_domain_and_slice_filter():
+    client = _CapturingLangfuse()
+    report = sync_dataset(
+        dataset_name="ds",
+        domain_filter="development_finance",
+        slice_filter="main",
+        langfuse=client,
+    )
+    assert report["n"] == len(client.items)
+    assert client.items, "expected dev-finance main items"
+    for it in client.items:
+        assert it["metadata"]["slice"] == "main", it["id"]

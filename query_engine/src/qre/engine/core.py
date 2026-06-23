@@ -27,6 +27,7 @@ from qre.engine.config import ENGINE_BUILD_ID, QRE_SEAM_DEFAULT
 from qre.engine.errors import GroundingMiss
 from qre.engine.extract import Extraction, extract
 from qre.engine.families import (
+    PROP_RECIPIENT,
     PURPOSES,
     RECIPIENT_ROLE_DCID,
     SCHEMES,
@@ -312,15 +313,19 @@ async def _resolve_pipeline(
     # The recipient is resolved deterministically (entity resolution + directional
     # detection), so its binding does not depend on the LLM. The bind prompt omits the
     # raw query for safety, so the LLM sees no place in the variable phrase and returns
-    # the recipient unbound; override it with the known recipient dcid.
+    # the recipient unbound (or omits the row); set it from the known recipient dcid so
+    # the where slot is never dropped from the assembled interpretation.
     # ponytail: the where slot is still offered to the LLM to keep the bind fixtures
     # stable. Drop it from the taxonomy and re-record to stop asking entirely.
     if recipient_dcid:
-        for b in bindings:
-            if b.axis == "where":
-                b.kind = "value"
-                b.value_dcids = [recipient_dcid]
-                break
+        where_binding = next((b for b in bindings if b.axis == "where"), None)
+        if where_binding is None:
+            where_binding = SlotBindingDraft(
+                axis="where", property_dcid=PROP_RECIPIENT, kind="value", value_dcids=[]
+            )
+            bindings.append(where_binding)
+        where_binding.kind = "value"
+        where_binding.value_dcids = [recipient_dcid]
 
     # Denominator check for per-capita queries
     if "per capita" in variable.lower() and shape_draft.meas_denom_dcid is None:

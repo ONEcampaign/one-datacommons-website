@@ -32,11 +32,18 @@ def _main() -> None:
         choices=["main", "holdout"],
         help="Sync only goldens with this slice value",
     )
+    parser.add_argument(
+        "--domain",
+        dest="domain_filter",
+        default=None,
+        help='Sync only goldens tagged with this domain (e.g. "development_finance")',
+    )
     args = parser.parse_args()
     report = sync_dataset(
         dataset_name=args.dataset_name,
         goldens_path=args.goldens_path,
         slice_filter=args.slice_filter,
+        domain_filter=args.domain_filter,
     )
     print(
         f"Synced {report['n']} items to '{report['dataset']}' "

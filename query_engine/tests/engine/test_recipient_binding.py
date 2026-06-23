@@ -1,14 +1,17 @@
-"""Regression: the recipient (where) slot binds deterministically even when the bind
-LLM returns it unbound.
+"""Regression: the recipient (where) slot binds deterministically regardless of the
+bind LLM's output.
 
-Reproduces the live drift where the bind LLM, given only the variable phrase (the raw
-query is intentionally not echoed into the bind prompt), returns the recipient unbound.
-The engine must override that from the deterministically-resolved recipient dcid, so the
-interpretation still carries the recipient and the answer materialises.
+The bind prompt intentionally omits the raw query, so the LLM has no place name in the
+variable phrase to match and either returns the recipient unbound or drops the row
+entirely. Either way the engine must set the where slot from the deterministically
+resolved recipient dcid, so the interpretation carries the recipient and the answer
+materialises.
 """
 from __future__ import annotations
 
 import asyncio
+
+import pytest
 
 from qre.engine.bind import SlotBindingDraft, _BindOutput
 from qre.engine.core import resolve_async
@@ -17,36 +20,46 @@ from qre.models import RawTextInput, ResolveRequest
 from tests.fixtures import FakeGraph
 
 
-class _RecipientUnboundLLM:
-    """Mimics live: extract finds Ethiopia; bind returns the recipient unbound."""
+class _FakeBindLLM:
+    """Mimics live: extract finds Ethiopia; bind handles the where row per where_mode.
+
+    where_mode "unbound" returns the offered where row as kind=unbound; "omit" drops
+    the where row entirely (the LLM ignoring "one binding per offered slot").
+    """
+
+    def __init__(self, where_mode: str):
+        self._where_mode = where_mode
 
     def generate_structured(self, *, prompt, system, schema):
         name = schema.__name__
         if name == "Extraction":
             return Extraction(variables=["health ODA grants"], entities=["Ethiopia"])
         if name == "_BindOutput":
-            return _BindOutput(
-                bindings=[
-                    SlotBindingDraft(
-                        axis="what", property_dcid="DevelopmentFinanceScheme",
-                        kind="value", value_dcids=["ODAGrants"],
-                    ),
-                    SlotBindingDraft(
-                        axis="how", property_dcid="DevelopmentFinancePurpose",
-                        kind="value", value_dcids=["DAC/Health"],
-                    ),
+            rows = [
+                SlotBindingDraft(
+                    axis="what", property_dcid="DevelopmentFinanceScheme",
+                    kind="value", value_dcids=["ODAGrants"],
+                ),
+                SlotBindingDraft(
+                    axis="how", property_dcid="DevelopmentFinancePurpose",
+                    kind="value", value_dcids=["DAC/Health"],
+                ),
+            ]
+            if self._where_mode == "unbound":
+                rows.append(
                     SlotBindingDraft(
                         axis="where", property_dcid="DevelopmentFinanceRecipient",
                         kind="unbound", value_dcids=[],
-                    ),
-                ]
-            )
+                    )
+                )
+            return _BindOutput(bindings=rows)
         raise AssertionError(f"unexpected schema {name}")
 
 
-def test_recipient_bound_when_llm_returns_unbound():
+@pytest.mark.parametrize("where_mode", ["unbound", "omit"])
+def test_recipient_bound_regardless_of_llm(where_mode):
     req = ResolveRequest(input=RawTextInput(query="health ODA grants to Ethiopia"))
-    resp = asyncio.run(resolve_async(req, graph=FakeGraph(), llm=_RecipientUnboundLLM()))
+    resp = asyncio.run(resolve_async(req, graph=FakeGraph(), llm=_FakeBindLLM(where_mode)))
 
     assert resp.root.status == "definite", resp.root
     where = next(s for s in resp.root.interpretation.slots if s.key.axis == "where")

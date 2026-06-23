@@ -34,9 +34,15 @@ def golden_to_item(golden: dict) -> dict:
     }
 
 
-def item_id_for(golden: dict) -> str:
-    """Return a stable, human-readable upsert key for a golden record."""
-    return f"qre-golden-{golden['id']}"
+def item_id_for(golden: dict, dataset_name: str | None = None) -> str:
+    """Return a stable, human-readable upsert key for a golden record.
+
+    Langfuse dataset-item ids are globally unique and cannot be reused across datasets,
+    so the id is scoped by dataset_name when given (the same golden can then appear in
+    both the full-corpus and a domain-scoped dataset).
+    """
+    base = f"qre-golden-{golden['id']}"
+    return f"{dataset_name}:{base}" if dataset_name else base
 
 
 def _load_goldens(path: str | Path | None = None) -> list[dict]:
@@ -70,11 +76,19 @@ def _client():
     return get_client()
 
 
+def _has_domain(golden: dict, domain: str) -> bool:
+    """Return True if the golden carries a {"domain": <domain>} tag."""
+    return any(
+        isinstance(t, dict) and t.get("domain") == domain for t in golden.get("tags", [])
+    )
+
+
 def sync_dataset(
     *,
     dataset_name: str = "qre-goldens-v1",
     goldens_path: str | Path | None = None,
     slice_filter: str | None = None,
+    domain_filter: str | None = None,
     langfuse: Any = None,
 ) -> dict:
     """Push goldens.json to a Langfuse dataset, upserting by stable item id.
@@ -83,18 +97,18 @@ def sync_dataset(
         dataset_name: Name of the Langfuse dataset to create or update.
         goldens_path: Path to goldens.json; defaults to the package-relative location.
         slice_filter: When set, only sync goldens where golden["slice"] == slice_filter.
+        domain_filter: When set, only sync goldens tagged {"domain": domain_filter}.
         langfuse: Optional pre-built Langfuse client (for testing or DI).
 
     Returns a dict {dataset, n, holdout} with the count of items synced.
     The id field uses upsert semantics: duplicate ids overwrite previous items.
     """
     client = langfuse or _client()
-    all_goldens = _load_goldens(goldens_path)
-    goldens = (
-        [g for g in all_goldens if g["slice"] == slice_filter]
-        if slice_filter is not None
-        else all_goldens
-    )
+    goldens = _load_goldens(goldens_path)
+    if slice_filter is not None:
+        goldens = [g for g in goldens if g["slice"] == slice_filter]
+    if domain_filter is not None:
+        goldens = [g for g in goldens if _has_domain(g, domain_filter)]
 
     client.create_dataset(
         name=dataset_name,
@@ -105,7 +119,7 @@ def sync_dataset(
         item = golden_to_item(g)
         client.create_dataset_item(
             dataset_name=dataset_name,
-            id=item_id_for(g),
+            id=item_id_for(g, dataset_name),
             input=item["input"],
             expected_output=item["expected_output"],
             metadata=item["metadata"],
