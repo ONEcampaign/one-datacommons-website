@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://one.org/qre/phase0/golden.schema.json",
+  "title": "QRE Phase 0 golden record",
+  "description": "One expected engine output in the QRE Phase 0 eval corpus. The three frozen v1 enums (status, binding_kind, axis) live in $defs and are the drift anchor for eval_corpus.py check. Coverage.kind is frozen too but is not carried per-golden. Per contract.md decision 9.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "slice",
+    "query",
+    "entry_path",
+    "tags",
+    "expected_status",
+    "expected_shape",
+    "expected_slots",
+    "expected_stat_vars",
+    "expected_entities",
+    "expected_no_data_reason",
+    "candidate_count",
+    "status",
+    "notes"
+  ],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "slice": { "enum": ["main", "holdout"] },
+    "query": { "type": "string", "minLength": 1 },
+    "entry_path": { "enum": ["raw_text", "parsed", "spec_resubmit"] },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "minProperties": 1,
+        "maxProperties": 1
+      }
+    },
+    "expected_status": { "$ref": "#/$defs/status" },
+    "expected_shape": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "population_type_dcid",
+            "measured_property_dcid",
+            "stat_type_dcid",
+            "measurement_qualifier_dcid",
+            "measurement_denominator_dcid"
+          ],
+          "properties": {
+            "population_type_dcid": { "type": ["string", "null"] },
+            "measured_property_dcid": { "type": ["string", "null"] },
+            "stat_type_dcid": { "type": ["string", "null"] },
+            "measurement_qualifier_dcid": { "type": ["string", "null"] },
+            "measurement_denominator_dcid": { "type": ["string", "null"] }
+          }
+        }
+      ]
+    },
+    "expected_slots": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/slot" }
+    },
+    "expected_stat_vars": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "expected_entities": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/entity" }
+    },
+    "expected_no_data_reason": {
+      "type": ["string", "null"],
+      "enum": [
+        null,
+        "no_observations",
+        "denominator_not_available",
+        "entity_not_resolved",
+        "variable_not_resolved"
+      ]
+    },
+    "candidate_count": { "type": ["integer", "null"], "minimum": 2 },
+    "status": { "const": "VERIFIED_AGAINST_GRAPH" },
+    "notes": { "type": "string" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "expected_status": { "const": "candidates" } } },
+      "then": {
+        "properties": {
+          "expected_shape": { "type": "null" },
+          "candidate_count": { "type": "integer", "minimum": 2 },
+          "expected_no_data_reason": { "type": "null" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "expected_status": { "const": "definite" } } },
+      "then": {
+        "properties": {
+          "expected_shape": { "type": "object" },
+          "candidate_count": { "type": "null" },
+          "expected_no_data_reason": { "type": "null" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "expected_status": { "const": "no_data" } } },
+      "then": {
+        "properties": {
+          "candidate_count": { "type": "null" },
+          "expected_no_data_reason": {
+            "type": "string",
+            "enum": [
+              "no_observations",
+              "denominator_not_available",
+              "entity_not_resolved",
+              "variable_not_resolved"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "status": {
+      "$comment": "Frozen v1 enum. Must match README/contract.md decision 9.",
+      "enum": ["definite", "candidates", "no_data"]
+    },
+    "binding_kind": {
+      "$comment": "Frozen v1 enum. value | set | unbound | absent.",
+      "enum": ["value", "set", "unbound", "absent"]
+    },
+    "axis": {
+      "$comment": "Frozen v1 enum. what | how | where | when | source. The corpus only exercises what/how/where; when/source are facet-layer axes reserved for observation facets.",
+      "enum": ["what", "how", "where", "when", "source"]
+    },
+    "slot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["axis", "property_dcid", "binding_kind", "value_dcid"],
+      "properties": {
+        "axis": { "$ref": "#/$defs/axis" },
+        "property_dcid": {
+          "$comment": "null for a bare place where-slot (a place is observationAbout, not bound through a constraint property); a string for a constraint-property slot.",
+          "type": ["string", "null"]
+        },
+        "binding_kind": { "$ref": "#/$defs/binding_kind" },
+        "value_dcid": { "type": ["string", "array", "null"] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "binding_kind": { "const": "value" } } },
+          "then": { "properties": { "value_dcid": { "type": "string" } } }
+        },
+        {
+          "if": { "properties": { "binding_kind": { "const": "set" } } },
+          "then": {
+            "properties": {
+              "value_dcid": {
+                "type": "array",
+                "items": { "type": "string" },
+                "minItems": 2
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "binding_kind": { "enum": ["unbound", "absent"] } } },
+          "then": { "properties": { "value_dcid": { "type": "null" } } }
+        }
+      ]
+    },
+    "entity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dcid", "role_kind", "direction", "role_dcid"],
+      "properties": {
+        "dcid": { "type": "string" },
+        "role_kind": { "enum": ["subject", "directional"] },
+        "direction": { "enum": ["from", "to", null] },
+        "role_dcid": { "type": ["string", "null"] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "role_kind": { "const": "directional" } } },
+          "then": { "properties": { "role_dcid": { "type": "string" } } }
+        },
+        {
+          "if": { "properties": { "role_kind": { "const": "subject" } } },
+          "then": { "properties": { "role_dcid": { "type": "null" } } }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,36 @@
+[project]
+name = "qre"
+version = "1.0.0"
+description = "Query Resolution Engine v1 contract: typed Pydantic models"
+requires-python = ">=3.12"
+dependencies = [
+    # >=2.13 required for pydantic discriminator metadata with union-aliased fields
+    # under `from __future__ import annotations` (pydantic PR #12785).
+    "pydantic>=2.13",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "ruff",
+]
+eval = [
+    "langfuse>=4.6.1",
+    "datacommons-client",
+    "httpx",
+]
+
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+exclude = ["eval_corpus.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
