@@ -1,0 +1,645 @@
+{
+  "_comment": "LLM response fixtures. Key = '{schema_name}:{sha1(system + chr(1) + prompt)}'. Value = the JSON the schema would parse. Used by FakeLLM.generate_structured. Authored for 2026-06-23 system prompts (extraction system prompt includes today's date). To refresh after a prompt or date change, re-run tests/fixtures/record.py with live credentials.",
+  "Extraction:8195716e54223f8845e2315632bd0aac9aef6527": {
+    "variables": [
+      "health ODA grants"
+    ],
+    "entities": [
+      "USA",
+      "Ethiopia"
+    ],
+    "dates": []
+  },
+  "Extraction:2920f33ec40f9cf2e07c4105e80de007785a9fd4": {
+    "variables": [
+      "health ODA grants"
+    ],
+    "entities": [
+      "UK",
+      "Kenya"
+    ],
+    "dates": []
+  },
+  "Extraction:5d27bf80bd16c06ab85dc958d3d4021fc19ee7ac": {
+    "variables": [
+      "official development assistance"
+    ],
+    "entities": [
+      "Germany",
+      "Ethiopia"
+    ],
+    "dates": []
+  },
+  "Extraction:13d16e00a7d5546a352a04fea7fd1738245a640e": {
+    "variables": [
+      "HIV/AIDS ODA grants"
+    ],
+    "entities": [
+      "USA",
+      "Kenya"
+    ],
+    "dates": []
+  },
+  "Extraction:0b89305b338ab271d067c6e59999943dd8009e8e": {
+    "variables": [
+      "basic health ODA grants"
+    ],
+    "entities": [
+      "France",
+      "Kenya"
+    ],
+    "dates": []
+  },
+  "Extraction:ac682d8f758ba64fb8546248ca4dbbac93adba7c": {
+    "variables": [
+      "health ODA grants"
+    ],
+    "entities": [
+      "Ethiopia"
+    ],
+    "dates": []
+  },
+  "Extraction:23eb641f29e84e212d5ab5aa6754b470c0f163f8": {
+    "variables": [
+      "basic health ODA grants"
+    ],
+    "entities": [
+      "Kenya"
+    ],
+    "dates": []
+  },
+  "Extraction:0165ee99c7746442b84c4a5db1515bb9672280f3": {
+    "variables": [
+      "reproductive health ODA grants"
+    ],
+    "entities": [
+      "Ethiopia"
+    ],
+    "dates": []
+  },
+  "Extraction:f36426ef5a25afcdfe760ca43afedb7d23e2269c": {
+    "variables": [
+      "health aid"
+    ],
+    "entities": [
+      "Kenya"
+    ],
+    "dates": []
+  },
+  "Extraction:4bb7d5cce3fe4bf6d0c6f2b0001170c64261d490": {
+    "variables": [
+      "education ODA"
+    ],
+    "entities": [
+      "India"
+    ],
+    "dates": []
+  },
+  "Extraction:1fb2c6ecc8d98ecad7a2d781000b85b4f542a0be": {
+    "variables": [
+      "health ODA per capita"
+    ],
+    "entities": [
+      "Ethiopia"
+    ],
+    "dates": []
+  },
+  "Extraction:e75af2fbe654a9ac34e8b24985aed796eadc9bae": {
+    "variables": [
+      "health ODA grants"
+    ],
+    "entities": [
+      "USA",
+      "Nauru"
+    ],
+    "dates": []
+  },
+  "Extraction:67cc93010eb11d5fd81e585fa01adff894b9fca7": {
+    "variables": [
+      "official development assistance"
+    ],
+    "entities": [
+      "the Republic of Atlantis"
+    ],
+    "dates": []
+  },
+  "Extraction:e7c7c72952ecc5d439b2f2125f7ad132491c2bbe": {
+    "variables": [
+      "GDP per capita"
+    ],
+    "entities": [
+      "Kenya"
+    ],
+    "dates": [
+      {
+        "kind": "range",
+        "start": "2010",
+        "end": null
+      }
+    ]
+  },
+  "Extraction:28e55830b942615f4e36268719d8e8c0ab776084": {
+    "variables": [
+      "malaria control ODA grants"
+    ],
+    "entities": [
+      "USA",
+      "Ethiopia"
+    ],
+    "dates": []
+  },
+  "_comment_bind_pipeline": "Keys below are for the pipeline bind calls (1-recipient where slot). After the families.py DAC/Malariacontrol typo fix (2026-06-23) all pipeline bind keys changed because the taxonomy appears in the prompt.",
+  "_BindOutput:94a44a326e01c3001944862b3f54680d5979b843": {
+    "bindings": [
+      {
+        "axis": "what",
+        "property_dcid": "DevelopmentFinanceScheme",
+        "kind": "value",
+        "value_dcids": [
+          "ODAGrants"
+        ]
+      },
+      {
+        "axis": "how",
+        "property_dcid": "DevelopmentFinancePurpose",
+        "kind": "value",
+        "value_dcids": [
+          "DAC/Health"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "value",
+        "value_dcids": [
+          "country/ETH"
+        ]
+      }
+    ]
+  },
+  "_BindOutput:d5a6672ca14f672a1552fbb1dc20e98b31701026": {
+    "bindings": [
+      {
+        "axis": "what",
+        "property_dcid": "DevelopmentFinanceScheme",
+        "kind": "value",
+        "value_dcids": [
+          "ODAGrants"
+        ]
+      },
+      {
+        "axis": "how",
+        "property_dcid": "DevelopmentFinancePurpose",
+        "kind": "value",
+        "value_dcids": [
+          "DAC/Health"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "value",
+        "value_dcids": [
+          "country/KEN"
+        ]
+      }
+    ]
+  },
+  "_BindOutput:328679a04a03c058653515633bcd2b302c4e1a01": {
+    "bindings": [
+      {
+        "axis": "what",
+        "property_dcid": "DevelopmentFinanceScheme",
+        "kind": "value",
+        "value_dcids": [
+          "ODAGrants"
+        ]
+      },
+      {
+        "axis": "how",
+        "property_dcid": "DevelopmentFinancePurpose",
+        "kind": "value",
+        "value_dcids": [
+          "DAC/STDcontrolincludingHIVAIDS"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "value",
+        "value_dcids": [
+          "country/KEN"
+        ]
+      }
+    ]
+  },
+  "_BindOutput:afa9767b5050bccb15e4ac4e407263714da4cd78": {
+    "bindings": [
+      {
+        "axis": "what",
+        "property_dcid": "DevelopmentFinanceScheme",
+        "kind": "value",
+        "value_dcids": [
+          "OfficialDevelopmentAssistance"
+        ]
+      },
+      {
+        "axis": "how",
+        "property_dcid": "DevelopmentFinancePurpose",
+        "kind": "value",
+        "value_dcids": [
+          "DAC/Health"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "value",
+        "value_dcids": [
+          "country/ETH"
+        ]
+      }
+    ]
+  },
+  "_BindOutput:e1995b17d7cfe450c1e6333af89e7bf202e6849d": {
+    "bindings": [
+      {
+        "axis": "what",
+        "property_dcid": "DevelopmentFinanceScheme",
+        "kind": "value",
+        "value_dcids": [
+          "ODAGrants"
+        ]
+      },
+      {
+        "axis": "how",
+        "property_dcid": "DevelopmentFinancePurpose",
+        "kind": "value",
+        "value_dcids": [
+          "DAC/BasicHealth"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "value",
+        "value_dcids": [
+          "country/KEN"
+        ]
+      }
+    ]
+  },
+  "_BindOutput:cc234c92e7945b8895938cdf41abd946ad0ca380": {
+    "bindings": [
+      {
+        "axis": "what",
+        "property_dcid": "DevelopmentFinanceScheme",
+        "kind": "value",
+        "value_dcids": [
+          "ODAGrants"
+        ]
+      },
+      {
+        "axis": "how",
+        "property_dcid": "DevelopmentFinancePurpose",
+        "kind": "value",
+        "value_dcids": [
+          "DAC/Reproductivehealthcare"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "value",
+        "value_dcids": [
+          "country/ETH"
+        ]
+      }
+    ]
+  },
+  "_BindOutput:f24403796363315389e0efbaed8dd30d081e8eab": {
+    "bindings": [
+      {
+        "axis": "what",
+        "property_dcid": "DevelopmentFinanceScheme",
+        "kind": "unbound",
+        "value_dcids": []
+      },
+      {
+        "axis": "how",
+        "property_dcid": "DevelopmentFinancePurpose",
+        "kind": "value",
+        "value_dcids": [
+          "DAC/Health"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "value",
+        "value_dcids": [
+          "country/KEN"
+        ]
+      }
+    ]
+  },
+  "_BindOutput:a1f20bfd611e6db633d9306fca3ccdb9e1ae45f7": {
+    "bindings": [
+      {
+        "axis": "what",
+        "property_dcid": "DevelopmentFinanceScheme",
+        "kind": "value",
+        "value_dcids": [
+          "OfficialDevelopmentAssistance"
+        ]
+      },
+      {
+        "axis": "how",
+        "property_dcid": "DevelopmentFinancePurpose",
+        "kind": "set",
+        "value_dcids": [
+          "DAC/Healtheducation",
+          "DAC/Medicaleducationtraining"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "value",
+        "value_dcids": [
+          "country/IND"
+        ]
+      }
+    ]
+  },
+  "_BindOutput:de7d4c9d2d08fe5c9f72993a084dbdf7aeadbf26": {
+    "bindings": [
+      {
+        "axis": "what",
+        "property_dcid": "DevelopmentFinanceScheme",
+        "kind": "value",
+        "value_dcids": [
+          "ODAGrants"
+        ]
+      },
+      {
+        "axis": "how",
+        "property_dcid": "DevelopmentFinancePurpose",
+        "kind": "value",
+        "value_dcids": [
+          "DAC/Health"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "value",
+        "value_dcids": [
+          "country/ETH"
+        ]
+      }
+    ]
+  },
+  "_BindOutput:86450410e1dabba3217f72bc00219fa4600895e7": {
+    "bindings": [
+      {
+        "axis": "what",
+        "property_dcid": "DevelopmentFinanceScheme",
+        "kind": "value",
+        "value_dcids": [
+          "ODAGrants"
+        ]
+      },
+      {
+        "axis": "how",
+        "property_dcid": "DevelopmentFinancePurpose",
+        "kind": "value",
+        "value_dcids": [
+          "DAC/Health"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "value",
+        "value_dcids": [
+          "country/NRU"
+        ]
+      }
+    ]
+  },
+  "_BindOutput:fcd917f6220604bb47e588f73cb52f86c66425a6": {
+    "bindings": [
+      {
+        "axis": "what",
+        "property_dcid": "DevelopmentFinanceScheme",
+        "kind": "value",
+        "value_dcids": [
+          "ODAGrants"
+        ]
+      },
+      {
+        "axis": "how",
+        "property_dcid": "DevelopmentFinancePurpose",
+        "kind": "value",
+        "value_dcids": [
+          "DAC/Malariacontrol"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "value",
+        "value_dcids": [
+          "country/ETH"
+        ]
+      }
+    ]
+  },
+  "_comment_test_bind_fixtures": "Keys below are for test_bind.py which uses a hand-crafted multi-recipient taxonomy (vs. pipeline's 1-recipient taxonomy). Same logical responses, different key because taxonomy differs. These keys are stable across the PURPOSES typo fix because test_bind.py uses its own taxonomy.",
+  "_BindOutput:07de419f110415c846428230ee7cfe619694ff4d": {
+    "bindings": [
+      {
+        "axis": "what",
+        "property_dcid": "DevelopmentFinanceScheme",
+        "kind": "value",
+        "value_dcids": [
+          "ODAGrants"
+        ]
+      },
+      {
+        "axis": "how",
+        "property_dcid": "DevelopmentFinancePurpose",
+        "kind": "value",
+        "value_dcids": [
+          "DAC/Health"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "value",
+        "value_dcids": [
+          "country/ETH"
+        ]
+      }
+    ]
+  },
+  "_BindOutput:0908aba64d4c1e0f8653cf25a347a02e747859ca": {
+    "bindings": [
+      {
+        "axis": "what",
+        "property_dcid": "DevelopmentFinanceScheme",
+        "kind": "value",
+        "value_dcids": [
+          "ODAGrants"
+        ]
+      },
+      {
+        "axis": "how",
+        "property_dcid": "DevelopmentFinancePurpose",
+        "kind": "value",
+        "value_dcids": [
+          "DAC/STDcontrolincludingHIVAIDS"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "value",
+        "value_dcids": [
+          "country/KEN"
+        ]
+      }
+    ]
+  },
+  "_BindOutput:8db5be6ca3ff285cc8b0d13bbab724b4910ac0f8": {
+    "bindings": [
+      {
+        "axis": "what",
+        "property_dcid": "DevelopmentFinanceScheme",
+        "kind": "value",
+        "value_dcids": [
+          "OfficialDevelopmentAssistance"
+        ]
+      },
+      {
+        "axis": "how",
+        "property_dcid": "DevelopmentFinancePurpose",
+        "kind": "set",
+        "value_dcids": [
+          "DAC/Healtheducation",
+          "DAC/Medicaleducationtraining"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "value",
+        "value_dcids": [
+          "country/IND"
+        ]
+      }
+    ]
+  },
+  "_BindOutput:bf4711bc864dc1e64075941bd4ed87111b4a6208": {
+    "bindings": [
+      {
+        "axis": "what",
+        "property_dcid": "DevelopmentFinanceScheme",
+        "kind": "unbound",
+        "value_dcids": []
+      },
+      {
+        "axis": "how",
+        "property_dcid": "DevelopmentFinancePurpose",
+        "kind": "value",
+        "value_dcids": [
+          "DAC/Health"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "value",
+        "value_dcids": [
+          "country/KEN"
+        ]
+      }
+    ]
+  },
+  "_BindOutput:f7ab449f86ec3515d77290622f76ccf18dac91d6": {
+    "bindings": [
+      {
+        "axis": "how",
+        "property_dcid": "healthFinancingSource",
+        "kind": "absent",
+        "value_dcids": []
+      }
+    ]
+  },
+  "Extraction:6a283010b5583fd72ec08cb4dd65b4f96aba8c66": {
+    "variables": [
+      "health ODA grants"
+    ],
+    "entities": [
+      "USA",
+      "Atlantis"
+    ],
+    "dates": []
+  },
+  "Extraction:a62e759de28bfd8f0c43538c6466031492cea561": {
+    "variables": [
+      "health ODA"
+    ],
+    "entities": [
+      "USA",
+      "Atlantis"
+    ],
+    "dates": []
+  },
+  "Extraction:0ee7e2fc6a3c6ee092f72d7c2a29eda86df9e398": {
+    "variables": [
+      "health ODA grants"
+    ],
+    "entities": [
+      "Kenya"
+    ],
+    "dates": []
+  },
+  "Extraction:b5a28b780e735d0a8dae9814235afb3f33754e2f": {
+    "variables": [
+      "health ODA grants"
+    ],
+    "entities": [
+      "USA"
+    ],
+    "dates": []
+  },
+  "_BindOutput:221ff53bd7086305a0f6e6b17a1a5e38813e2bdd": {
+    "bindings": [
+      {
+        "axis": "what",
+        "property_dcid": "DevelopmentFinanceScheme",
+        "kind": "value",
+        "value_dcids": [
+          "ODAGrants"
+        ]
+      },
+      {
+        "axis": "how",
+        "property_dcid": "DevelopmentFinancePurpose",
+        "kind": "value",
+        "value_dcids": [
+          "DAC/Health"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "unbound",
+        "value_dcids": []
+      }
+    ]
+  }
+}

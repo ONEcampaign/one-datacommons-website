@@ -1,0 +1,548 @@
+{
+  "_comment": "Graph node fixtures for offline tests. Sourced from §0 live staging probe facts + goldens.json notes. Keys are dcids; values carry label, type, and arcs. Used by FakeGraph.node_label / node_arcs / node_type / exists.",
+
+  "DevelopmentFinance": {
+    "label": "Development Finance",
+    "type": "Class",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "Class"}]},
+      "name": {"nodes": [{"value": "Development Finance"}]}
+    }
+  },
+  "DevelopmentFinanceFlow": {
+    "label": "Development Finance Flow",
+    "type": "Property",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "Property"}]},
+      "name": {"nodes": [{"value": "Development Finance Flow"}]}
+    }
+  },
+  "measuredValue": {
+    "label": "Measured Value",
+    "type": "Property",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "Property"}]},
+      "name": {"nodes": [{"value": "Measured Value"}]}
+    }
+  },
+  "DevelopmentFinanceScheme": {
+    "label": "Development Finance Scheme",
+    "type": "Property",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "Property"}]},
+      "name": {"nodes": [{"value": "Development Finance Scheme"}]}
+    }
+  },
+  "DevelopmentFinancePurpose": {
+    "label": "Development Finance Purpose",
+    "type": "Property",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "Property"}]},
+      "name": {"nodes": [{"value": "Development Finance Purpose"}]}
+    }
+  },
+  "DevelopmentFinanceRecipient": {
+    "label": "Development Finance Recipient",
+    "type": "Property",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "Property"}]},
+      "name": {"nodes": [{"value": "Development Finance Recipient"}]}
+    }
+  },
+  "ODAGrants": {
+    "label": "Official Development Assistance Grants",
+    "type": "Property",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "Property"}]},
+      "name": {"nodes": [{"value": "Official Development Assistance Grants"}]}
+    }
+  },
+  "OfficialDevelopmentAssistance": {
+    "label": "Official Development Assistance",
+    "type": "Property",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "Property"}]},
+      "name": {"nodes": [{"value": "Official Development Assistance"}]}
+    }
+  },
+  "ODALoans": {
+    "label": "ODA Loans",
+    "type": "Property",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "Property"}]},
+      "name": {"nodes": [{"value": "ODA Loans"}]}
+    }
+  },
+  "ODAPrivateSectorInstruments": {
+    "label": "ODA Private Sector Instruments",
+    "type": "Property",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "Property"}]},
+      "name": {"nodes": [{"value": "ODA Private Sector Instruments"}]}
+    }
+  },
+  "OtherOfficialFlows": {
+    "label": "Other Official Flows",
+    "type": "Property",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "Property"}]},
+      "name": {"nodes": [{"value": "Other Official Flows"}]}
+    }
+  },
+  "PrivateDevelopmentFinance": {
+    "label": "Private Development Finance",
+    "type": "Property",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "Property"}]},
+      "name": {"nodes": [{"value": "Private Development Finance"}]}
+    }
+  },
+  "ODAEquityInvestment": {
+    "label": "ODA Equity Investment",
+    "type": "Property",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "Property"}]},
+      "name": {"nodes": [{"value": "ODA Equity Investment"}]}
+    }
+  },
+  "DAC/Health": {
+    "label": "Health (Total)",
+    "type": "DevelopmentFinancePurposeEnum",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "DevelopmentFinancePurposeEnum"}]},
+      "name": {"nodes": [{"value": "Health"}, {"value": "Health (Total)"}]}
+    }
+  },
+  "DAC/BasicHealth": {
+    "label": "Basic Health (Semi-Aggregate)",
+    "type": "DevelopmentFinancePurposeEnum",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "DevelopmentFinancePurposeEnum"}]},
+      "name": {"nodes": [{"value": "Basic Health (Semi-Aggregate)"}]}
+    }
+  },
+  "DAC/STDcontrolincludingHIVAIDS": {
+    "label": "STD control including HIV/AIDS",
+    "type": "DevelopmentFinancePurposeEnum",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "DevelopmentFinancePurposeEnum"}]},
+      "name": {"nodes": [{"value": "STD control including HIV/AIDS"}]}
+    }
+  },
+  "DAC/Reproductivehealthcare": {
+    "label": "Reproductive health care",
+    "type": "DevelopmentFinancePurposeEnum",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "DevelopmentFinancePurposeEnum"}]},
+      "name": {"nodes": [{"value": "Reproductive health care"}]}
+    }
+  },
+  "DAC/Healtheducation": {
+    "label": "Health education",
+    "type": "DevelopmentFinancePurposeEnum",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "DevelopmentFinancePurposeEnum"}]},
+      "name": {"nodes": [{"value": "Health education"}]}
+    }
+  },
+  "DAC/Medicaleducationtraining": {
+    "label": "Medical education/training",
+    "type": "DevelopmentFinancePurposeEnum",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "DevelopmentFinancePurposeEnum"}]},
+      "name": {"nodes": [{"value": "Medical education/training"}]}
+    }
+  },
+  "country/ETH": {
+    "label": "Ethiopia",
+    "type": "Country",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "Country"}]},
+      "name": {"nodes": [{"value": "Ethiopia"}]}
+    }
+  },
+  "country/KEN": {
+    "label": "Kenya",
+    "type": "Country",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "Country"}]},
+      "name": {"nodes": [{"value": "Kenya"}]}
+    }
+  },
+  "country/USA": {
+    "label": "United States",
+    "type": "Country",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "Country"}]},
+      "name": {"nodes": [{"value": "United States"}]}
+    }
+  },
+  "country/GBR": {
+    "label": "United Kingdom",
+    "type": "Country",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "Country"}]},
+      "name": {"nodes": [{"value": "United Kingdom"}]}
+    }
+  },
+  "country/DEU": {
+    "label": "Germany",
+    "type": "Country",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "Country"}]},
+      "name": {"nodes": [{"value": "Germany"}]}
+    }
+  },
+  "country/FRA": {
+    "label": "France",
+    "type": "Country",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "Country"}]},
+      "name": {"nodes": [{"value": "France"}]}
+    }
+  },
+  "country/IND": {
+    "label": "India",
+    "type": "Country",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "Country"}]},
+      "name": {"nodes": [{"value": "India"}]}
+    }
+  },
+  "country/NRU": {
+    "label": "Nauru",
+    "type": "Country",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "Country"}]},
+      "name": {"nodes": [{"value": "Nauru"}]}
+    }
+  },
+  "ONE/CRS_DAC/Health-ODAGrants-ETH": {
+    "label": "ONE CRS DAC Health ODA Grants ETH",
+    "type": "StatisticalVariable",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "StatisticalVariable"}]},
+      "name": {"nodes": [{"value": "ONE CRS DAC Health ODA Grants ETH"}]},
+      "populationType": {"nodes": [{"dcid": "DevelopmentFinance"}]},
+      "measuredProperty": {"nodes": [{"dcid": "DevelopmentFinanceFlow"}]},
+      "statType": {"nodes": [{"dcid": "measuredValue"}]},
+      "DevelopmentFinanceScheme": {"nodes": [{"dcid": "ODAGrants"}]},
+      "DevelopmentFinancePurpose": {"nodes": [{"dcid": "DAC/Health"}]},
+      "DevelopmentFinanceRecipient": {"nodes": [{"dcid": "country/ETH"}]},
+      "constraintProperties": {"nodes": [
+        {"dcid": "DevelopmentFinanceScheme"},
+        {"dcid": "DevelopmentFinancePurpose"},
+        {"dcid": "DevelopmentFinanceRecipient"}
+      ]}
+    }
+  },
+  "ONE/CRS_DAC/Health-ODAGrants-KEN": {
+    "label": "ONE CRS DAC Health ODA Grants KEN",
+    "type": "StatisticalVariable",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "StatisticalVariable"}]},
+      "name": {"nodes": [{"value": "ONE CRS DAC Health ODA Grants KEN"}]},
+      "populationType": {"nodes": [{"dcid": "DevelopmentFinance"}]},
+      "measuredProperty": {"nodes": [{"dcid": "DevelopmentFinanceFlow"}]},
+      "statType": {"nodes": [{"dcid": "measuredValue"}]},
+      "DevelopmentFinanceScheme": {"nodes": [{"dcid": "ODAGrants"}]},
+      "DevelopmentFinancePurpose": {"nodes": [{"dcid": "DAC/Health"}]},
+      "DevelopmentFinanceRecipient": {"nodes": [{"dcid": "country/KEN"}]},
+      "constraintProperties": {"nodes": [
+        {"dcid": "DevelopmentFinanceScheme"},
+        {"dcid": "DevelopmentFinancePurpose"},
+        {"dcid": "DevelopmentFinanceRecipient"}
+      ]}
+    }
+  },
+  "ONE/CRS_DAC/Health-OfficialDevelopmentAssistance-ETH": {
+    "label": "ONE CRS DAC Health Official Development Assistance ETH",
+    "type": "StatisticalVariable",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "StatisticalVariable"}]},
+      "name": {"nodes": [{"value": "ONE CRS DAC Health Official Development Assistance ETH"}]},
+      "populationType": {"nodes": [{"dcid": "DevelopmentFinance"}]},
+      "measuredProperty": {"nodes": [{"dcid": "DevelopmentFinanceFlow"}]},
+      "statType": {"nodes": [{"dcid": "measuredValue"}]},
+      "DevelopmentFinanceScheme": {"nodes": [{"dcid": "OfficialDevelopmentAssistance"}]},
+      "DevelopmentFinancePurpose": {"nodes": [{"dcid": "DAC/Health"}]},
+      "DevelopmentFinanceRecipient": {"nodes": [{"dcid": "country/ETH"}]},
+      "constraintProperties": {"nodes": [
+        {"dcid": "DevelopmentFinanceScheme"},
+        {"dcid": "DevelopmentFinancePurpose"},
+        {"dcid": "DevelopmentFinanceRecipient"}
+      ]}
+    }
+  },
+  "ONE/CRS_DAC/STDcontrolincludingHIVAIDS-ODAGrants-KEN": {
+    "label": "ONE CRS DAC STD control including HIV/AIDS ODA Grants KEN",
+    "type": "StatisticalVariable",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "StatisticalVariable"}]},
+      "name": {"nodes": [{"value": "ONE CRS DAC STD control including HIV/AIDS ODA Grants KEN"}]},
+      "populationType": {"nodes": [{"dcid": "DevelopmentFinance"}]},
+      "measuredProperty": {"nodes": [{"dcid": "DevelopmentFinanceFlow"}]},
+      "statType": {"nodes": [{"dcid": "measuredValue"}]},
+      "DevelopmentFinanceScheme": {"nodes": [{"dcid": "ODAGrants"}]},
+      "DevelopmentFinancePurpose": {"nodes": [{"dcid": "DAC/STDcontrolincludingHIVAIDS"}]},
+      "DevelopmentFinanceRecipient": {"nodes": [{"dcid": "country/KEN"}]},
+      "constraintProperties": {"nodes": [
+        {"dcid": "DevelopmentFinanceScheme"},
+        {"dcid": "DevelopmentFinancePurpose"},
+        {"dcid": "DevelopmentFinanceRecipient"}
+      ]}
+    }
+  },
+  "ONE/CRS_DAC/BasicHealth-ODAGrants-KEN": {
+    "label": "ONE CRS DAC Basic Health ODA Grants KEN",
+    "type": "StatisticalVariable",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "StatisticalVariable"}]},
+      "name": {"nodes": [{"value": "ONE CRS DAC Basic Health ODA Grants KEN"}]},
+      "populationType": {"nodes": [{"dcid": "DevelopmentFinance"}]},
+      "measuredProperty": {"nodes": [{"dcid": "DevelopmentFinanceFlow"}]},
+      "statType": {"nodes": [{"dcid": "measuredValue"}]},
+      "DevelopmentFinanceScheme": {"nodes": [{"dcid": "ODAGrants"}]},
+      "DevelopmentFinancePurpose": {"nodes": [{"dcid": "DAC/BasicHealth"}]},
+      "DevelopmentFinanceRecipient": {"nodes": [{"dcid": "country/KEN"}]},
+      "constraintProperties": {"nodes": [
+        {"dcid": "DevelopmentFinanceScheme"},
+        {"dcid": "DevelopmentFinancePurpose"},
+        {"dcid": "DevelopmentFinanceRecipient"}
+      ]}
+    }
+  },
+  "ONE/CRS_DAC/Reproductivehealthcare-ODAGrants-ETH": {
+    "label": "ONE CRS DAC Reproductive Health Care ODA Grants ETH",
+    "type": "StatisticalVariable",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "StatisticalVariable"}]},
+      "name": {"nodes": [{"value": "ONE CRS DAC Reproductive Health Care ODA Grants ETH"}]},
+      "populationType": {"nodes": [{"dcid": "DevelopmentFinance"}]},
+      "measuredProperty": {"nodes": [{"dcid": "DevelopmentFinanceFlow"}]},
+      "statType": {"nodes": [{"dcid": "measuredValue"}]},
+      "DevelopmentFinanceScheme": {"nodes": [{"dcid": "ODAGrants"}]},
+      "DevelopmentFinancePurpose": {"nodes": [{"dcid": "DAC/Reproductivehealthcare"}]},
+      "DevelopmentFinanceRecipient": {"nodes": [{"dcid": "country/ETH"}]},
+      "constraintProperties": {"nodes": [
+        {"dcid": "DevelopmentFinanceScheme"},
+        {"dcid": "DevelopmentFinancePurpose"},
+        {"dcid": "DevelopmentFinanceRecipient"}
+      ]}
+    }
+  },
+  "ONE/CRS_DAC/Health-ODALoans-KEN": {
+    "label": "ONE CRS DAC Health ODA Loans KEN",
+    "type": "StatisticalVariable",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "StatisticalVariable"}]},
+      "name": {"nodes": [{"value": "ONE CRS DAC Health ODA Loans KEN"}]},
+      "populationType": {"nodes": [{"dcid": "DevelopmentFinance"}]},
+      "measuredProperty": {"nodes": [{"dcid": "DevelopmentFinanceFlow"}]},
+      "statType": {"nodes": [{"dcid": "measuredValue"}]},
+      "DevelopmentFinanceScheme": {"nodes": [{"dcid": "ODALoans"}]},
+      "DevelopmentFinancePurpose": {"nodes": [{"dcid": "DAC/Health"}]},
+      "DevelopmentFinanceRecipient": {"nodes": [{"dcid": "country/KEN"}]},
+      "constraintProperties": {"nodes": [
+        {"dcid": "DevelopmentFinanceScheme"},
+        {"dcid": "DevelopmentFinancePurpose"},
+        {"dcid": "DevelopmentFinanceRecipient"}
+      ]}
+    }
+  },
+  "ONE/CRS_DAC/Health-ODAPrivateSectorInstruments-KEN": {
+    "label": "ONE CRS DAC Health ODA Private Sector Instruments KEN",
+    "type": "StatisticalVariable",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "StatisticalVariable"}]},
+      "name": {"nodes": [{"value": "ONE CRS DAC Health ODA Private Sector Instruments KEN"}]},
+      "populationType": {"nodes": [{"dcid": "DevelopmentFinance"}]},
+      "measuredProperty": {"nodes": [{"dcid": "DevelopmentFinanceFlow"}]},
+      "statType": {"nodes": [{"dcid": "measuredValue"}]},
+      "DevelopmentFinanceScheme": {"nodes": [{"dcid": "ODAPrivateSectorInstruments"}]},
+      "DevelopmentFinancePurpose": {"nodes": [{"dcid": "DAC/Health"}]},
+      "DevelopmentFinanceRecipient": {"nodes": [{"dcid": "country/KEN"}]},
+      "constraintProperties": {"nodes": [
+        {"dcid": "DevelopmentFinanceScheme"},
+        {"dcid": "DevelopmentFinancePurpose"},
+        {"dcid": "DevelopmentFinanceRecipient"}
+      ]}
+    }
+  },
+  "ONE/CRS_DAC/Health-OtherOfficialFlows-KEN": {
+    "label": "ONE CRS DAC Health Other Official Flows KEN",
+    "type": "StatisticalVariable",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "StatisticalVariable"}]},
+      "name": {"nodes": [{"value": "ONE CRS DAC Health Other Official Flows KEN"}]},
+      "populationType": {"nodes": [{"dcid": "DevelopmentFinance"}]},
+      "measuredProperty": {"nodes": [{"dcid": "DevelopmentFinanceFlow"}]},
+      "statType": {"nodes": [{"dcid": "measuredValue"}]},
+      "DevelopmentFinanceScheme": {"nodes": [{"dcid": "OtherOfficialFlows"}]},
+      "DevelopmentFinancePurpose": {"nodes": [{"dcid": "DAC/Health"}]},
+      "DevelopmentFinanceRecipient": {"nodes": [{"dcid": "country/KEN"}]},
+      "constraintProperties": {"nodes": [
+        {"dcid": "DevelopmentFinanceScheme"},
+        {"dcid": "DevelopmentFinancePurpose"},
+        {"dcid": "DevelopmentFinanceRecipient"}
+      ]}
+    }
+  },
+  "ONE/CRS_DAC/Health-PrivateDevelopmentFinance-KEN": {
+    "label": "ONE CRS DAC Health Private Development Finance KEN",
+    "type": "StatisticalVariable",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "StatisticalVariable"}]},
+      "name": {"nodes": [{"value": "ONE CRS DAC Health Private Development Finance KEN"}]},
+      "populationType": {"nodes": [{"dcid": "DevelopmentFinance"}]},
+      "measuredProperty": {"nodes": [{"dcid": "DevelopmentFinanceFlow"}]},
+      "statType": {"nodes": [{"dcid": "measuredValue"}]},
+      "DevelopmentFinanceScheme": {"nodes": [{"dcid": "PrivateDevelopmentFinance"}]},
+      "DevelopmentFinancePurpose": {"nodes": [{"dcid": "DAC/Health"}]},
+      "DevelopmentFinanceRecipient": {"nodes": [{"dcid": "country/KEN"}]},
+      "constraintProperties": {"nodes": [
+        {"dcid": "DevelopmentFinanceScheme"},
+        {"dcid": "DevelopmentFinancePurpose"},
+        {"dcid": "DevelopmentFinanceRecipient"}
+      ]}
+    }
+  },
+  "ONE/CRS_DAC/Health-ODAEquityInvestment-KEN": {
+    "label": "ONE CRS DAC Health ODA Equity Investment KEN",
+    "type": "StatisticalVariable",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "StatisticalVariable"}]},
+      "name": {"nodes": [{"value": "ONE CRS DAC Health ODA Equity Investment KEN"}]},
+      "populationType": {"nodes": [{"dcid": "DevelopmentFinance"}]},
+      "measuredProperty": {"nodes": [{"dcid": "DevelopmentFinanceFlow"}]},
+      "statType": {"nodes": [{"dcid": "measuredValue"}]},
+      "DevelopmentFinanceScheme": {"nodes": [{"dcid": "ODAEquityInvestment"}]},
+      "DevelopmentFinancePurpose": {"nodes": [{"dcid": "DAC/Health"}]},
+      "DevelopmentFinanceRecipient": {"nodes": [{"dcid": "country/KEN"}]},
+      "constraintProperties": {"nodes": [
+        {"dcid": "DevelopmentFinanceScheme"},
+        {"dcid": "DevelopmentFinancePurpose"},
+        {"dcid": "DevelopmentFinanceRecipient"}
+      ]}
+    }
+  },
+  "ONE/CRS_DAC/Health-OfficialDevelopmentAssistance-KEN": {
+    "label": "ONE CRS DAC Health Official Development Assistance KEN",
+    "type": "StatisticalVariable",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "StatisticalVariable"}]},
+      "name": {"nodes": [{"value": "ONE CRS DAC Health Official Development Assistance KEN"}]},
+      "populationType": {"nodes": [{"dcid": "DevelopmentFinance"}]},
+      "measuredProperty": {"nodes": [{"dcid": "DevelopmentFinanceFlow"}]},
+      "statType": {"nodes": [{"dcid": "measuredValue"}]},
+      "DevelopmentFinanceScheme": {"nodes": [{"dcid": "OfficialDevelopmentAssistance"}]},
+      "DevelopmentFinancePurpose": {"nodes": [{"dcid": "DAC/Health"}]},
+      "DevelopmentFinanceRecipient": {"nodes": [{"dcid": "country/KEN"}]},
+      "constraintProperties": {"nodes": [
+        {"dcid": "DevelopmentFinanceScheme"},
+        {"dcid": "DevelopmentFinancePurpose"},
+        {"dcid": "DevelopmentFinanceRecipient"}
+      ]}
+    }
+  },
+  "ONE/CRS_DAC/Healtheducation-OfficialDevelopmentAssistance-IND": {
+    "label": "ONE CRS DAC Health Education Official Development Assistance IND",
+    "type": "StatisticalVariable",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "StatisticalVariable"}]},
+      "name": {"nodes": [{"value": "ONE CRS DAC Health Education Official Development Assistance IND"}]},
+      "populationType": {"nodes": [{"dcid": "DevelopmentFinance"}]},
+      "measuredProperty": {"nodes": [{"dcid": "DevelopmentFinanceFlow"}]},
+      "statType": {"nodes": [{"dcid": "measuredValue"}]},
+      "DevelopmentFinanceScheme": {"nodes": [{"dcid": "OfficialDevelopmentAssistance"}]},
+      "DevelopmentFinancePurpose": {"nodes": [{"dcid": "DAC/Healtheducation"}]},
+      "DevelopmentFinanceRecipient": {"nodes": [{"dcid": "country/IND"}]},
+      "constraintProperties": {"nodes": [
+        {"dcid": "DevelopmentFinanceScheme"},
+        {"dcid": "DevelopmentFinancePurpose"},
+        {"dcid": "DevelopmentFinanceRecipient"}
+      ]}
+    }
+  },
+  "ONE/CRS_DAC/Medicaleducationtraining-OfficialDevelopmentAssistance-IND": {
+    "label": "ONE CRS DAC Medical Education Training Official Development Assistance IND",
+    "type": "StatisticalVariable",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "StatisticalVariable"}]},
+      "name": {"nodes": [{"value": "ONE CRS DAC Medical Education Training Official Development Assistance IND"}]},
+      "populationType": {"nodes": [{"dcid": "DevelopmentFinance"}]},
+      "measuredProperty": {"nodes": [{"dcid": "DevelopmentFinanceFlow"}]},
+      "statType": {"nodes": [{"dcid": "measuredValue"}]},
+      "DevelopmentFinanceScheme": {"nodes": [{"dcid": "OfficialDevelopmentAssistance"}]},
+      "DevelopmentFinancePurpose": {"nodes": [{"dcid": "DAC/Medicaleducationtraining"}]},
+      "DevelopmentFinanceRecipient": {"nodes": [{"dcid": "country/IND"}]},
+      "constraintProperties": {"nodes": [
+        {"dcid": "DevelopmentFinanceScheme"},
+        {"dcid": "DevelopmentFinancePurpose"},
+        {"dcid": "DevelopmentFinanceRecipient"}
+      ]}
+    }
+  },
+  "ONE/CRS_DAC/Health-ODAGrants-NRU": {
+    "label": "ONE CRS DAC Health ODA Grants NRU",
+    "type": "StatisticalVariable",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "StatisticalVariable"}]},
+      "name": {"nodes": [{"value": "ONE CRS DAC Health ODA Grants NRU"}]},
+      "populationType": {"nodes": [{"dcid": "DevelopmentFinance"}]},
+      "measuredProperty": {"nodes": [{"dcid": "DevelopmentFinanceFlow"}]},
+      "statType": {"nodes": [{"dcid": "measuredValue"}]},
+      "DevelopmentFinanceScheme": {"nodes": [{"dcid": "ODAGrants"}]},
+      "DevelopmentFinancePurpose": {"nodes": [{"dcid": "DAC/Health"}]},
+      "DevelopmentFinanceRecipient": {"nodes": [{"dcid": "country/NRU"}]},
+      "constraintProperties": {"nodes": [
+        {"dcid": "DevelopmentFinanceScheme"},
+        {"dcid": "DevelopmentFinancePurpose"},
+        {"dcid": "DevelopmentFinanceRecipient"}
+      ]}
+    }
+  },
+  "Country": {
+    "label": "Country",
+    "type": "Class",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "Class"}]},
+      "name": {"nodes": [{"value": "Country"}]}
+    }
+  },
+  "StatisticalVariable": {
+    "label": "Statistical Variable",
+    "type": "Class",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "Class"}]},
+      "name": {"nodes": [{"value": "Statistical Variable"}]}
+    }
+  },
+  "DAC/Malariacontrol": {
+    "label": "Malaria control",
+    "type": "DevelopmentFinancePurposeEnum",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "DevelopmentFinancePurposeEnum"}]},
+      "name": {"nodes": [{"value": "Malaria control"}]}
+    }
+  },
+  "ONE/CRS_DAC/Malariacontrol-ODAGrants-ETH": {
+    "label": "ONE CRS DAC Malariacontrol ODA Grants ETH",
+    "type": "StatisticalVariable",
+    "arcs": {
+      "typeOf": {"nodes": [{"dcid": "StatisticalVariable"}]},
+      "name": {"nodes": [{"value": "ONE CRS DAC Malariacontrol ODA Grants ETH"}]},
+      "populationType": {"nodes": [{"dcid": "DevelopmentFinance"}]},
+      "measuredProperty": {"nodes": [{"dcid": "DevelopmentFinanceFlow"}]},
+      "statType": {"nodes": [{"dcid": "measuredValue"}]},
+      "DevelopmentFinanceScheme": {"nodes": [{"dcid": "ODAGrants"}]},
+      "DevelopmentFinancePurpose": {"nodes": [{"dcid": "DAC/Malariacontrol"}]},
+      "DevelopmentFinanceRecipient": {"nodes": [{"dcid": "country/ETH"}]},
+      "constraintProperties": {"nodes": [
+        {"dcid": "DevelopmentFinanceScheme"},
+        {"dcid": "DevelopmentFinancePurpose"},
+        {"dcid": "DevelopmentFinanceRecipient"}
+      ]}
+    }
+  }
+}

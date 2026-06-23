@@ -1,0 +1,50 @@
+{
+  "_comment": "Observation facets keyed by 'sv|entity'. Sourced from §0 live staging probe facts + goldens.json notes. Each value is a list of facet dicts with earliestDate, latestDate, obsCount. Used by FakeGraph.observation_facets.",
+
+  "ONE/CRS_DAC/Health-ODAGrants-ETH|country/USA": [
+    {"earliestDate": "1991", "latestDate": "2024", "obsCount": 402}
+  ],
+  "ONE/CRS_DAC/Health-ODAGrants-KEN|country/USA": [
+    {"earliestDate": "1980", "latestDate": "2024", "obsCount": 462}
+  ],
+  "ONE/CRS_DAC/Health-ODAGrants-KEN|country/GBR": [
+    {"earliestDate": "1988", "latestDate": "2024", "obsCount": 432}
+  ],
+  "ONE/CRS_DAC/Health-OfficialDevelopmentAssistance-ETH|country/DEU": [
+    {"earliestDate": "1997", "latestDate": "2024", "obsCount": 372}
+  ],
+  "ONE/CRS_DAC/STDcontrolincludingHIVAIDS-ODAGrants-KEN|country/USA": [
+    {"earliestDate": "1995", "latestDate": "2024", "obsCount": 378}
+  ],
+  "ONE/CRS_DAC/BasicHealth-ODAGrants-KEN|country/USA": [
+    {"earliestDate": "1980", "latestDate": "2024", "obsCount": 366}
+  ],
+  "ONE/CRS_DAC/BasicHealth-ODAGrants-KEN|country/FRA": [
+    {"earliestDate": "2000", "latestDate": "2024", "obsCount": 258}
+  ],
+  "ONE/CRS_DAC/Reproductivehealthcare-ODAGrants-ETH|country/USA": [
+    {"earliestDate": "1994", "latestDate": "2024", "obsCount": 318}
+  ],
+  "ONE/CRS_DAC/Health-ODALoans-KEN|country/USA": [
+    {"earliestDate": "1982", "latestDate": "1982", "obsCount": 6}
+  ],
+  "ONE/CRS_DAC/Health-ODAPrivateSectorInstruments-KEN|country/USA": [
+    {"earliestDate": "2023", "latestDate": "2023", "obsCount": 6}
+  ],
+  "ONE/CRS_DAC/Health-OtherOfficialFlows-KEN|country/USA": [],
+  "ONE/CRS_DAC/Health-PrivateDevelopmentFinance-KEN|country/USA": [],
+  "ONE/CRS_DAC/Health-ODAEquityInvestment-KEN|country/USA": [],
+  "ONE/CRS_DAC/Health-OfficialDevelopmentAssistance-KEN|country/USA": [
+    {"earliestDate": "1980", "latestDate": "2024", "obsCount": 462}
+  ],
+  "ONE/CRS_DAC/Healtheducation-OfficialDevelopmentAssistance-IND|country/USA": [
+    {"earliestDate": "2000", "latestDate": "2024", "obsCount": 180}
+  ],
+  "ONE/CRS_DAC/Medicaleducationtraining-OfficialDevelopmentAssistance-IND|country/USA": [
+    {"earliestDate": "2000", "latestDate": "2024", "obsCount": 170}
+  ],
+  "ONE/CRS_DAC/Health-ODAGrants-NRU|country/USA": [],
+  "ONE/CRS_DAC/Malariacontrol-ODAGrants-ETH|country/USA": [
+    {"earliestDate": "2007", "latestDate": "2024", "obsCount": 270}
+  ]
+}

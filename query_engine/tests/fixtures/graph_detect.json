@@ -1,0 +1,179 @@
+{
+  "_comment": "detect_svs() results keyed by query string. Sourced from §0 live staging probe facts. Values are {svs: [...], entities: [...]}. Used by FakeGraph.detect_svs. Detect is a RECALL aid only — the engine confirms every SV via node_arcs.",
+  "health ODA grants from USA to Ethiopia": {
+    "svs": [
+      "ONE/CRS_DAC/Health-ODAGrants-ETH",
+      "ONE/CRS_DAC/Health-OfficialDevelopmentAssistance-ETH",
+      "ONE/CRS_DAC/Health-ODALoans-ETH"
+    ],
+    "entities": [
+      "country/USA",
+      "country/ETH"
+    ]
+  },
+  "health ODA grants from UK to Kenya": {
+    "svs": [
+      "ONE/CRS_DAC/Health-ODAGrants-KEN",
+      "ONE/CRS_DAC/Health-OfficialDevelopmentAssistance-KEN"
+    ],
+    "entities": [
+      "country/GBR",
+      "country/KEN"
+    ]
+  },
+  "official development assistance from Germany to Ethiopia": {
+    "svs": [
+      "ONE/CRS_DAC/Health-OfficialDevelopmentAssistance-ETH",
+      "ONE/CRS_DAC/Health-ODAGrants-ETH"
+    ],
+    "entities": [
+      "country/DEU",
+      "country/ETH"
+    ]
+  },
+  "HIV/AIDS ODA grants from USA to Kenya": {
+    "svs": [
+      "ONE/CRS_DAC/STDcontrolincludingHIVAIDS-ODAGrants-KEN"
+    ],
+    "entities": [
+      "country/USA",
+      "country/KEN"
+    ]
+  },
+  "basic health ODA grants from France to Kenya": {
+    "svs": [
+      "ONE/CRS_DAC/BasicHealth-ODAGrants-KEN"
+    ],
+    "entities": [
+      "country/FRA",
+      "country/KEN"
+    ]
+  },
+  "health ODA grants to Ethiopia": {
+    "svs": [
+      "ONE/CRS_DAC/Health-ODAGrants-ETH",
+      "ONE/CRS_DAC/Health-OfficialDevelopmentAssistance-ETH"
+    ],
+    "entities": [
+      "country/ETH"
+    ]
+  },
+  "basic health ODA grants to Kenya": {
+    "svs": [
+      "ONE/CRS_DAC/BasicHealth-ODAGrants-KEN",
+      "ONE/CRS_DAC/Health-ODAGrants-KEN"
+    ],
+    "entities": [
+      "country/KEN"
+    ]
+  },
+  "reproductive health ODA grants to Ethiopia": {
+    "svs": [
+      "ONE/CRS_DAC/Reproductivehealthcare-ODAGrants-ETH"
+    ],
+    "entities": [
+      "country/ETH"
+    ]
+  },
+  "health aid to Kenya": {
+    "svs": [
+      "ONE/CRS_DAC/Health-ODAGrants-KEN",
+      "ONE/CRS_DAC/Health-OfficialDevelopmentAssistance-KEN",
+      "ONE/CRS_DAC/Health-ODALoans-KEN"
+    ],
+    "entities": [
+      "country/KEN"
+    ]
+  },
+  "health ODA per capita to Ethiopia": {
+    "svs": [
+      "ONE/CRS_DAC/Health-ODAGrants-ETH",
+      "ONE/CRS_DAC/Health-ODALoans-Earth"
+    ],
+    "entities": [
+      "country/ETH"
+    ]
+  },
+  "health ODA to Nauru from USA": {
+    "svs": [
+      "ONE/CRS_DAC/Health-ODAGrants-NRU"
+    ],
+    "entities": [
+      "country/NRU",
+      "country/USA"
+    ]
+  },
+  "Atlantis health ODA": {
+    "svs": [],
+    "entities": []
+  },
+  "education ODA to India": {
+    "svs": [
+      "ONE/CRS_DAC/Healtheducation-OfficialDevelopmentAssistance-IND",
+      "ONE/CRS_DAC/Medicaleducationtraining-OfficialDevelopmentAssistance-IND"
+    ],
+    "entities": [
+      "country/IND"
+    ]
+  },
+  "health ODA grants from USA to Nauru": {
+    "svs": [
+      "ONE/CRS_DAC/Health-ODAGrants-NRU"
+    ],
+    "entities": [
+      "country/USA",
+      "country/NRU"
+    ]
+  },
+  "official development assistance to the Republic of Atlantis": {
+    "svs": [
+      "ONE/CRS_DAC/Health-OfficialDevelopmentAssistance-ETH"
+    ],
+    "entities": []
+  },
+  "malaria control ODA grants from USA to Ethiopia": {
+    "svs": [
+      "ONE/CRS_DAC/Malariacontrol-ODAGrants-ETH"
+    ],
+    "entities": [
+      "country/USA",
+      "country/ETH"
+    ]
+  },
+  "health ODA grants from USA to Atlantis": {
+    "svs": [
+      "ONE/CRS_DAC/Health-ODAGrants-ETH",
+      "ONE/CRS_DAC/Health-OfficialDevelopmentAssistance-ETH"
+    ],
+    "entities": [
+      "country/USA"
+    ]
+  },
+  "health ODA from USA to Atlantis": {
+    "svs": [
+      "ONE/CRS_DAC/Health-ODAGrants-ETH",
+      "ONE/CRS_DAC/Health-OfficialDevelopmentAssistance-ETH"
+    ],
+    "entities": [
+      "country/USA"
+    ]
+  },
+  "health ODA grants Kenya": {
+    "svs": [
+      "ONE/CRS_DAC/Health-ODAGrants-KEN",
+      "ONE/CRS_DAC/Health-OfficialDevelopmentAssistance-KEN"
+    ],
+    "entities": [
+      "country/KEN"
+    ]
+  },
+  "health ODA grants from USA": {
+    "svs": [
+      "ONE/CRS_DAC/Health-ODAGrants-ETH",
+      "ONE/CRS_DAC/Health-OfficialDevelopmentAssistance-ETH"
+    ],
+    "entities": [
+      "country/USA"
+    ]
+  }
+}
