@@ -1,7 +1,7 @@
 """QRE eval harness. Requires the 'eval' extra: uv sync --extra eval
 
 Public surface:
-    from qre.eval import sync_dataset, run_eval, check_gate, GATE_THRESHOLDS
+    from qre.eval import sync_dataset, run_eval, check_gate, load_baseline, GATE_THRESHOLDS
     from qre.eval import EngineTask, GraphClient
     from qre.eval import (
         structural_conformance, interpretation_match,
@@ -10,8 +10,7 @@ Public surface:
         DEFAULT_ITEM_EVALUATORS, DEFAULT_RUN_EVALUATORS,
     )
 
-The core qre module does not import this. The eval extra (langfuse,
-datacommons-client) is not required for the contract models.
+The eval extra (langfuse, datacommons-client) is not required for the core contract models.
 """
 try:
     from langfuse import Evaluation  # noqa: F401  (probe the extra)
@@ -35,7 +34,7 @@ from qre.eval.evaluators import (  # noqa: F401
     make_materialisation,
     structural_conformance,
 )
-from qre.eval.gate import GATE_THRESHOLDS, check_gate  # noqa: F401
+from qre.eval.gate import GATE_THRESHOLDS, check_gate, load_baseline  # noqa: F401
 from qre.eval.graph import GraphClient  # noqa: F401
 from qre.eval.runner import run_eval  # noqa: F401
 
@@ -50,6 +49,7 @@ __all__ = [
     "sync_dataset",
     "run_eval",
     "check_gate",
+    "load_baseline",
     "GATE_THRESHOLDS",
     "EngineTask",
     "GraphClient",

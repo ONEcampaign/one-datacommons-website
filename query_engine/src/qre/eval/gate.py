@@ -1,4 +1,7 @@
 """Regression gate: raises ``RegressionError`` when any metric breaches its threshold."""
+import json
+from pathlib import Path
+
 from langfuse import RegressionError
 
 GATE_THRESHOLDS: dict = {
@@ -10,6 +13,16 @@ GATE_THRESHOLDS: dict = {
     "materialisation_correct_rate": {"mode": "exact", "value": 1.0},
     "structural_conformance_rate": {"mode": "exact", "value": 1.0},
 }
+
+
+def load_baseline(path: str | Path) -> dict[str, float]:
+    """Read the committed baseline metrics dict from a frozen-baseline JSON file.
+
+    The file is the human-reviewed regression anchor: re-freezing it is a
+    deliberate, diff-visible change (see .design/eval-gate.md section 3). Returns
+    the ``metrics`` object, ready to pass as ``check_gate(baseline=...)``.
+    """
+    return json.loads(Path(path).read_text())["metrics"]
 
 
 def check_gate(
@@ -26,7 +39,7 @@ def check_gate(
             exact-mode rules apply; baseline_minus rules are skipped.
         thresholds: Override the default gate thresholds for testing.
 
-    Returns the result unchanged when all checks pass.
+    Returns result unchanged when all checks pass.
     """
     metrics = {ev.name: ev.value for ev in result.run_evaluations}
 

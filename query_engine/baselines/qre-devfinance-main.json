@@ -1,0 +1,18 @@
+{
+  "dataset": "qre-devfinance-main",
+  "engine_build": "qre-baseline-devfinance-v1",
+  "model": "gemini-flash-lite-latest",
+  "graph_endpoint": "https://dc-staging.one.org",
+  "frozen": "2026-06-23",
+  "items": 11,
+  "note": "Phase-0 dev-finance regression anchor. Re-freezing is a human-reviewed diff: post before/after metrics in the PR. See .design/eval-gate.md section 3. Model is a *-latest alias for now; pin to a dated version before Phase 1 (eval-gate.md section 4). behaviour_match_rate_candidates is intentionally null: dev-finance is monomorphic with no candidates goldens, so the engine emits no candidates response to anchor. Set a real value when a family with a candidates path lands, or the gate will skip that metric silently.",
+  "metrics": {
+    "interpretation_match_rate": 1.0,
+    "behaviour_match_rate_definite": 1.0,
+    "behaviour_match_rate_candidates": null,
+    "behaviour_match_rate_no_data": 1.0,
+    "materialisation_correct_rate": 1.0,
+    "structural_conformance_rate": 1.0,
+    "fabricated_ref_rate": 0.0
+  }
+}

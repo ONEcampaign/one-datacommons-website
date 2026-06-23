@@ -1,9 +1,11 @@
 """Tests for check_gate."""
+from pathlib import Path
+
 import pytest
 from langfuse import Evaluation, RegressionError
 from langfuse.experiment import ExperimentResult
 
-from qre.eval.gate import GATE_THRESHOLDS, check_gate
+from qre.eval.gate import GATE_THRESHOLDS, check_gate, load_baseline
 
 
 def _make_result(run_evaluations):
@@ -39,7 +41,6 @@ def test_gate_passes_all_exact_met():
 
 
 def test_gate_passes_no_baseline():
-    # Without a baseline, baseline_minus rules are skipped; exact rules still apply.
     result = _make_result(_all_passing_evals())
     out = check_gate(result, baseline=None)
     assert out is result
@@ -105,7 +106,6 @@ def test_gate_within_baseline_tolerance():
 
 
 def test_gate_raises_on_missing_metric():
-    # Remove one metric to simulate a broken aggregator.
     evs = [ev for ev in _all_passing_evals() if ev.name != "fabricated_ref_rate"]
     result = _make_result(evs)
     with pytest.raises(RegressionError) as exc_info:
@@ -123,7 +123,6 @@ def test_gate_thresholds_config():
 
 
 def test_gate_baseline_none_with_value_none_does_not_raise():
-    """When baseline=None, None metric values do not raise."""
     evs = [ev for ev in _all_passing_evals() if ev.name != "interpretation_match_rate"]
     evs.append(Evaluation(name="interpretation_match_rate", value=None))
     result = _make_result(evs)
@@ -132,7 +131,6 @@ def test_gate_baseline_none_with_value_none_does_not_raise():
 
 
 def test_gate_baseline_provided_but_metric_value_none_does_not_raise():
-    """When metric value is None, baseline_minus rules are skipped."""
     evs = [ev for ev in _all_passing_evals() if ev.name != "interpretation_match_rate"]
     evs.append(Evaluation(name="interpretation_match_rate", value=None))
     result = _make_result(evs)
@@ -141,10 +139,27 @@ def test_gate_baseline_provided_but_metric_value_none_does_not_raise():
 
 
 def test_gate_exact_metric_value_none_still_raises():
-    """An exact metric with value=None raises RegressionError."""
     evs = [ev for ev in _all_passing_evals() if ev.name != "fabricated_ref_rate"]
     evs.append(Evaluation(name="fabricated_ref_rate", value=None))
     result = _make_result(evs)
     with pytest.raises(RegressionError) as exc_info:
         check_gate(result)
     assert exc_info.value.metric == "fabricated_ref_rate"
+
+
+def test_load_baseline_reads_metrics(tmp_path):
+    p = tmp_path / "b.json"
+    p.write_text('{"metrics": {"interpretation_match_rate": 0.9, "fabricated_ref_rate": 0.0}}')
+    assert load_baseline(p) == {"interpretation_match_rate": 0.9, "fabricated_ref_rate": 0.0}
+
+
+def test_committed_devfinance_baseline_passes_its_own_gate():
+    """A run that exactly reproduces the frozen baseline must PASS check_gate.
+
+    Self-consistency guard: catches committing a baseline whose values would fail
+    the gate (e.g. an exact metric below its target or a malformed metrics block).
+    """
+    baseline_path = Path(__file__).parents[2] / "baselines" / "qre-devfinance-main.json"
+    metrics = load_baseline(baseline_path)
+    result = _make_result([Evaluation(name=n, value=v) for n, v in metrics.items()])
+    assert check_gate(result, baseline=metrics) is result

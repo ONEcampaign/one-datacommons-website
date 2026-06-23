@@ -1,0 +1,66 @@
+name: QRE eval gate
+
+on:
+  pull_request:
+    paths:
+      - "query_engine/**"
+      - ".github/workflows/qre-eval-gate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One live run per PR ref: cancel superseded runs so a force-push does not stack
+# Gemini quota spend.
+concurrency:
+  group: qre-eval-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: query_engine
+
+jobs:
+  offline-tests:
+    name: Offline tests (fixture replay)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: query_engine/uv.lock
+      - name: Run offline suite
+        run: uv run --extra eval --extra engine pytest -q
+
+  live-eval-gate:
+    name: Live eval gate (Gemini + staging)
+    needs: offline-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+      LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+      LANGFUSE_BASE_URL: ${{ secrets.LANGFUSE_BASE_URL || 'https://cloud.langfuse.com' }}
+      QRE_DATASET: qre-devfinance-main
+      QRE_BASELINE: baselines/qre-devfinance-main.json
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check live-eval secrets are configured
+        id: secrets
+        run: |
+          if [ -z "$GEMINI_API_KEY" ] || [ -z "$LANGFUSE_SECRET_KEY" ] || [ -z "$LANGFUSE_PUBLIC_KEY" ]; then
+            echo "Live-eval secrets not set; skipping the live gate (offline tests are the active gate)."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: astral-sh/setup-uv@v5
+        if: steps.secrets.outputs.present == 'true'
+        with:
+          enable-cache: true
+          cache-dependency-glob: query_engine/uv.lock
+      - name: Run live eval gate
+        if: steps.secrets.outputs.present == 'true'
+        run: uv run --extra eval --extra engine python scripts/run_experiment.py
