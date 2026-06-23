@@ -131,6 +131,8 @@ GEMINI.md
 server/tests/test_data/webdriver_recordings/
 /.codegraph
 *.md
+# Golden corpus prose is a tracked artifact, not scratch notes.
+!/query_engine/golden-corpus.md
 /dc_search_server/scripts/*
 !/dc_search_server/scripts/perf_*.py
 /.claude
