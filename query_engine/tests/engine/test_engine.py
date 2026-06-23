@@ -68,7 +68,7 @@ class TestDefiniteGoldens:
 
     def test_df04_official_development_assistance_germany_to_ethiopia(self):
         result = offline_resolve(
-            make_request("official development assistance from Germany to Ethiopia")
+            make_request("health official development assistance from Germany to Ethiopia")
         )
         inner = result.root
         assert inner.status == "definite"

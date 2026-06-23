@@ -45,9 +45,9 @@ def test_extract_hiv_aids_oda_grants_usa_ken():
 
 
 def test_extract_oda_germany_eth():
-    """df-04: official development assistance from Germany to Ethiopia."""
+    """df-04: health official development assistance from Germany to Ethiopia."""
     result = _run(extract(
-        "official development assistance from Germany to Ethiopia",
+        "health official development assistance from Germany to Ethiopia",
         llm=FakeLLM(),
     ))
     assert isinstance(result, Extraction)

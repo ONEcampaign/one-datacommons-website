@@ -641,5 +641,41 @@
         "value_dcids": []
       }
     ]
+  },
+  "Extraction:c10fffe4cea012dae06dcbc79ded74f974d17230": {
+    "variables": [
+      "health official development assistance"
+    ],
+    "entities": [
+      "Germany",
+      "Ethiopia"
+    ],
+    "dates": []
+  },
+  "_BindOutput:3791bc3c4a2531c6e4cb1b0c392b42f2dc2e882f": {
+    "bindings": [
+      {
+        "axis": "what",
+        "property_dcid": "DevelopmentFinanceScheme",
+        "kind": "value",
+        "value_dcids": [
+          "OfficialDevelopmentAssistance"
+        ]
+      },
+      {
+        "axis": "how",
+        "property_dcid": "DevelopmentFinancePurpose",
+        "kind": "value",
+        "value_dcids": [
+          "DAC/Health"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "unbound",
+        "value_dcids": []
+      }
+    ]
   }
 }
