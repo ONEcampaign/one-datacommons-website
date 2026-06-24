@@ -1,7 +1,8 @@
 """E2E engine tests: candidates production trigger.
 
-Tests the 10 standard-family goldens that must return status=candidates, plus a
-df-09 canary that must stay definite.
+Tests the standard-family goldens that must return status=candidates, plus std-06b
+(definite via the dominance rule) and a df-09 canary that must stay definite. cand-r2
+is deferred (skipped) — see _SUBNATIONAL_GEO_GAP.
 
 All tests run fully offline via the shared offline_resolve harness (FakeGraph +
 FakeLLM + pinned fixtures).
@@ -11,11 +12,11 @@ Goldens covered:
   std-03   birth rate Ethiopia                -> candidates, 2..6 specs
   std-04b  number of births in Ethiopia       -> candidates, 2..6 specs
   std-05   under-5 child mortality rate       -> candidates, 2..6 specs (no entity)
-  std-06b  fertility rate in Kenya            -> candidates, 2..6 specs
+  std-06b  fertility rate in Kenya            -> definite FertilityRate_Person_Female (dominance)
   std-07   infant mortality rate Ethiopia     -> candidates, 2..6 specs
   sdg-06   government education spending Kenya -> candidates, 2..6 specs
   cand-r1  GDP of Brazil                      -> candidates, 2..6 specs
-  cand-r2  income in California               -> candidates, exactly 2 specs
+  cand-r2  income in California               -> candidates, exactly 2 specs (DEFERRED/skipped)
   df-09    health ODA from Germany to Ethiopia -> definite (regression guard)
 
 std-05 has no place entity in the query ("under-5 child mortality rate").
@@ -35,12 +36,19 @@ from qre.models import (
 )
 from tests.engine._harness import offline_resolve
 
-# cand-r1 ('GDP of Brazil', 55 SVs) and cand-r2 ('income in California', 60 SVs) cannot be
-# re-recorded against staging: their large SV sets consistently 503/timeout the staging
-# node and detect endpoints (server-side, not throttleable). Skipped pending a re-record
-# when staging is healthy; tracked for a follow-up. Their fixtures are left in place but
-# unreliable, so the offline assertions are skipped rather than asserting on degraded data.
-_STAGING_503 = "pending staging re-record (heavy query 503s node/detect; see scope.md)"
+# cand-r2 ('income in California') is deferred: the engine resolves Country-typed entities
+# only (graph.resolve_entity uses a typeOf:Country filter), so 'California' (geoId/06, a US
+# State) fails to resolve and the query returns no_data/entity_not_resolved on EVERY endpoint
+# (staging and prod alike) — not a fixture problem. A trace confirmed both endpoints behave
+# identically. Deferred until the engine handles sub-national geo entities (the fix is to fall
+# back to detect's own entity resolution in recall(), which already returns geoId/06).
+# cand-r1 ('GDP of Brazil') was previously skipped under the same theory but is NOT a gap: it
+# resolves to candidates on staging and prod. Its earlier all-attempts failure was a transient
+# staging-capacity blip on the node endpoint; re-recorded with the 0.3s recorder throttle.
+_SUBNATIONAL_GEO_GAP = (
+    "deferred: engine resolves Country entities only; California (geoId/06) is a State, "
+    "so this returns entity_not_resolved on staging and prod alike (not a fixture issue)"
+)
 
 
 def _req(query: str) -> ResolveRequest:
@@ -244,9 +252,13 @@ class TestSdg06EducationSpendingKenya:
 # cand-r1: GDP of Brazil
 # ---------------------------------------------------------------------------
 
-@pytest.mark.skip(reason=_STAGING_503)
 class TestCandR1GDPBrazil:
-    """cand-r1: 'GDP of Brazil' -> candidates, 2..6 specs."""
+    """cand-r1: 'GDP of Brazil' -> candidates, 2..6 specs.
+
+    Engine returns 3 specs (the golden's 4th SV, ONE/who_gge-gdp, has
+    measuredProperty=null and is correctly dropped before the candidates decision),
+    which the 2..6 invariant covers.
+    """
 
     _QUERY = "GDP of Brazil"
 
@@ -261,7 +273,7 @@ class TestCandR1GDPBrazil:
 # cand-r2: income in California -> exactly 2 candidates
 # ---------------------------------------------------------------------------
 
-@pytest.mark.skip(reason=_STAGING_503)
+@pytest.mark.skip(reason=_SUBNATIONAL_GEO_GAP)
 class TestCandR2IncomeCaliforniaExactly2:
     """cand-r2: 'income in California' -> exactly 2 candidates."""
 
