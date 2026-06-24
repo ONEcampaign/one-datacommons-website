@@ -677,5 +677,402 @@
         "value_dcids": []
       }
     ]
+  },
+  "Extraction:4fcb9e8fa084c09244e2d589124e12a6599dd3dd": {
+    "variables": [
+      "government education spending"
+    ],
+    "entities": [
+      "Kenya"
+    ],
+    "dates": []
+  },
+  "_BindOutput:998ddf7e92086ab128325374e7ca68a2eea8ba81": {
+    "bindings": [
+      {
+        "axis": "how",
+        "property_dcid": "activitySource",
+        "kind": "unbound",
+        "value_dcids": []
+      },
+      {
+        "axis": "how",
+        "property_dcid": "expenditureType",
+        "kind": "value",
+        "value_dcids": [
+          "EducationExpenditure"
+        ]
+      },
+      {
+        "axis": "how",
+        "property_dcid": "expensor",
+        "kind": "value",
+        "value_dcids": [
+          "Government"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "unbound",
+        "value_dcids": []
+      }
+    ]
+  },
+  "Extraction:e9a6d21a9d36b85a19b510a0a547ef4445ba92bd": {
+    "variables": [
+      "total population"
+    ],
+    "entities": [
+      "India"
+    ],
+    "dates": []
+  },
+  "Extraction:84c616db47b1262a17b54d7dcc9298199b8092fa": {
+    "variables": [
+      "GDP"
+    ],
+    "entities": [
+      "India"
+    ],
+    "dates": []
+  },
+  "Extraction:e8c2d0c6ce0dfef7d052c35e03ca4e733d0a23a7": {
+    "variables": [
+      "birth rate"
+    ],
+    "entities": [
+      "Ethiopia"
+    ],
+    "dates": []
+  },
+  "Extraction:03bf77d3b8ad3e9445bd0080b72f01635da931b6": {
+    "variables": [
+      "under-5 child mortality rate"
+    ],
+    "entities": [],
+    "dates": []
+  },
+  "Extraction:e41671c0e11c63d0f7fe5514ddee21453d68863e": {
+    "variables": [
+      "number of births"
+    ],
+    "entities": [
+      "Ethiopia"
+    ],
+    "dates": []
+  },
+  "_BindOutput:59979c7bd3474c4027986d8c8bbe9094269658b2": {
+    "bindings": [
+      {
+        "axis": "how",
+        "property_dcid": "medicalStatus",
+        "kind": "value",
+        "value_dcids": [
+          "LiveBirth"
+        ]
+      },
+      {
+        "axis": "how",
+        "property_dcid": "mothersMaritalStatus",
+        "kind": "unbound",
+        "value_dcids": []
+      },
+      {
+        "axis": "how",
+        "property_dcid": "mothersEducation",
+        "kind": "unbound",
+        "value_dcids": []
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "absent",
+        "value_dcids": []
+      }
+    ]
+  },
+  "Extraction:947958f6e9997f313d1b96436ed2844ed227ba5e": {
+    "variables": [
+      "fertility rate"
+    ],
+    "entities": [
+      "Kenya"
+    ],
+    "dates": []
+  },
+  "_BindOutput:9c0f17c72d8de853a1c4adc60a7fa6b2dbedcad6": {
+    "bindings": [
+      {
+        "axis": "how",
+        "property_dcid": "gender",
+        "kind": "value",
+        "value_dcids": [
+          "Female"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "unbound",
+        "value_dcids": []
+      }
+    ]
+  },
+  "Extraction:0031f1e7a63057e6082917b2ce79afa489979a0e": {
+    "variables": [
+      "teacher count"
+    ],
+    "entities": [
+      "Nauru"
+    ],
+    "dates": []
+  },
+  "_BindOutput:8074dbf00550f1c4539f37ac06fed21d5993b827": {
+    "bindings": [
+      {
+        "axis": "how",
+        "property_dcid": "facultyType",
+        "kind": "set",
+        "value_dcids": [
+          "ElementaryTeacher",
+          "SecondaryTeacher",
+          "UngradedTeacher",
+          "UniversityAndCollegeTeacher"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "absent",
+        "value_dcids": []
+      }
+    ]
+  },
+  "Extraction:722e8ea7d5b48211032115b184c114babc9fd72f": {
+    "variables": [
+      "left-handedness rate"
+    ],
+    "entities": [
+      "France"
+    ],
+    "dates": []
+  },
+  "Extraction:94a530df34ced24ae6f4d1c4d2d2a7dec5f96d65": {
+    "variables": [
+      "GDP"
+    ],
+    "entities": [
+      "Brazil"
+    ],
+    "dates": []
+  },
+  "Extraction:2a3da619795d46b36235e3ced338d18d90683ad2": {
+    "variables": [
+      "income"
+    ],
+    "entities": [
+      "California"
+    ],
+    "dates": []
+  },
+  "Extraction:8c794e19ece2ccf69a1ed914853c207e20b24347": {
+    "variables": [
+      "infant mortality rate"
+    ],
+    "entities": [
+      "Ethiopia"
+    ],
+    "dates": []
+  },
+  "_BindOutput:a73c0e2fd97baabc46c4c8a83a460e812caa0d7e": {
+    "bindings": [
+      {
+        "axis": "how",
+        "property_dcid": "age",
+        "kind": "value",
+        "value_dcids": [
+          "Years0"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "absent",
+        "value_dcids": []
+      }
+    ]
+  },
+  "_BindOutput:93d595146731d7c8cdb3f36d4dd7b0ea5a7115a2": {
+    "bindings": [
+      {
+        "axis": "how",
+        "property_dcid": "medicalCondition",
+        "kind": "absent",
+        "value_dcids": []
+      },
+      {
+        "axis": "how",
+        "property_dcid": "medicalStatus",
+        "kind": "value",
+        "value_dcids": [
+          "PediatricMortality"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "absent",
+        "value_dcids": []
+      }
+    ]
+  },
+  "_BindOutput:2bb460f7eafac660d2c3fb062de63020c0eafaa7": {
+    "bindings": [
+      {
+        "axis": "what",
+        "property_dcid": "DevelopmentFinanceScheme",
+        "kind": "absent",
+        "value_dcids": []
+      },
+      {
+        "axis": "how",
+        "property_dcid": "DevelopmentFinancePurpose",
+        "kind": "value",
+        "value_dcids": [
+          "DAC/Familyplanning"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "unbound",
+        "value_dcids": []
+      }
+    ]
+  },
+  "_BindOutput:2e3cb38e74c3c99f5b82f304e9023c6e9ddb97ee": {
+    "bindings": [
+      {
+        "axis": "how",
+        "property_dcid": "medicalStatus",
+        "kind": "value",
+        "value_dcids": [
+          "LiveBirth"
+        ]
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "unbound",
+        "value_dcids": []
+      }
+    ]
+  },
+  "Extraction:18c7442ef009fd0af72e7aef114e995f9c8994ee": {
+    "variables": [
+      "government education spending"
+    ],
+    "entities": [
+      "Kenya"
+    ],
+    "dates": []
+  },
+  "Extraction:723266a8e3c14c8403dd546d6f111234e97c1f41": {
+    "variables": [
+      "total population"
+    ],
+    "entities": [
+      "India"
+    ],
+    "dates": []
+  },
+  "Extraction:f6d374ac9183423549ebf40bac34fc3aad6ed94a": {
+    "variables": [
+      "GDP"
+    ],
+    "entities": [
+      "India"
+    ],
+    "dates": []
+  },
+  "Extraction:201bcbce51c49fc07dcc5ea6fb762ec89032b61b": {
+    "variables": [
+      "birth rate"
+    ],
+    "entities": [
+      "Ethiopia"
+    ],
+    "dates": []
+  },
+  "Extraction:1afdba2a8b83b91b6403fde5132b47f586b6836c": {
+    "variables": [
+      "under-5 child mortality rate"
+    ],
+    "entities": [],
+    "dates": []
+  },
+  "Extraction:84e4f10bd1aef9480d940993947eb58a103dfe42": {
+    "variables": [
+      "number of births"
+    ],
+    "entities": [
+      "Ethiopia"
+    ],
+    "dates": []
+  },
+  "Extraction:b8b3ef9157c4399149796fdb9aa4be20e31187b0": {
+    "variables": [
+      "fertility rate"
+    ],
+    "entities": [
+      "Kenya"
+    ],
+    "dates": []
+  },
+  "Extraction:0c482598bc7431a90051884851ecbaf9a6e0c88b": {
+    "variables": [
+      "teacher count"
+    ],
+    "entities": [
+      "Nauru"
+    ],
+    "dates": []
+  },
+  "Extraction:15a05c915f77337c3c7670e38a13a1b952223ced": {
+    "variables": [
+      "left-handedness rate"
+    ],
+    "entities": [
+      "France"
+    ],
+    "dates": []
+  },
+  "Extraction:2f00a6df5f917783f4b06a03aeb3ce25592f3768": {
+    "variables": [
+      "GDP"
+    ],
+    "entities": [
+      "Brazil"
+    ],
+    "dates": []
+  },
+  "Extraction:95dfcde9d96c56156fbb24c76f4c25098ed2b766": {
+    "variables": [
+      "income"
+    ],
+    "entities": [
+      "California"
+    ],
+    "dates": []
+  },
+  "Extraction:5eb9e9d9b985efdd2b2b809b94fa33570896bc32": {
+    "variables": [
+      "infant mortality rate"
+    ],
+    "entities": [
+      "Ethiopia"
+    ],
+    "dates": []
   }
 }

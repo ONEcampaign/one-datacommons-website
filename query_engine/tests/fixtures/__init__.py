@@ -1,7 +1,6 @@
 """Offline test doubles: FakeLLM and FakeGraph.
 
-Loaded from JSON fixtures in this directory (llm_responses.json, graph_nodes.json,
-graph_obs.json, graph_detect.json, graph_resolve.json). Used via resolve_async
+Loaded from JSON fixtures in this directory. Used via resolve_async
 dependency injection for fully offline testing.
 """
 from __future__ import annotations
@@ -93,7 +92,7 @@ class _RaiseOnAny:
     def resolve_entity(self, name: str) -> str | None:
         raise GraphInfraError(f"FakeGraph(raise=True): simulated transport error for {name!r}")
 
-    def detect_svs(self, query: str) -> tuple[list[str], list[str]]:
+    def detect_svs(self, query: str) -> tuple[list[str], list[str], list[float]]:
         raise GraphInfraError(f"FakeGraph(raise=True): simulated transport error for {query!r}")
 
     def observation_facets(self, *, stat_var: str, entity: str) -> list[Facet]:
@@ -113,8 +112,8 @@ class FakeGraph:
     detect_svs, observation_facets) plus the eval-compatible methods (exists,
     count_observations).
 
-    An absent dcid yields node_label=None / exists=False — this is what makes
-    the offline groundedness and fabrication checks real.
+    An absent dcid yields node_label=None / exists=False. A missing name arc keeps
+    the shape (never drop on missing label).
 
     Pass raise_on_call=True to get a graph that raises GraphInfraError on every
     call (for testing the error propagation path).
@@ -168,11 +167,31 @@ class FakeGraph:
             return self._impl.resolve_entity(name)
         return self._resolve.get(name)
 
-    def detect_svs(self, query: str) -> tuple[list[str], list[str]]:
+    def detect_svs(self, query: str) -> tuple[list[str], list[str], list[float]]:
         if self._impl is not None:
             return self._impl.detect_svs(query)
         entry = self._detect.get(query, {})
-        return entry.get("svs", []), entry.get("entities", [])
+        svs: list[str] = entry.get("svs", [])
+        raw_scores: list[float] = entry.get("cosine_scores", [])
+        # Mirror LiveGraphClient's threshold filtering: when cosine_scores is
+        # present in the fixture (same length as svs), drop SVs below threshold
+        # and return the matching filtered scores. Entries without cosine_scores
+        # pass through unfiltered with each SV defaulting to score 1.0.
+        if raw_scores and len(raw_scores) == len(svs):
+            from qre.engine.config import QRE_RELEVANCE_THRESHOLD  # noqa: PLC0415
+            filtered = [
+                (sv, sc) for sv, sc in zip(svs, raw_scores) if sc >= QRE_RELEVANCE_THRESHOLD
+            ]
+            if filtered:
+                svs, out_scores = zip(*filtered, strict=False)
+                svs = list(svs)
+                out_scores = list(out_scores)
+            else:
+                svs = []
+                out_scores = []
+        else:
+            out_scores = [1.0] * len(svs)
+        return svs, entry.get("entities", []), out_scores
 
     def observation_facets(self, *, stat_var: str, entity: str) -> list[Facet]:
         if self._impl is not None:

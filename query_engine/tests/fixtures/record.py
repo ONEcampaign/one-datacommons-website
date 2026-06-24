@@ -4,13 +4,14 @@ Run with live credentials to record fixture files from the staging graph and API
 This is the only step requiring credentials; CI runs entirely offline.
 
 Records LLM responses and graph data with credentials stripped.
-LLM responses are keyed by schema_name:sha1(system+chr(1)+prompt).
 """
 from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
+import time
 from pathlib import Path
 from typing import Any, TypeVar
 
@@ -18,6 +19,12 @@ from pydantic import BaseModel
 
 _FIXTURES_DIR = Path(__file__).parent
 _GOLDENS_PATH = Path(__file__).parent.parent.parent / "goldens.json"
+
+# Inter-call delay (seconds) between live graph reads during recording. Heavy queries
+# (60+ SVs) fire one node read per SV; without a pause they overload the staging node
+# endpoint and it returns 503. Tunable via QRE_RECORD_THROTTLE_S. Recording is offline-only
+# tooling, so a slower-but-reliable record is the right trade.
+_RECORD_THROTTLE_S = float(os.getenv("QRE_RECORD_THROTTLE_S", "0.3"))
 
 _T = TypeVar("_T", bound=BaseModel)
 
@@ -75,6 +82,7 @@ class _RecordingGraph:
         return result
 
     def node_arcs(self, dcid: str) -> dict | None:
+        time.sleep(_RECORD_THROTTLE_S)
         result = self._graph.node_arcs(dcid)
         if result is not None:
             label = self._graph.node_label(dcid)
@@ -91,6 +99,7 @@ class _RecordingGraph:
 
     def _record_node(self, dcid: str) -> None:
         if dcid not in self._nodes:
+            time.sleep(_RECORD_THROTTLE_S)
             arcs = self._graph.node_arcs(dcid)
             if arcs is not None:
                 label = self._graph.node_label(dcid)
@@ -102,16 +111,19 @@ class _RecordingGraph:
                 }
 
     def resolve_entity(self, name: str) -> str | None:
+        time.sleep(_RECORD_THROTTLE_S)
         result = self._graph.resolve_entity(name)
         self._resolve[name] = result
         return result
 
-    def detect_svs(self, query: str) -> tuple[list[str], list[str]]:
-        svs, entities = self._graph.detect_svs(query)
-        self._detect[query] = {"svs": svs, "entities": entities}
-        return svs, entities
+    def detect_svs(self, query: str) -> tuple[list[str], list[str], list[float]]:
+        time.sleep(_RECORD_THROTTLE_S)
+        svs, entities, scores = self._graph.detect_svs(query)
+        self._detect[query] = {"svs": svs, "entities": entities, "cosine_scores": scores}
+        return svs, entities, scores
 
     def observation_facets(self, *, stat_var: str, entity: str):
+        time.sleep(_RECORD_THROTTLE_S)
         result = self._graph.observation_facets(stat_var=stat_var, entity=entity)
         key = f"{stat_var}|{entity}"
         self._obs[key] = [
@@ -141,47 +153,85 @@ def _write_json(path: Path, data: dict) -> None:
 
 
 def main() -> None:
+    import argparse
+
     from qre.engine.graph import LiveGraphClient
     from qre.engine.llm import LLM
     from qre.models import RawTextInput, ResolveRequest
 
-    print("QRE fixture recorder (requires GEMINI_API_KEY and graph access)")
+    parser = argparse.ArgumentParser(description="QRE fixture recorder")
+    parser.add_argument(
+        "--domain",
+        default="development_finance",
+        help=(
+            "Domain tag to filter goldens for recording "
+            "(default: development_finance; use 'standard' for standard-DC goldens)."
+        ),
+    )
+    parser.add_argument(
+        "--ids",
+        default=None,
+        help="Comma-separated golden ids to record (intersected with --domain).",
+    )
+    args = parser.parse_args()
+    domain = args.domain
+    only_ids = {i.strip() for i in args.ids.split(",")} if args.ids else None
+
+    print(f"QRE fixture recorder (domain={domain!r}; requires GEMINI_API_KEY and graph access)")
 
     goldens = json.loads(_GOLDENS_PATH.read_text())
-    df_goldens = [
+    domain_goldens = [
         g for g in goldens
-        if any(t.get("domain") == "development_finance" for t in g.get("tags", []))
+        if any(t.get("domain") == domain for t in g.get("tags", []))
+        and (only_ids is None or g.get("id") in only_ids)
     ]
-    print(f"Found {len(df_goldens)} dev-finance goldens to record")
+    if only_ids:
+        print(f"Recording only ids: {sorted(only_ids)}")
+    print(f"Found {len(domain_goldens)} {domain!r} goldens to record")
 
-    llm_store: dict = {}
-    nodes_store: dict = {}
-    obs_store: dict = {}
-    detect_store: dict = {}
-    resolve_store: dict = {}
+    # Load existing fixtures so new entries are merged (upserted) rather than replacing.
+    def _load_existing(name: str) -> dict:
+        path = _FIXTURES_DIR / name
+        if path.exists():
+            with open(path) as _f:
+                return json.load(_f)
+        return {}
+
+    llm_store: dict = _load_existing("llm_responses.json")
+    nodes_store: dict = _load_existing("graph_nodes.json")
+    obs_store: dict = _load_existing("graph_obs.json")
+    detect_store: dict = _load_existing("graph_detect.json")
+    resolve_store: dict = _load_existing("graph_resolve.json")
 
     live_graph = LiveGraphClient()
     live_llm = LLM()
     rec_graph = _RecordingGraph(live_graph, nodes_store, obs_store, detect_store, resolve_store)
     rec_llm = _RecordingLLM(live_llm, llm_store)
 
-    # Import resolve_async lazily so record.py can be imported from Slice A.
     try:
         import asyncio
 
         from qre.engine.core import resolve_async
 
-        for golden in df_goldens:
+        for golden in domain_goldens:
             gid = golden["id"]
             query = golden["query"]
             print(f"  Recording {gid}: {query!r}")
-            try:
-                request = ResolveRequest(input=RawTextInput(query=query))
-                asyncio.run(resolve_async(request, graph=rec_graph, llm=rec_llm))
-            except Exception as exc:
-                print(f"    ERROR on {gid}: {exc}")
+            _max_attempts = 5
+            for _attempt in range(1, _max_attempts + 1):
+                try:
+                    request = ResolveRequest(input=RawTextInput(query=query))
+                    asyncio.run(resolve_async(request, graph=rec_graph, llm=rec_llm))
+                    break
+                except Exception as exc:
+                    if _attempt < _max_attempts:
+                        _wait = 2 ** _attempt
+                        print(f"    attempt {_attempt} FAIL ({exc}); retrying in {_wait}s")
+                        time.sleep(_wait)
+                    else:
+                        print(f"    ERROR on {gid} (all {_max_attempts} attempts): {exc}")
     except ImportError:
-        print("  qre.engine.core not yet available (Slice D); recording graph probes only.")
+        print("  qre.engine.core not yet available; recording graph probes only.")
         # Record graph facts for known dcids from the fixture files even without the full engine.
         known_dcids = [
             "DevelopmentFinance", "DevelopmentFinanceFlow", "measuredValue",

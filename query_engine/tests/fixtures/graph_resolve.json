@@ -1,6 +1,5 @@
 {
   "_comment": "resolve_entity() results keyed by entity name string. Sourced from §0 live staging probe facts. Values are dcids (Country-typed). Used by FakeGraph.resolve_entity. None means not resolvable.",
-
   "Ethiopia": "country/ETH",
   "Ethiopia (country)": "country/ETH",
   "Kenya": "country/KEN",
@@ -14,5 +13,7 @@
   "Germany": "country/DEU",
   "France": "country/FRA",
   "India": "country/IND",
-  "Nauru": "country/NRU"
+  "Nauru": "country/NRU",
+  "Brazil": "country/BRA",
+  "California": null
 }

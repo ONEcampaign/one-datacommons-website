@@ -15,9 +15,10 @@ from qre.engine.graph import EngineGraphClient
 
 
 class Recall(BaseModel):
-    """Graph-backed recall: candidate SVs and resolved entity dcids."""
+    """Graph-backed recall: candidate SVs, their cosine scores, and resolved entity dcids."""
 
     candidate_svs: list[str]
+    candidate_sv_scores: list[float]  # parallel to candidate_svs; 1.0 when score unavailable
     resolved_entity_names: dict[str, str]  # surface name → dcid
 
 
@@ -47,7 +48,7 @@ async def recall(
         via node reads in the materialise stage.
     """
     detect_query = raw_query or variable
-    candidate_svs, _entity_dcids = await asyncio.to_thread(graph.detect_svs, detect_query)
+    svs, _entity_dcids, scores = await asyncio.to_thread(graph.detect_svs, detect_query)
 
     resolved: dict[str, str] = {}
     for name in entities:
@@ -55,4 +56,8 @@ async def recall(
         if dcid is not None:
             resolved[name] = dcid
 
-    return Recall(candidate_svs=candidate_svs, resolved_entity_names=resolved)
+    return Recall(
+        candidate_svs=svs,
+        candidate_sv_scores=scores,
+        resolved_entity_names=resolved,
+    )

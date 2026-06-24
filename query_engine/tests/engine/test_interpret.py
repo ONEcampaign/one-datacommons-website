@@ -19,6 +19,7 @@ class TestRecall:
         result = run(recall("health ODA grants", ["USA", "Ethiopia"], graph=graph,
                             raw_query="health ODA grants from USA to Ethiopia"))
         assert any("CRS_DAC" in sv for sv in result.candidate_svs)
+        assert len(result.candidate_sv_scores) == len(result.candidate_svs)
 
     def test_entity_resolution_ethiopia(self):
         graph = FakeGraph()

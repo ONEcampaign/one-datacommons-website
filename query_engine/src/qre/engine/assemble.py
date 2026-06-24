@@ -104,7 +104,7 @@ def build_shape_model(
     Args:
         shape_draft: The ungrounded shape with five-tuple dcids.
         slot_keys: Grounded SlotKey objects (one per slot).
-        five_tuple_refs: Maps five-tuple dcid → GraphRef for pop_type, meas_prop, stat_type.
+        five_tuple_refs: Maps five-tuple dcid → GraphRef for each component.
         member_count: Number of confirmed StatVar members.
 
     Returns:
@@ -124,9 +124,12 @@ def build_shape_model(
         else None
     )
 
-    # pop_type and stat_type are required; if absent, use a placeholder
+    # pop_type, meas_prop, and stat_type are required; if absent from the graph, use a
+    # placeholder so the Spec can be built even when the fixture/graph lacks the node.
     if pop_ref is None:
         pop_ref = GraphRef(dcid=shape_draft.pop_type_dcid, label=shape_draft.pop_type_dcid)
+    if meas_ref is None and shape_draft.meas_prop_dcid:
+        meas_ref = GraphRef(dcid=shape_draft.meas_prop_dcid, label=shape_draft.meas_prop_dcid)
     if stat_ref is None:
         stat_ref = GraphRef(dcid=shape_draft.stat_type_dcid, label=shape_draft.stat_type_dcid)
 
@@ -161,7 +164,7 @@ def build_stat_vars(
     Returns:
         List of StatVar objects.
     """
-    # Collect slot values for the binding (used on each SV)
+    # Collect slot values for the binding
     sv_slot_values: list[StatVarSlotValue] = []
     for slot in slots:
         if slot.key.axis in ("when", "source"):
@@ -170,7 +173,7 @@ def build_stat_vars(
         if isinstance(binding, BindingValue):
             sv_slot_values.append(StatVarSlotValue(key=slot.key, value=binding.value))
         elif isinstance(binding, BindingSet):
-            # Add set binding once (representative purpose across all SVs).
+            # Add set binding once (representative across all SVs).
             for sv in binding.values:
                 sv_slot_values.append(StatVarSlotValue(key=slot.key, value=sv))
             break
@@ -204,14 +207,14 @@ def build_spec(
     Returns:
         A fully-assembled Spec.
     """
-    from qre.models import Spec  # late import to avoid circular
+    from qre.models import BindingKind, Spec  # late imports to avoid circular
 
     spec_id = compute_spec_id(shape.shape_id, slots)
 
     resolved_sv_refs = [sv.ref for sv in stat_vars]
     resolved_entity_refs = [e.ref for e in entities]
 
-    # Build slot_filters for the ResolutionTrace
+    # Build slot_filters for resolution trace
     slot_filters: list[ResolvedFilter] = []
     for slot in slots:
         binding = slot.binding
@@ -221,7 +224,6 @@ def build_spec(
         elif isinstance(binding, BindingSet):
             refs = [sv.ref for sv in binding.values if sv.ref]
 
-        from qre.models import BindingKind  # noqa: PLC0415 — narrow import
         kind: BindingKind = binding.kind  # type: ignore[assignment]
 
         slot_filters.append(
@@ -283,15 +285,36 @@ def assemble_candidates(
     specs: list["Spec"],  # noqa: F821
     query_echo: QueryEcho,
     diagnostics: Diagnostics,
+    *,
+    max_candidates: int | None = None,
 ) -> ResolveResponse:
-    """Build a CandidatesResponse from multiple competing Specs."""
+    """Build a CandidatesResponse from multiple competing Specs.
+
+    Specs are sorted broadest-first (descending member_count, then spec_id
+    lexicographic tiebreak) and clamped to max_candidates.
+
+    Args:
+        specs:          Competing Spec objects (must have len >= 2 before clamping).
+        query_echo:     The query echo to include in the response.
+        diagnostics:    The diagnostics envelope.
+        max_candidates: Upper bound on the number of specs. None defaults to len(specs).
+
+    Returns:
+        A ResolveResponse wrapping a CandidatesResponse.
+    """
+    cap = max_candidates if max_candidates is not None else len(specs)
+
+    # Sort broadest-first: highest member_count, then spec_id.
+    sorted_specs = sorted(specs, key=lambda s: (-s.shape.member_count, s.spec_id))
+    clamped = sorted_specs[:cap]
+
     return ResolveResponse(
         root=CandidatesResponse(
             query_echo=query_echo,
             diagnostics=diagnostics,
             candidates=CandidateSet(
-                max_candidates=len(specs),
-                specs=specs,
+                max_candidates=cap,
+                specs=clamped,
             ),
         )
     )

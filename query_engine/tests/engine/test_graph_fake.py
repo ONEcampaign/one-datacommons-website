@@ -113,17 +113,21 @@ def test_resolve_entity_unknown_name() -> None:
 
 def test_detect_svs_known_query() -> None:
     g = FakeGraph()
-    svs, entities = g.detect_svs("health ODA grants from USA to Ethiopia")
+    svs, entities, scores = g.detect_svs("health ODA grants from USA to Ethiopia")
     assert "ONE/CRS_DAC/Health-ODAGrants-ETH" in svs
     assert "country/USA" in entities
     assert "country/ETH" in entities
+    # This fixture entry has no cosine_scores, so all scores default to 1.0.
+    assert len(scores) == len(svs)
+    assert all(sc == 1.0 for sc in scores)
 
 
 def test_detect_svs_unknown_query_returns_empty() -> None:
     g = FakeGraph()
-    svs, entities = g.detect_svs("some completely unknown query text")
+    svs, entities, scores = g.detect_svs("some completely unknown query text")
     assert svs == []
     assert entities == []
+    assert len(scores) == len(svs)
 
 
 

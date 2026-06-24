@@ -31,7 +31,12 @@ from urllib.parse import urlencode
 
 import httpx
 
-from qre.engine.config import BROWSER_UA, QRE_GRAPH_BASE, QRE_GRAPH_TIMEOUT_S
+from qre.engine.config import (
+    BROWSER_UA,
+    QRE_GRAPH_BASE,
+    QRE_GRAPH_TIMEOUT_S,
+    QRE_RELEVANCE_THRESHOLD,
+)
 from qre.engine.errors import GraphInfraError
 
 # ---------------------------------------------------------------------------
@@ -90,10 +95,13 @@ class EngineGraphClient(Protocol):
         """Resolve an entity name to its dcid (Country-typed), or None if unresolved."""
         ...
 
-    def detect_svs(self, query: str) -> tuple[list[str], list[str]]:
-        """Return (candidate_sv_dcids, entity_dcids) from the explore/detect endpoint.
+    def detect_svs(self, query: str) -> tuple[list[str], list[str], list[float]]:
+        """Return (candidate_sv_dcids, entity_dcids, candidate_sv_scores).
 
-        Recall aid only. Never trust detect output as the authoritative SV.
+        candidate_sv_scores[i] is the cosine score of candidate_sv_dcids[i],
+        post-threshold, in the same order. Scores appended last (not merged into
+        tuples) so existing 2-tuple unpacks (`svs, entities = ...`) become a natural
+        extension (`svs, entities, scores = ...`). Recall aid only.
         """
         ...
 
@@ -112,7 +120,7 @@ class EngineGraphClient(Protocol):
 
 def _pick_label(values: list[str]) -> str:
     """Deterministic label selection: last value (fuller rollup), fallback to first."""
-    return values[-1] if len(values) > 1 else values[0]
+    return values[-1]
 
 
 # ---------------------------------------------------------------------------
@@ -234,12 +242,15 @@ class LiveGraphClient:
             return None
         return candidates[0].get("dcid")
 
-    def detect_svs(self, query: str) -> tuple[list[str], list[str]]:
-        """Return (candidate_sv_dcids, entity_dcids) from /api/explore/detect.
+    def detect_svs(self, query: str) -> tuple[list[str], list[str], list[float]]:
+        """Return (candidate_sv_dcids, entity_dcids, candidate_sv_scores).
 
         Uses POST with contextHistory=[]. The debug.sv_matching.SV field returns
-        a noisy list of candidates; entities returns resolved entity dcids.
-        Recall aid only. The engine confirms every SV via node_arcs.
+        candidates paired with CosineScore relevance scores. SVs below
+        QRE_RELEVANCE_THRESHOLD are dropped before returning so that genuinely
+        unknown variables surface as an empty list rather than low-confidence noise.
+        Entities are returned as-is. When scores are absent or mismatched (legacy
+        branch), every returned SV gets score 1.0 (length-matched).
         """
         url = f"{self._detect_url}?{urlencode({'q': query})}"
         try:
@@ -257,13 +268,25 @@ class LiveGraphClient:
         except Exception as exc:
             raise GraphInfraError(f"Graph detect returned non-JSON body: {exc}") from exc
 
-        sv_dcids: list[str] = (
-            body.get("debug", {})
-            .get("sv_matching", {})
-            .get("SV", [])
-        )
+        sv_matching = body.get("debug", {}).get("sv_matching", {})
+        raw_svs: list[str] = sv_matching.get("SV", [])
+        raw_scores: list[float] = sv_matching.get("CosineScore", [])
+
+        # Apply relevance threshold: keep SVs at or above the threshold with their
+        # scores; when scores are absent or mismatched, assign 1.0 to each SV.
+        if raw_scores and len(raw_scores) == len(raw_svs):
+            sv_dcids, sv_scores = zip(
+                *[(sv, sc) for sv, sc in zip(raw_svs, raw_scores) if sc >= QRE_RELEVANCE_THRESHOLD],
+                strict=False,
+            ) if any(sc >= QRE_RELEVANCE_THRESHOLD for sc in raw_scores) else ([], [])
+            sv_dcids = list(sv_dcids)
+            sv_scores = list(sv_scores)
+        else:
+            sv_dcids = raw_svs
+            sv_scores = [1.0] * len(raw_svs)
+
         entity_dcids: list[str] = body.get("entities", [])
-        return sv_dcids, entity_dcids
+        return sv_dcids, entity_dcids, sv_scores
 
     def observation_facets(self, *, stat_var: str, entity: str) -> list[Facet]:
         """Return orderedFacets for the (stat_var, entity) pair.
@@ -321,11 +344,10 @@ class LiveGraphClient:
         """
         if not stat_vars or not entities:
             return None
-        total = 0
-        for sv in stat_vars:
-            for entity in entities:
-                facets = self.observation_facets(stat_var=sv, entity=entity)
-                for f in facets:
-                    # Each facet counts as one (date, facetId) observation entry.
-                    total += f.obs_count
+        total = sum(
+            f.obs_count
+            for sv in stat_vars
+            for entity in entities
+            for f in self.observation_facets(stat_var=sv, entity=entity)
+        )
         return total if total > 0 else None

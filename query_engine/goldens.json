@@ -1586,7 +1586,7 @@
         "conjunction": "none"
       }
     ],
-    "expected_status": "candidates",
+    "expected_status": "definite",
     "expected_shape": null,
     "expected_slots": [
       {
@@ -1597,13 +1597,7 @@
       }
     ],
     "expected_stat_vars": [
-      "FertilityRate_Person_Female",
-      "FertilityRate_Person_15To19Years_Adolescents_Female_AsAFractionOf_Count_Person_15To19Years_Adolescents_Female",
-      "FertilityRate_Person_15To19Years_Adolescents_Female_Rural_AsAFractionOf_Count_Person_15To19Years_Adolescents_Female_Rural",
-      "FertilityRate_Person_15To19Years_Adolescents_Female_Urban_AsAFractionOf_Count_Person_15To19Years_Adolescents_Female_Urban",
-      "FertilityRate_Person_Female_AsAFractionOf_Count_Person_Female",
-      "FertilityRate_Person_Female_Rural_AsAFractionOf_Count_Person_Rural_Female",
-      "FertilityRate_Person_Female_Urban_AsAFractionOf_Count_Person_Urban_Female"
+      "FertilityRate_Person_Female"
     ],
     "expected_entities": [
       {
@@ -1614,9 +1608,9 @@
       }
     ],
     "expected_no_data_reason": null,
-    "candidate_count": 7,
+    "candidate_count": null,
     "status": "VERIFIED_AGAINST_GRAPH",
-    "notes": "measuredProperty=fertilityRate reverse-arc on prod yields 8 SVs; FertilityRate_Person_Male is excluded (0 observations at country/KEN and absent from NL detect for this query), leaving 7. NL detect returns FertilityRate_Person_Female at cosine 1.0; only it has observations at country/KEN (65 obs from 1960). The other 6 resolve as shape-siblings (candidates) with no data at this entity.\n"
+    "notes": "measuredProperty=fertilityRate reverse-arc on prod yields 8 SVs; FertilityRate_Person_Male is excluded (0 observations at country/KEN and absent from NL detect for this query), leaving 7. NL detect returns FertilityRate_Person_Female at cosine 1.0; only it has observations at country/KEN (65 obs from 1960). The other 6 resolve as shape-siblings (candidates) with no data at this entity.\n [2026-06-24: dominance rule resolves this definite (FertilityRate_Person_Female dominates, cosine margin 0.243 > std-01); was candidates.]"
   },
   {
     "slice": "main",
@@ -1732,7 +1726,7 @@
     "expected_no_data_reason": "variable_not_resolved",
     "candidate_count": null,
     "status": "VERIFIED_AGAINST_GRAPH",
-    "notes": "country/FRA resolves on prod (alpha2=FR). NL detect returns no left-handedness SV; top cosine is 0.42 (Percent_Person_WithArthritis), below the ~0.5 relevance threshold. No StatVar for left-handedness exists. Entity resolves; variable does not -> variable_not_resolved.\n"
+    "notes": "country/FRA resolves on prod (alpha2=FR). NL detect returns ~60 SVs for \"left-handedness rate in France\" (closest match Percent_Person_WithArthritis, cosine ~0.42). QRE_RELEVANCE_THRESHOLD=0.5 drops all of them, leaving empty recall -> variable_not_resolved. (No actual left-handedness StatVar exists in Data Commons.)\n"
   },
   {
     "slice": "main",

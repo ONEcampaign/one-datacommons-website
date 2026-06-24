@@ -1,50 +1,314 @@
 {
   "_comment": "Observation facets keyed by 'sv|entity'. Sourced from §0 live staging probe facts + goldens.json notes. Each value is a list of facet dicts with earliestDate, latestDate, obsCount. Used by FakeGraph.observation_facets.",
-
   "ONE/CRS_DAC/Health-ODAGrants-ETH|country/USA": [
-    {"earliestDate": "1991", "latestDate": "2024", "obsCount": 402}
+    {
+      "earliestDate": "1991",
+      "latestDate": "2024",
+      "obsCount": 402
+    }
   ],
   "ONE/CRS_DAC/Health-ODAGrants-KEN|country/USA": [
-    {"earliestDate": "1980", "latestDate": "2024", "obsCount": 462}
+    {
+      "earliestDate": "1980",
+      "latestDate": "2024",
+      "obsCount": 462
+    }
   ],
   "ONE/CRS_DAC/Health-ODAGrants-KEN|country/GBR": [
-    {"earliestDate": "1988", "latestDate": "2024", "obsCount": 432}
+    {
+      "earliestDate": "1988",
+      "latestDate": "2024",
+      "obsCount": 432
+    }
   ],
   "ONE/CRS_DAC/Health-OfficialDevelopmentAssistance-ETH|country/DEU": [
-    {"earliestDate": "1997", "latestDate": "2024", "obsCount": 372}
+    {
+      "earliestDate": "1997",
+      "latestDate": "2024",
+      "obsCount": 372
+    }
   ],
   "ONE/CRS_DAC/STDcontrolincludingHIVAIDS-ODAGrants-KEN|country/USA": [
-    {"earliestDate": "1995", "latestDate": "2024", "obsCount": 378}
+    {
+      "earliestDate": "1995",
+      "latestDate": "2024",
+      "obsCount": 378
+    }
   ],
   "ONE/CRS_DAC/BasicHealth-ODAGrants-KEN|country/USA": [
-    {"earliestDate": "1980", "latestDate": "2024", "obsCount": 366}
+    {
+      "earliestDate": "1980",
+      "latestDate": "2024",
+      "obsCount": 366
+    }
   ],
   "ONE/CRS_DAC/BasicHealth-ODAGrants-KEN|country/FRA": [
-    {"earliestDate": "2000", "latestDate": "2024", "obsCount": 258}
+    {
+      "earliestDate": "2000",
+      "latestDate": "2024",
+      "obsCount": 258
+    }
   ],
   "ONE/CRS_DAC/Reproductivehealthcare-ODAGrants-ETH|country/USA": [
-    {"earliestDate": "1994", "latestDate": "2024", "obsCount": 318}
+    {
+      "earliestDate": "1994",
+      "latestDate": "2024",
+      "obsCount": 318
+    }
   ],
   "ONE/CRS_DAC/Health-ODALoans-KEN|country/USA": [
-    {"earliestDate": "1982", "latestDate": "1982", "obsCount": 6}
+    {
+      "earliestDate": "1982",
+      "latestDate": "1982",
+      "obsCount": 6
+    }
   ],
   "ONE/CRS_DAC/Health-ODAPrivateSectorInstruments-KEN|country/USA": [
-    {"earliestDate": "2023", "latestDate": "2023", "obsCount": 6}
+    {
+      "earliestDate": "2023",
+      "latestDate": "2023",
+      "obsCount": 6
+    }
   ],
   "ONE/CRS_DAC/Health-OtherOfficialFlows-KEN|country/USA": [],
   "ONE/CRS_DAC/Health-PrivateDevelopmentFinance-KEN|country/USA": [],
   "ONE/CRS_DAC/Health-ODAEquityInvestment-KEN|country/USA": [],
   "ONE/CRS_DAC/Health-OfficialDevelopmentAssistance-KEN|country/USA": [
-    {"earliestDate": "1980", "latestDate": "2024", "obsCount": 462}
+    {
+      "earliestDate": "1980",
+      "latestDate": "2024",
+      "obsCount": 462
+    }
   ],
   "ONE/CRS_DAC/Healtheducation-OfficialDevelopmentAssistance-IND|country/USA": [
-    {"earliestDate": "2000", "latestDate": "2024", "obsCount": 180}
+    {
+      "earliestDate": "2000",
+      "latestDate": "2024",
+      "obsCount": 180
+    }
   ],
   "ONE/CRS_DAC/Medicaleducationtraining-OfficialDevelopmentAssistance-IND|country/USA": [
-    {"earliestDate": "2000", "latestDate": "2024", "obsCount": 170}
+    {
+      "earliestDate": "2000",
+      "latestDate": "2024",
+      "obsCount": 170
+    }
   ],
   "ONE/CRS_DAC/Health-ODAGrants-NRU|country/USA": [],
   "ONE/CRS_DAC/Malariacontrol-ODAGrants-ETH|country/USA": [
-    {"earliestDate": "2007", "latestDate": "2024", "obsCount": 270}
-  ]
+    {
+      "earliestDate": "2007",
+      "latestDate": "2024",
+      "obsCount": 270
+    }
+  ],
+  "Amount_EconomicActivity_ExpenditureActivity_EducationExpenditure_Government_AsFractionOf_Amount_EconomicActivity_ExpenditureActivity_Government|country/KEN": [
+    {
+      "earliestDate": "1982",
+      "latestDate": "2025",
+      "obsCount": 35
+    }
+  ],
+  "Count_BirthEvent|country/ETH": [],
+  "FertilityRate_Person_Female|country/KEN": [
+    {
+      "earliestDate": "1960",
+      "latestDate": "2023",
+      "obsCount": 64
+    },
+    {
+      "earliestDate": "2019",
+      "latestDate": "2019",
+      "obsCount": 1
+    }
+  ],
+  "Count_Teacher_ElementaryTeacher|country/NRU": [],
+  "Count_Death_0Years_AsFractionOf_Count_BirthEvent_LiveBirth|country/ETH": [
+    {
+      "earliestDate": "1966",
+      "latestDate": "2023",
+      "obsCount": 58
+    }
+  ],
+  "ONE/CRS_DAC/Familyplanning-ODAGrants-KEN|country/KEN": [],
+  "Count_Person|country/IND": [
+    {
+      "earliestDate": "1960",
+      "latestDate": "2024",
+      "obsCount": 65
+    },
+    {
+      "earliestDate": "2011",
+      "latestDate": "2011",
+      "obsCount": 1
+    },
+    {
+      "earliestDate": "2011",
+      "latestDate": "2026",
+      "obsCount": 16
+    },
+    {
+      "earliestDate": "1991",
+      "latestDate": "2022",
+      "obsCount": 21
+    },
+    {
+      "earliestDate": "2000",
+      "latestDate": "2016",
+      "obsCount": 17
+    },
+    {
+      "earliestDate": "1960",
+      "latestDate": "2020-07",
+      "obsCount": 61
+    }
+  ],
+  "Count_BirthEvent_LiveBirth_AsFractionOf_Count_Person|country/ETH": [
+    {
+      "earliestDate": "1960",
+      "latestDate": "2023",
+      "obsCount": 64
+    }
+  ],
+  "ONE/who_hc61-gghed-gdp|country/IND": [
+    {
+      "earliestDate": "2000",
+      "latestDate": "2022",
+      "obsCount": 20
+    }
+  ],
+  "Amount_EconomicActivity_GrossDomesticProduction_Nominal|country/IND": [
+    {
+      "earliestDate": "2000",
+      "latestDate": "2022",
+      "obsCount": 20
+    }
+  ],
+  "Amount_EconomicActivity_GrossDomesticProduction_NAICSFinanceInsurance_RealValue|country/IND": [
+    {
+      "earliestDate": "2000",
+      "latestDate": "2022",
+      "obsCount": 20
+    }
+  ],
+  "Amount_EconomicActivity_GrossDomesticProduction_Nominal_PerCapita|country/IND": [
+    {
+      "earliestDate": "2000",
+      "latestDate": "2022",
+      "obsCount": 20
+    }
+  ],
+  "GrowthRate_Amount_EconomicActivity_GrossDomesticProduction|country/IND": [
+    {
+      "earliestDate": "2000",
+      "latestDate": "2022",
+      "obsCount": 20
+    }
+  ],
+  "ONE/who_hc61-gghed-gdp|country/BRA": [
+    {
+      "earliestDate": "2000",
+      "latestDate": "2022",
+      "obsCount": 20
+    }
+  ],
+  "Amount_EconomicActivity_GrossDomesticProduction_Nominal|country/BRA": [
+    {
+      "earliestDate": "2000",
+      "latestDate": "2022",
+      "obsCount": 20
+    }
+  ],
+  "Amount_EconomicActivity_GrossDomesticProduction_NAICSFinanceInsurance_RealValue|country/BRA": [
+    {
+      "earliestDate": "2000",
+      "latestDate": "2022",
+      "obsCount": 20
+    }
+  ],
+  "Amount_EconomicActivity_GrossDomesticProduction_Nominal_PerCapita|country/BRA": [
+    {
+      "earliestDate": "2000",
+      "latestDate": "2022",
+      "obsCount": 20
+    }
+  ],
+  "Median_Income_Household|geoId/06": [
+    {
+      "earliestDate": "2000",
+      "latestDate": "2022",
+      "obsCount": 20
+    }
+  ],
+  "Mean_Income_Household|geoId/06": [
+    {
+      "earliestDate": "2000",
+      "latestDate": "2022",
+      "obsCount": 20
+    }
+  ],
+  "Mean_MothersAge_BirthEvent_LiveBirth|country/ETH": [],
+  "Count_BirthEvent_AsAFractionOfCount_Person|country/ETH": [],
+  "Count_Death_0Years_Female_AsFractionOf_Count_BirthEvent_LiveBirth_Female|country/ETH": [
+    {
+      "earliestDate": "1966",
+      "latestDate": "2023",
+      "obsCount": 58
+    }
+  ],
+  "Count_Death_0Years_AsFractionOf_Count_BirthEvent_LiveBirth|country/USA": [
+    {
+      "earliestDate": "2000",
+      "latestDate": "2022",
+      "obsCount": 20
+    }
+  ],
+  "Count_Death_0Years_Female_AsFractionOf_Count_BirthEvent_LiveBirth_Female|country/USA": [
+    {
+      "earliestDate": "2000",
+      "latestDate": "2022",
+      "obsCount": 20
+    }
+  ],
+  "Count_BirthEvent_LiveBirth_AsFractionOf_Count_Person|country/KEN": [
+    {
+      "earliestDate": "2000",
+      "latestDate": "2022",
+      "obsCount": 20
+    }
+  ],
+  "Count_Death_0Years_Male_AsFractionOf_Count_BirthEvent_LiveBirth_Male|country/ETH": [
+    {
+      "earliestDate": "1966",
+      "latestDate": "2023",
+      "obsCount": 58
+    }
+  ],
+  "Amount_EconomicActivity_ExpenditureActivity_EducationExpenditure_Government_AsFractionOf_Amount_EconomicActivity_GrossDomesticProduction_Nominal|country/KEN": [
+    {
+      "earliestDate": "1971",
+      "latestDate": "2024",
+      "obsCount": 43
+    }
+  ],
+  "ReceiptsOrRevenue_Establishment_NAICSEducationalServices_WithPayroll_SubjectToFederalIncomeTax|country/KEN": [],
+  "USStateQuarterlyIndustryGDP_NAICS_61|country/KEN": [],
+  "Amount_EconomicActivity_ExpenditureActivity_TertiaryEducationExpenditure_Government_AsFractionOf_Amount_EconomicActivity_ExpenditureActivity_EducationExpenditure_Government|country/KEN": [
+    {
+      "earliestDate": "1971",
+      "latestDate": "2015",
+      "obsCount": 31
+    }
+  ],
+  "Amount_EconomicActivity_GrossDomesticProduction_NAICSEducationalServices_RealValue|country/KEN": [],
+  "Mean_IntervalSinceLastBirth_BirthEvent_LiveBirth_MotherForeignBorn|country/ETH": [],
+  "MedianMothersAge_BirthEvent|country/ETH": [],
+  "Count_Person_Female_ForeignBorn_PlaceOfBirthEurope|country/ETH": [],
+  "Count_Student|country/NRU": [],
+  "Count_Person_DetailedEnrolledInGrade7|country/NRU": [],
+  "Count_School_SeniorSecondarySchool_Grade1To10|country/NRU": [],
+  "Percent_Student_AsAFractionOf_Count_Teacher|country/NRU": [],
+  "Count_Death_Upto1Years_CertainConditionsOriginatingInThePerinatalPeriod|country/ETH": [],
+  "Count_Death_LessThan1Year_AsAFractionOf_Count_BirthEvent|country/ETH": [],
+  "Count_Death_Infant|country/ETH": []
 }

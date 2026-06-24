@@ -1,38 +1,31 @@
-"""Materialise stage: confirm SVs exist and probe for observations.
+"""Materialise stage: thin resolver dispatcher.
 
-Returns either Materialised (confirmed SV dcids with observation facets and coverage)
-or NoDataDraft (a named reason why no data can be returned).
+``materialise`` delegates to the shape's family resolver. All family-specific
+logic lives in the resolver's ``resolve()`` method.
 
-For dev-finance, the SV dcid is constructed from (scheme, purpose, recipient)
-and confirmed via a node read. Unconfirmed SVs are dropped silently.
-
-When no donor is named (donor_dcid=None), a default active donor is used
-for the has_data probe.
+Result types:
+  Materialised         — confirmed SV dcids + observation facets + coverage.
+  NoDataDraft          — named reason why no data can be returned.
+  MaterialisedCandidates — multiple Materialised results, one per surviving shape.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 from qre.engine.bind import SlotBindingDraft
-from qre.engine.coverage import coverage_from_facets
-from qre.engine.families import SCHEMES, construct_sv_dcid
 from qre.engine.graph import EngineGraphClient, Facet
 from qre.engine.shape import ShapeDraft
-from qre.models import CoverageBreadth
-
-# Default donor for has_data probes when no specific donor is named.
-# country/USA is consistently active in dev-finance data.
-_DEFAULT_PROBE_DONOR = "country/USA"
+from qre.models import Coverage
 
 
 @dataclass
 class Materialised:
-    """Confirmed SV dcids and observation facets for a dev-finance query."""
+    """Confirmed SV dcids and observation facets for a resolved query."""
 
     sv_dcids: list[str]
     facets: list[Facet]
     has_data: bool
-    coverage: CoverageBreadth
+    coverage: Coverage
 
 
 @dataclass
@@ -42,23 +35,16 @@ class NoDataDraft:
     reason: str  # "no_observations" | "denominator_not_available" | "variable_not_resolved"
 
 
-def _find_binding(bindings: list[SlotBindingDraft], property_dcid: str) -> SlotBindingDraft | None:
-    """Return the first binding whose property_dcid matches, or None."""
-    for b in bindings:
-        if b.property_dcid == property_dcid:
-            return b
-    return None
+@dataclass
+class MaterialisedCandidates:
+    """Multiple Materialised results, one per surviving shape.
 
+    Produced when recall+confirm yields several plausible five-tuple groups and
+    no single dominant shape can be chosen.  Defined here alongside the resolver
+    Protocol so its return type is stable.
+    """
 
-def _confirm_sv(sv_dcid: str, graph: EngineGraphClient) -> bool:
-    """Return True if the SV dcid exists in the graph (has a label)."""
-    label = graph.node_label(sv_dcid)
-    return label is not None
-
-
-def _probe_facets(sv_dcid: str, entity_dcid: str, graph: EngineGraphClient) -> list[Facet]:
-    """Return observation facets for (sv, entity), empty list if none."""
-    return graph.observation_facets(stat_var=sv_dcid, entity=entity_dcid)
+    candidates: list[Materialised]
 
 
 def materialise(
@@ -68,126 +54,40 @@ def materialise(
     donor_dcid: str | None,
     *,
     graph: EngineGraphClient,
-) -> Materialised | NoDataDraft:
-    """Confirm dev-finance SVs exist and probe for observations.
+) -> Materialised | NoDataDraft | MaterialisedCandidates:
+    """Delegate resolution to the shape's family resolver.
 
-    For dev-finance, the SV dcid is constructed from (scheme, purpose, recipient)
-    using construct_sv_dcid(), then confirmed via graph.node_label(). Only confirmed
-    SVs are included in the result.
-
-    Binding semantics for scheme:
-      value  → construct and confirm one SV.
-      set    → construct, confirm each, collect all confirmed.
-      unbound → no SV dcids (all schemes are open); probe one member SV for has_data.
-      absent → treated as unbound.
+    The shape carries its matched FamilyRule (stamped by discover.derive_shapes).
+    When no family_rule is present (legacy build_shape path), falls back to the
+    dev-finance resolver for backward compatibility.
 
     Args:
-        shape: The ShapeDraft for the query's family.
-        bindings: Slot bindings from the LLM bind stage.
-        recipient_dcid: The resolved recipient dcid (from the where binding or roles).
-            When None, the where slot is absent/unbound; no SV can be constructed.
-        donor_dcid: The resolved donor dcid (the observationAbout entity).
-            When None (no named donor), the default probe donor is used.
-        graph: Graph client (injected; use FakeGraph in tests).
+        shape:          The ShapeDraft for the query's family.
+        bindings:       Slot bindings from the LLM bind stage.
+        recipient_dcid: The resolved recipient dcid (from where binding or entity roles).
+        donor_dcid:     The resolved donor dcid (observationAbout entity).
+        graph:          Graph client (injected for testability).
 
     Returns:
         Materialised on success, NoDataDraft on any data-absence outcome.
     """
-    # Find scheme, purpose, recipient bindings
-    scheme_binding = _find_binding(bindings, "DevelopmentFinanceScheme")
-    purpose_binding = _find_binding(bindings, "DevelopmentFinancePurpose")
-
-    # Without a recipient dcid we cannot construct any SV
-    if recipient_dcid is None:
-        return NoDataDraft(reason="variable_not_resolved")
-
-    # The donor for observation probing
-    probe_donor = donor_dcid or _DEFAULT_PROBE_DONOR
-
-    # Scheme unbound (df-09): all schemes are open. Probe one member to test for data.
-    scheme_kind = scheme_binding.kind if scheme_binding else "unbound"
-    if scheme_kind in ("unbound", "absent"):
-        # When purpose is bound (value or set), probe across all its dcids so an
-        # education query is not falsely evaluated against the Health sector.
-        # Fall back to DAC/Health only when purpose is genuinely unbound or empty.
-        if (
-            purpose_binding
-            and purpose_binding.kind in ("value", "set")
-            and purpose_binding.value_dcids
-        ):
-            probe_purpose_dcids = list(purpose_binding.value_dcids)
-        else:
-            probe_purpose_dcids = ["DAC/Health"]
-
-        # Probe the first scheme member across all relevant purpose dcids.
-        probe_scheme = SCHEMES[0]
-        probe_facets: list[Facet] = []
-        for purpose_dcid in probe_purpose_dcids:
-            probe_sv = construct_sv_dcid(probe_scheme, purpose_dcid, recipient_dcid)
-            probe_facets.extend(_probe_facets(probe_sv, probe_donor, graph))
-
-        # Return a named no-data outcome if no observations found.
-        if not probe_facets or not any(f.obs_count > 0 for f in probe_facets):
-            return NoDataDraft(reason="no_observations")
-
-        coverage = coverage_from_facets(probe_facets)
-        return Materialised(
-            sv_dcids=[],
-            facets=probe_facets,
-            has_data=True,
-            coverage=coverage,
+    if shape.family_rule is not None:
+        return shape.family_rule.resolver.resolve(
+            shape=shape,
+            bindings=bindings,
+            recipient_dcid=recipient_dcid,
+            donor_dcid=donor_dcid,
+            graph=graph,
         )
 
-    # Purpose must be bound (value or set) to construct SVs
-    if purpose_binding is None or purpose_binding.kind == "unbound":
-        return NoDataDraft(reason="variable_not_resolved")
+    # Legacy fallback: no family_rule stamped on the shape (build_shape path).
+    # Route to the dev-finance resolver so backward-compat tests keep passing.
+    from qre.engine.families.dev_finance import DEV_FINANCE_RESOLVER  # noqa: PLC0415
 
-    # Collect (scheme, purpose) pairs based on binding kinds
-    purpose_dcids: list[str]
-    scheme_dcids: list[str]
-
-    if scheme_kind == "value":
-        scheme_dcids = scheme_binding.value_dcids[:1] if scheme_binding.value_dcids else []
-    elif scheme_kind == "set":
-        scheme_dcids = list(scheme_binding.value_dcids)
-    else:
-        scheme_dcids = []
-
-    if purpose_binding.kind == "value":
-        purpose_dcids = purpose_binding.value_dcids[:1] if purpose_binding.value_dcids else []
-    elif purpose_binding.kind == "set":
-        purpose_dcids = list(purpose_binding.value_dcids)
-    else:
-        purpose_dcids = []
-
-    if not scheme_dcids or not purpose_dcids:
-        return NoDataDraft(reason="variable_not_resolved")
-
-    # Construct and confirm each (scheme, purpose) × recipient combination
-    confirmed_svs: list[str] = []
-    all_facets: list[Facet] = []
-
-    for scheme in scheme_dcids:
-        for purpose in purpose_dcids:
-            sv_dcid = construct_sv_dcid(scheme, purpose, recipient_dcid)
-            if not _confirm_sv(sv_dcid, graph):
-                continue
-            confirmed_svs.append(sv_dcid)
-            facets = _probe_facets(sv_dcid, probe_donor, graph)
-            all_facets.extend(facets)
-
-    if not confirmed_svs:
-        return NoDataDraft(reason="no_observations")
-
-    # Determine has_data from facets
-    has_data = any(f.obs_count > 0 for f in all_facets)
-    if not has_data:
-        return NoDataDraft(reason="no_observations")
-
-    coverage = coverage_from_facets(all_facets)
-    return Materialised(
-        sv_dcids=confirmed_svs,
-        facets=all_facets,
-        has_data=has_data,
-        coverage=coverage,
+    return DEV_FINANCE_RESOLVER.resolve(
+        shape=shape,
+        bindings=bindings,
+        recipient_dcid=recipient_dcid,
+        donor_dcid=donor_dcid,
+        graph=graph,
     )
