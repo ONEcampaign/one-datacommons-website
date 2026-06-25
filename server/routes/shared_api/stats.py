@@ -183,5 +183,15 @@ def search_statvar():
     else:
       result = {"matches": [], "statVars": [], "statVarGroups": []}
   else:
-    result = dc.search_statvar(query, entities, sv_only)
+    if current_app.config.get("ENABLE_MODEL", False) and current_app.config.get(
+        "CUSTOM", False):
+      filtered_statvars = stat_var_search_v2.stat_var_v2_search(query, entities)
+
+      result = {
+          "statVars": filtered_statvars,
+          "matches": [],
+          "statVarGroups": []
+      }
+    else:
+      result = {"matches": [], "statVars": [], "statVarGroups": []}
   return Response(json.dumps(result), 200, mimetype='application/json')
