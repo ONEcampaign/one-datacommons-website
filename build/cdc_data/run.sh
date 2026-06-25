@@ -33,8 +33,8 @@ if [[ $OUTPUT_DIR == "" ]]; then
 fi
 
 if [[ $DATA_RUN_MODE != "" ]]; then
-    if [[ $DATA_RUN_MODE != "schemaupdate" ]]; then
-      echo "DATA_RUN_MODE must be either empty or 'schemaupdate'"
+    if [[ $DATA_RUN_MODE != "schemaupdate" && $DATA_RUN_MODE != "dcpbridge" ]]; then
+      echo "DATA_RUN_MODE must be either empty, 'schemaupdate', or 'dcpbridge'"
       exit 1
     fi
     echo "DATA_RUN_MODE=$DATA_RUN_MODE"
@@ -78,7 +78,8 @@ cd $WORKSPACE_DIR/import/simple
 python3 -m stats.main \
     --input_dir=$INPUT_DIR \
     --output_dir=$DC_OUTPUT_DIR \
-    --mode=$DATA_RUN_MODE
+    --mode=$DATA_RUN_MODE \
+    "$@"
 
 # cd back to workspace dir to run the embeddings builder.
 cd $WORKSPACE_DIR
@@ -86,7 +87,10 @@ cd $WORKSPACE_DIR
 if [[ $DATA_RUN_MODE == "schemaupdate" ]]; then
     echo "Skipping embeddings builder because run mode is 'schemaupdate'."
     echo "Schema update complete."
+elif [[ $DATA_RUN_MODE == "dcpbridge" && $ENABLE_SPANNER_EMBEDDINGS == "true" ]]; then
+    : # skip GCS embeddings for DCP
 else
+    echo "Starting embeddings builder..."
     # Run embeddings builder.
     python3 -m tools.nl.embeddings.build_embeddings \
         --embeddings_name=$CUSTOM_EMBEDDINGS_INDEX \
