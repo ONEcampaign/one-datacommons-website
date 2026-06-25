@@ -131,3 +131,4 @@ GEMINI.md
 server/tests/test_data/webdriver_recordings/
 /.codegraph
 *.md
+/dc_search_server/scripts
