@@ -1,7 +1,10 @@
 import unittest
+from unittest import mock
 
 from flask import Flask
 
+from server.__init__ import create_app
+import server.lib.config as lib_config
 from server.routes import redirects_one
 
 
@@ -145,6 +148,29 @@ class TestRedirectsOne(unittest.TestCase):
       self.assertTrue(redirects_one.should_redirect(p), p)
     for p in passthroughs:
       self.assertFalse(redirects_one.should_redirect(p), p)
+
+
+class TestRedirectsOneWiring(unittest.TestCase):
+  """Guards the install() call in create_app, not just install() itself.
+
+  A customdc_stable sync once dropped the two-line wiring from
+  server/__init__.py while leaving redirects_one.py in place, orphaning the
+  redirect on prod. This test fails if create_app stops installing it under
+  the 'one' env.
+  """
+
+  def test_create_app_installs_redirect_for_one_env(self):
+    # get_config() returns the light test config; match the 'one' env so
+    # create_app takes the redirect branch. CUSTOM=True mirrors one.py and
+    # skips the GCS-backed load_redirects(), keeping the test offline.
+    cfg = lib_config.get_config()
+    cfg.ENV = 'one'
+    cfg.CUSTOM = True
+    with mock.patch.object(lib_config, 'get_config', return_value=cfg):
+      app = create_app()
+    resp = app.test_client().get('/', follow_redirects=False)
+    self.assertEqual(resp.status_code, 301)
+    self.assertEqual(resp.headers['Location'], 'https://data.one.org')
 
 
 if __name__ == '__main__':
