@@ -38,17 +38,27 @@ def _main() -> None:
         default=None,
         help='Sync only goldens tagged with this domain (e.g. "development_finance")',
     )
+    parser.add_argument(
+        "--gate-only",
+        dest="gate_only",
+        action="store_true",
+        help="Keep only gate-counting statuses (drops DEFERRED/UNVERIFIED); for merge gates",
+    )
     args = parser.parse_args()
     report = sync_dataset(
         dataset_name=args.dataset_name,
         goldens_path=args.goldens_path,
         slice_filter=args.slice_filter,
         domain_filter=args.domain_filter,
+        gate_only=args.gate_only,
     )
+    archived = report.get("archived") or []
     print(
         f"Synced {report['n']} items to '{report['dataset']}' "
-        f"(holdout in batch: {report['holdout']})"
+        f"(holdout in batch: {report['holdout']}; archived stale: {len(archived)})"
     )
+    if archived:
+        print("  archived: " + ", ".join(archived))
 
 
 if __name__ == "__main__":

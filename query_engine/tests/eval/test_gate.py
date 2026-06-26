@@ -153,13 +153,25 @@ def test_load_baseline_reads_metrics(tmp_path):
     assert load_baseline(p) == {"interpretation_match_rate": 0.9, "fabricated_ref_rate": 0.0}
 
 
-def test_committed_devfinance_baseline_passes_its_own_gate():
-    """A run that exactly reproduces the frozen baseline must PASS check_gate.
+_BASELINE_DIR = Path(__file__).parents[2] / "baselines"
+_COMMITTED_BASELINES = sorted(_BASELINE_DIR.glob("*.json"))
 
-    Self-consistency guard: catches committing a baseline whose values would fail
-    the gate (e.g. an exact metric below its target or a malformed metrics block).
+
+@pytest.mark.parametrize(
+    "baseline_path", _COMMITTED_BASELINES, ids=[p.stem for p in _COMMITTED_BASELINES]
+)
+def test_committed_baseline_passes_its_own_gate(baseline_path):
+    """A run that exactly reproduces a frozen baseline must PASS check_gate.
+
+    Self-consistency guard over every committed baseline: catches committing a
+    baseline whose values would fail the gate (e.g. an exact metric below its
+    target or a malformed metrics block).
     """
-    baseline_path = Path(__file__).parents[2] / "baselines" / "qre-devfinance-main.json"
     metrics = load_baseline(baseline_path)
     result = _make_result([Evaluation(name=n, value=v) for n, v in metrics.items()])
     assert check_gate(result, baseline=metrics) is result
+
+
+def test_baselines_directory_is_not_empty():
+    """Guards against the glob silently matching nothing (which would skip the gate)."""
+    assert _COMMITTED_BASELINES, "no baselines/*.json found; self-consistency gate would be a no-op"

@@ -1,0 +1,19 @@
+{
+  "dataset": "qre-standard-main",
+  "engine_build": "qre-baseline-standard-v1",
+  "model": "gemini-3.1-flash-lite",
+  "graph_endpoint": "https://dc-staging.one.org",
+  "frozen": "2026-06-26",
+  "frozen_at": "2026-06-26T12:02:57+00:00",
+  "items": 10,
+  "note": "Phase-1 standard-family regression anchor (2 definite, 6 candidates, 2 no_data). First baseline with a real behaviour_match_rate_candidates: the polymorphic standard family makes the candidates path live, so unlike qre-devfinance-main this metric anchors at 1.0 instead of null. cand-r2 ('income in California') is excluded -- it is DEFERRED behind the sub-national geo gap and resolves no_data live; the dataset is synced with --gate-only and the sync archives any stale item so a DEFERRED golden cannot drift back in. Re-freezing is a human-reviewed diff: post before/after metrics in the PR. See .design/eval-gate.md section 3. Both baselines are now pinned to gemini-3.1-flash-lite (the dated GA release; -latest pin completed per eval-gate.md section 4).",
+  "metrics": {
+    "interpretation_match_rate": 1.0,
+    "behaviour_match_rate_definite": 1.0,
+    "behaviour_match_rate_candidates": 1.0,
+    "behaviour_match_rate_no_data": 1.0,
+    "materialisation_correct_rate": 1.0,
+    "structural_conformance_rate": 1.0,
+    "fabricated_ref_rate": 0.0
+  }
+}

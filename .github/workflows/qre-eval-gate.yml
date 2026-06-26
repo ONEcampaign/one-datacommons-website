@@ -34,17 +34,26 @@ jobs:
         run: uv run --extra eval --extra engine pytest -q
 
   live-eval-gate:
-    name: Live eval gate (Gemini + staging)
+    name: Live eval gate (${{ matrix.dataset }})
     needs: offline-tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dataset: qre-devfinance-main
+            baseline: baselines/qre-devfinance-main.json
+          - dataset: qre-standard-main
+            baseline: baselines/qre-standard-main.json
     env:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
       LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
       LANGFUSE_BASE_URL: ${{ secrets.LANGFUSE_BASE_URL || 'https://cloud.langfuse.com' }}
-      QRE_DATASET: qre-devfinance-main
-      QRE_BASELINE: baselines/qre-devfinance-main.json
+      QRE_DATASET: ${{ matrix.dataset }}
+      QRE_BASELINE: ${{ matrix.baseline }}
+      QRE_ENGINE_MODEL: gemini-3.1-flash-lite
     steps:
       - uses: actions/checkout@v4
       - name: Check live-eval secrets are configured

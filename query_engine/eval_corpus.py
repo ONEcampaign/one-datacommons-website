@@ -14,7 +14,6 @@ PyYAML (server/.venv or dc_search_server/.venv).
 import json
 import re
 import sys
-from collections import defaultdict
 from pathlib import Path
 
 import yaml
@@ -23,7 +22,7 @@ HERE = Path(__file__).parent
 CORPUS_MD = HERE / "golden-corpus.md"
 GOLDENS_JSON = HERE / "goldens.json"
 SCHEMA_JSON = HERE / "golden.schema.json"
-CONTRACT_MD = HERE / "contract.md"
+CONTRACT_MD = HERE / ".design" / "contract.md"
 
 # Frozen v1 enums, per contract.md decision 9. The drift check asserts the schema
 # and the corpus only ever use these values; a contract change must edit them here.
@@ -151,7 +150,6 @@ def check():
 
     # 4. Structural validation against the JSON Schema, if jsonschema is installed.
     try:
-        import jsonschema
         from jsonschema import Draft202012Validator
         schema = json.loads(SCHEMA_JSON.read_text())
         v = Draft202012Validator(schema)

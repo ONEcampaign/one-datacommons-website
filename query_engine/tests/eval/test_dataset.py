@@ -103,3 +103,68 @@ def test_sync_dataset_domain_and_slice_filter():
     assert client.items, "expected dev-finance main items"
     for it in client.items:
         assert it["metadata"]["slice"] == "main", it["id"]
+
+
+def test_sync_dataset_gate_only_excludes_deferred():
+    """gate_only drops non-gate statuses (e.g. cand-r2, DEFERRED) from the merge set."""
+    ids_with = {
+        it["id"]
+        for it in _sync_ids(domain_filter="standard", slice_filter="main", gate_only=False)
+    }
+    ids_gate = {
+        it["id"]
+        for it in _sync_ids(domain_filter="standard", slice_filter="main", gate_only=True)
+    }
+    cand_r2 = "ds:qre-golden-cand-r2"
+    assert cand_r2 in ids_with, "cand-r2 should be present without gate_only"
+    assert cand_r2 not in ids_gate, "cand-r2 (DEFERRED) must be excluded by gate_only"
+    assert ids_gate < ids_with
+
+
+def _sync_ids(**kwargs):
+    client = _CapturingLangfuse()
+    sync_dataset(dataset_name="ds", langfuse=client, **kwargs)
+    return client.items
+
+
+class _ReconcilingLangfuse:
+    """Fake Langfuse that persists items by id and supports get_dataset for reconciliation."""
+
+    class _Item:
+        def __init__(self, id, status="ACTIVE"):
+            self.id = id
+            self.status = status
+
+    def __init__(self, preexisting_ids=()):
+        # Map id -> status. Seed with stale items already in the dataset.
+        self._items = {i: "ACTIVE" for i in preexisting_ids}
+
+    def create_dataset(self, **kwargs):
+        pass
+
+    def create_dataset_item(self, *, dataset_name, id, status=None, **kwargs):
+        self._items[id] = "ARCHIVED" if str(status).endswith("ARCHIVED") else "ACTIVE"
+
+    def get_dataset(self, name):
+        items = [self._Item(i, s) for i, s in self._items.items()]
+        return type("_DS", (), {"items": items})()
+
+    def active_ids(self):
+        return {i for i, s in self._items.items() if s == "ACTIVE"}
+
+
+def test_sync_dataset_archives_stale_items():
+    """A previously-synced item not in the new batch is archived, not left to be scored."""
+    stale = "qre-standard-main:qre-golden-cand-r2"
+    client = _ReconcilingLangfuse(preexisting_ids=[stale])
+    report = sync_dataset(
+        dataset_name="qre-standard-main",
+        domain_filter="standard",
+        slice_filter="main",
+        gate_only=True,
+        langfuse=client,
+    )
+    assert stale in report["archived"], "stale cand-r2 should be archived"
+    assert stale not in client.active_ids(), "cand-r2 must not remain ACTIVE after reconcile"
+    # The 10 gate items are all ACTIVE; the stale one is gone.
+    assert len(client.active_ids()) == report["n"] == 10

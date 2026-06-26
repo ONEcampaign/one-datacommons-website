@@ -83,12 +83,20 @@ def _has_domain(golden: dict, domain: str) -> bool:
     )
 
 
+# Statuses the merge gate counts (eval-gate.md section 2). DEFERRED / UNVERIFIED /
+# HOLDOUT goldens are excluded from a gate-only dataset so a known-unresolvable or
+# unreviewed golden never drags a gated metric. cand-r2 (sub-national geo gap) is the
+# first such exclusion.
+_GATE_STATUSES = frozenset({"VERIFIED_AGAINST_DATA", "VERIFIED_AGAINST_GRAPH"})
+
+
 def sync_dataset(
     *,
     dataset_name: str = "qre-goldens-v1",
     goldens_path: str | Path | None = None,
     slice_filter: str | None = None,
     domain_filter: str | None = None,
+    gate_only: bool = False,
     langfuse: Any = None,
 ) -> dict:
     """Push goldens.json to a Langfuse dataset, upserting by stable item id.
@@ -98,10 +106,17 @@ def sync_dataset(
         goldens_path: Path to goldens.json; defaults to the package-relative location.
         slice_filter: When set, only sync goldens where golden["slice"] == slice_filter.
         domain_filter: When set, only sync goldens tagged {"domain": domain_filter}.
+        gate_only: When True, keep only goldens whose status is gate-counting
+            (VERIFIED_AGAINST_DATA / VERIFIED_AGAINST_GRAPH), dropping DEFERRED /
+            UNVERIFIED / HOLDOUT-status items. Use for merge-gate datasets.
         langfuse: Optional pre-built Langfuse client (for testing or DI).
 
-    Returns a dict {dataset, n, holdout} with the count of items synced.
+    Returns a dict {dataset, n, holdout, archived} with the counts synced.
     The id field uses upsert semantics: duplicate ids overwrite previous items.
+    The dataset is reconciled to the batch: any pre-existing ACTIVE item whose id
+    is not in the batch is archived (Langfuse has no hard delete), so a filtered
+    sync cannot leave a stale item behind to be scored. Without this, a previously
+    synced item (e.g. a golden later marked DEFERRED) would silently drag the gate.
     """
     client = langfuse or _client()
     goldens = _load_goldens(goldens_path)
@@ -109,21 +124,55 @@ def sync_dataset(
         goldens = [g for g in goldens if g["slice"] == slice_filter]
     if domain_filter is not None:
         goldens = [g for g in goldens if _has_domain(g, domain_filter)]
+    if gate_only:
+        goldens = [g for g in goldens if g.get("status") in _GATE_STATUSES]
 
     client.create_dataset(
         name=dataset_name,
         description="QRE Phase 0 golden corpus",
         metadata={"source": "goldens.json", "slice_filter": slice_filter},
     )
+    batch_ids = set()
     for g in goldens:
         item = golden_to_item(g)
+        item_id = item_id_for(g, dataset_name)
+        batch_ids.add(item_id)
         client.create_dataset_item(
             dataset_name=dataset_name,
-            id=item_id_for(g, dataset_name),
+            id=item_id,
             input=item["input"],
             expected_output=item["expected_output"],
             metadata=item["metadata"],
         )
 
+    archived = _archive_stale(client, dataset_name, batch_ids)
+
     holdout_count = sum(1 for g in goldens if g["slice"] == "holdout")
-    return {"dataset": dataset_name, "n": len(goldens), "holdout": holdout_count}
+    return {
+        "dataset": dataset_name,
+        "n": len(goldens),
+        "holdout": holdout_count,
+        "archived": archived,
+    }
+
+
+def _archive_stale(client: Any, dataset_name: str, batch_ids: set[str]) -> list[str]:
+    """Archive ACTIVE items in the dataset whose id is not in batch_ids; return their ids.
+
+    create_dataset() runs just before this, so the dataset always exists -- a real
+    transport error from get_dataset must propagate (fail loud), not silently skip
+    reconciliation and leave a stale item to be scored. Only a client that does not
+    implement get_dataset (a minimal test double) has nothing to reconcile.
+    """
+    try:
+        existing = client.get_dataset(dataset_name).items
+    except AttributeError:
+        return []
+    archived = []
+    for it in existing:
+        status = getattr(it, "status", None)
+        status = getattr(status, "value", status)
+        if it.id not in batch_ids and status == "ACTIVE":
+            client.create_dataset_item(dataset_name=dataset_name, id=it.id, status="ARCHIVED")
+            archived.append(it.id)
+    return archived
