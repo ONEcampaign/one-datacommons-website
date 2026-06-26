@@ -235,8 +235,8 @@ def build_spec(
         resolved_entities=resolved_entity_refs,
         resolved_sources=[],
         slot_filters=slot_filters,
-        applied_window=None,
-        date_source=None,
+        applied_window=coverage.window,
+        date_source="query" if coverage.window is not None else None,
         pipeline_trace=pipeline_trace,
     )
 

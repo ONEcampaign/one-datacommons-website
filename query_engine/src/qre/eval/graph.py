@@ -12,6 +12,7 @@ from functools import cache
 from typing import Protocol
 
 from qre import TimeWindow
+from qre.models import in_window
 
 
 class GraphClient(Protocol):
@@ -38,21 +39,6 @@ class GraphClient(Protocol):
         Must raise on network or API error.
         """
         ...
-
-
-def _in_window(date_str: str, window: TimeWindow | None) -> bool:
-    """Return True if date_str (e.g. '2018') falls within the given window."""
-    if window is None:
-        return True
-    try:
-        year = int(str(date_str)[:4])
-    except (ValueError, TypeError):
-        return True  # non-year date strings: include by default
-    if window.start_year is not None and year < window.start_year:
-        return False
-    if window.end_year is not None and year > window.end_year:
-        return False
-    return True
 
 
 @cache
@@ -113,6 +99,6 @@ class DataCommonsGraphClient:
         pairs = {
             (rec.date, rec.facetId)
             for rec in records
-            if _in_window(rec.date, window)
+            if in_window(rec.date, window)
         }
         return len(pairs) or None

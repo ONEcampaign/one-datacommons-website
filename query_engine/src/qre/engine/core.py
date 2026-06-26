@@ -38,7 +38,7 @@ from qre.engine.discover import (
     read_slot_taxonomy,
 )
 from qre.engine.errors import GroundingMiss
-from qre.engine.extract import Extraction, extract
+from qre.engine.extract import DateRequest, Extraction, dates_to_request, extract
 from qre.engine.families import (
     PROP_RECIPIENT,
     RECIPIENT_ROLE_DCID,
@@ -92,7 +92,7 @@ def _make_query_echo(
     return QueryEcho(
         entry_path="raw_text",
         raw_query=query,
-        normalized_query=query.strip() if query.strip() else None,
+        normalized_query=query.strip() or None,
         variable_text=variable_text,
         extract_skipped=extract_skipped,
     )
@@ -291,6 +291,7 @@ async def _resolve_pipeline(
     # Process the first variable (single-variable pipeline)
     variable = extraction.variables[0]
     entities = extraction.entities
+    date_request = dates_to_request(extraction.dates)
 
     # --- Step: recall ---
     t0 = _now_ms()
@@ -579,6 +580,7 @@ async def _resolve_pipeline(
             recipient_dcid,
             donor_dcid,
             graph,
+            date_request,
         )
     else:
         mat_result = await asyncio.to_thread(
@@ -588,6 +590,7 @@ async def _resolve_pipeline(
             recipient_dcid,
             donor_dcid,
             graph=graph,
+            date_request=date_request,
         )
 
     timing["materialise"] = _now_ms() - t0
@@ -744,6 +747,7 @@ def _materialise_standard_candidates(
     recipient_dcid: str | None,
     donor_dcid: str | None,
     graph: EngineGraphClient,
+    date_request: DateRequest | None = None,
 ) -> tuple[MaterialisedCandidates | NoDataDraft, list[tuple[ShapeDraft, Materialised]]]:
     """Probe each standard shape and return MaterialisedCandidates or NoDataDraft.
 
@@ -785,7 +789,9 @@ def _materialise_standard_candidates(
     # Materialise each shape (probes the representative SV only).
     surviving: list[tuple[ShapeDraft, Materialised]] = []
     for shape in deduped:
-        result = materialise(shape, bindings, recipient_dcid, donor_dcid, graph=graph)
+        result = materialise(
+            shape, bindings, recipient_dcid, donor_dcid, graph=graph, date_request=date_request
+        )
         if isinstance(result, Materialised):
             surviving.append((shape, result))
 
@@ -965,7 +971,7 @@ def resolve(request: ResolveRequest) -> ResolveResponse:
         asyncio.get_running_loop()
     except RuntimeError:
         return asyncio.run(resolve_async(request))
-    # ponytail: serial offload (one thread, blocks the caller); switch to an async
-    # task seam if the eval runner ever needs items resolved concurrently.
+    # Serial offload (one thread, blocks caller). If concurrent item resolution
+    # is needed in the future, switch to an async task seam.
     with ThreadPoolExecutor(max_workers=1) as pool:
         return pool.submit(lambda: asyncio.run(resolve_async(request))).result()

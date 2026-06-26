@@ -41,6 +41,7 @@ from qre.engine.shape import ShapeDraft, shape_draft_from
 
 if TYPE_CHECKING:
     from qre.engine.bind import SlotBindingDraft
+    from qre.engine.extract import DateRequest
     from qre.engine.retrieve import Materialised, NoDataDraft
 
 logger = logging.getLogger(__name__)
@@ -384,7 +385,6 @@ def derive_shapes(
     shapes: list[ShapeDraft] = []
     for five_tuple, group_svs in groups.items():
         # Collect constraint properties (union across SVs in this group)
-        seen_props: dict[str, None] = {}
         prop_observed_values: dict[str, list[str]] = defaultdict(list)
         group_arc_facts: dict[str, dict] = {}
 
@@ -393,10 +393,9 @@ def derive_shapes(
             constraints = facts["constraints"]
             group_arc_facts[sv_dcid] = facts["arcs"]
             for prop_dcid, value_dcid in constraints.items():
-                seen_props[prop_dcid] = None
                 prop_observed_values[prop_dcid].append(value_dcid)
 
-        constraint_props = list(seen_props.keys())
+        constraint_props = list(prop_observed_values.keys())
 
         # Build prop_labels using the shared cache
         prop_labels: dict[str, str] = {p: _prop_label(p) for p in constraint_props}
@@ -459,6 +458,9 @@ def graph_confirm_resolve(
     recipient_dcid: str | None,
     donor_dcid: str | None,
     graph: EngineGraphClient,
+    date_request: "DateRequest | None" = None,
+    facet_label: str = "sources",
+    obs_label: str = "observations",
 ) -> "Materialised | NoDataDraft":
     """General resolution helper: filter confirmed SVs by bound constraint values.
 
@@ -476,6 +478,11 @@ def graph_confirm_resolve(
         recipient_dcid: Resolved recipient entity dcid, or None.
         donor_dcid:     Resolved donor entity dcid, or None.
         graph:          Graph client (injected; use FakeGraph in tests).
+        facet_label:    Label for the per-facet-count coverage dimension. Defaults to
+                        the generic "sources"; DevFinanceResolver passes "donors" so its
+                        fallback coverage matches the construct path's dimensions.
+        obs_label:      Label for the max-obs-count coverage dimension (generic
+                        "observations"; dev-finance passes "years").
 
     Returns:
         Materialised on success, NoDataDraft on any data-absence outcome.
@@ -531,7 +538,9 @@ def graph_confirm_resolve(
     if not confirmed_svs:
         return NoDataDraft(reason="no_observations")
 
-    coverage = coverage_from_facets(all_facets)
+    coverage = coverage_from_facets(
+        all_facets, date_request=date_request, facet_label=facet_label, obs_label=obs_label
+    )
     return Materialised(
         sv_dcids=confirmed_svs,
         facets=all_facets,

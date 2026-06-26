@@ -152,3 +152,16 @@ class TestUnboundSchemeSuccessHasRealFacets:
         assert coverage.has_data is True
         non_zero_dims = [d for d in coverage.dimensions if d.count > 0]
         assert len(non_zero_dims) > 0, f"expected non-zero coverage dims, got {coverage.dimensions}"
+
+    def test_success_coverage_is_breadth_not_exact(self):
+        """The unbound-scheme path probes one scheme as a has-data sentinel; it must
+        not publish an exact observation_count for an all-schemes spec."""
+        graph = FakeGraph()
+        bindings = [
+            _binding("what", "DevelopmentFinanceScheme", "unbound"),
+            _binding("how", "DevelopmentFinancePurpose", "value", ["DAC/Health"]),
+            _binding("where", "DevelopmentFinanceRecipient", "value", ["country/KEN"]),
+        ]
+        result = materialise(_shape(), bindings, "country/KEN", "country/USA", graph=graph)
+        assert isinstance(result, Materialised)
+        assert result.coverage.kind == "breadth"

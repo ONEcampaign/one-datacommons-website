@@ -16,6 +16,7 @@ from qre.engine.families.protocol import FamilyRule
 
 if TYPE_CHECKING:
     from qre.engine.bind import SlotBindingDraft
+    from qre.engine.extract import DateRequest
     from qre.engine.graph import EngineGraphClient
     from qre.engine.retrieve import Materialised, MaterialisedCandidates, NoDataDraft
     from qre.engine.shape import ShapeDraft
@@ -60,6 +61,7 @@ class _StandardResolver:
         recipient_dcid: str | None,
         donor_dcid: str | None,
         graph: "EngineGraphClient",
+        date_request: "DateRequest | None" = None,
     ) -> "Materialised | NoDataDraft | MaterialisedCandidates":
         """Resolve a standard shape by probing observations for the representative SV.
 
@@ -111,7 +113,7 @@ class _StandardResolver:
         if not facets or not any(f.obs_count > 0 for f in facets):
             return NoDataDraft(reason="no_observations")
 
-        coverage = coverage_from_facets(facets)
+        coverage = coverage_from_facets(facets, date_request=date_request)
         # Emit the representative SV as the single confirmed SV for the spec.
         # The candidates path fans out across all member SVs when triggered.
         return Materialised(

@@ -25,7 +25,7 @@ DO NOT import qre.eval from this module (isolation invariant).
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 from urllib.parse import urlencode
 
@@ -38,6 +38,7 @@ from qre.engine.config import (
     QRE_RELEVANCE_THRESHOLD,
 )
 from qre.engine.errors import GraphInfraError
+from qre.models import in_window
 
 # ---------------------------------------------------------------------------
 # Value types
@@ -51,6 +52,7 @@ class Facet:
     earliest_date: str | None
     latest_date: str | None
     obs_count: int
+    dates: list[str] = field(default_factory=list)  # per-observation dates; empty when unknown
 
 
 # ---------------------------------------------------------------------------
@@ -275,12 +277,13 @@ class LiveGraphClient:
         # Apply relevance threshold: keep SVs at or above the threshold with their
         # scores; when scores are absent or mismatched, assign 1.0 to each SV.
         if raw_scores and len(raw_scores) == len(raw_svs):
-            sv_dcids, sv_scores = zip(
-                *[(sv, sc) for sv, sc in zip(raw_svs, raw_scores) if sc >= QRE_RELEVANCE_THRESHOLD],
-                strict=False,
-            ) if any(sc >= QRE_RELEVANCE_THRESHOLD for sc in raw_scores) else ([], [])
-            sv_dcids = list(sv_dcids)
-            sv_scores = list(sv_scores)
+            pairs = [
+                (sv, sc)
+                for sv, sc in zip(raw_svs, raw_scores)
+                if sc >= QRE_RELEVANCE_THRESHOLD
+            ]
+            sv_dcids = [sv for sv, _ in pairs]
+            sv_scores = [sc for _, sc in pairs]
         else:
             sv_dcids = raw_svs
             sv_scores = [1.0] * len(raw_svs)
@@ -314,6 +317,7 @@ class LiveGraphClient:
                 earliest_date=f.get("earliestDate"),
                 latest_date=f.get("latestDate"),
                 obs_count=f.get("obsCount", 0),
+                dates=[o["date"] for o in f.get("observations", []) if o.get("date")],
             )
             for f in facets_raw
         ]
@@ -339,15 +343,21 @@ class LiveGraphClient:
     ) -> int | None:
         """Count distinct (date, facetId) pairs across stat_vars × entities.
 
+        Window-free path sums obs_count; windowed path counts in-window per-facet
+        dates using the same expression as coverage_from_facets.
         Returns None when no observations are found (evaluator treats as skip-with-pass).
         Raises GraphInfraError on transport error.
         """
         if not stat_vars or not entities:
             return None
-        total = sum(
-            f.obs_count
+        facets = [
+            f
             for sv in stat_vars
             for entity in entities
             for f in self.observation_facets(stat_var=sv, entity=entity)
-        )
+        ]
+        if window is None:
+            total = sum(f.obs_count for f in facets)
+        else:
+            total = sum(1 for f in facets for d in f.dates if in_window(d, window))
         return total if total > 0 else None

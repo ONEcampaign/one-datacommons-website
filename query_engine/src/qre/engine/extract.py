@@ -9,12 +9,14 @@ The system prompt instructs the model to treat the query as DATA, not directives
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
 from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, Field
 
 from qre.engine.llm import LLM
+from qre.models import TimeWindow
 
 # ---------------------------------------------------------------------------
 # Schema
@@ -79,6 +81,81 @@ class Extraction(BaseModel):
             "reference — do not infer an implicit date for an otherwise timeless query."
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# DateRequest: structured date signal derived from extracted dates
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class DateRequest:
+    """A date signal derived from the query's extracted dates.
+
+    Exactly one of window or latest is active:
+      - window: a concrete year window built from point/range bounds.
+      - latest=True: resolve to the most-recent year present in the facets.
+    """
+
+    window: TimeWindow | None
+    latest: bool
+
+    def __post_init__(self) -> None:
+        # Invariant: a request is EITHER a concrete window OR a latest ask, never both.
+        # Makes the contract explicit rather than relying on _resolve_window's
+        # check-window-first ordering to silently drop `latest`.
+        if self.window is not None and self.latest:
+            raise ValueError("DateRequest: set either window or latest=True, not both")
+
+
+def _parse_year(s: str | None) -> int | None:
+    if not s:
+        return None
+    try:
+        return int(str(s)[:4])
+    except (ValueError, TypeError):
+        return None
+
+
+def dates_to_request(dates: list[ExtractedDate]) -> DateRequest | None:
+    """Collapse a list of extracted dates into a single DateRequest.
+
+    Priority: any point/range bound wins (latest=False) over a latest entry.
+    Returns None when there is no temporal signal (empty list or unparseable
+    bounds with no latest).
+    """
+    if not dates:
+        return None
+    starts: list[int] = []
+    ends: list[int] = []
+    has_latest = False
+    for d in dates:
+        if d.kind == "latest":
+            has_latest = True
+            continue
+        s = _parse_year(d.start)
+        e = _parse_year(d.end)
+        if d.kind == "point":
+            y = s if s is not None else e
+            if y is not None:
+                starts.append(y)
+                ends.append(y)
+        else:  # range
+            if s is not None:
+                starts.append(s)
+            if e is not None:
+                ends.append(e)
+    if starts or ends:
+        return DateRequest(
+            window=TimeWindow(
+                start_year=min(starts) if starts else None,
+                end_year=max(ends) if ends else None,
+            ),
+            latest=False,
+        )
+    if has_latest:
+        return DateRequest(window=None, latest=True)
+    return None
 
 
 # ---------------------------------------------------------------------------

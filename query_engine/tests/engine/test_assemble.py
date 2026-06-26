@@ -14,8 +14,10 @@ from qre.engine.bind import SlotBindingDraft
 from qre.engine.families import DEV_FINANCE_FAMILY  # noqa: E402
 from qre.engine.shape import build_shape
 from qre.models import (
+    BreadthDim,
     CandidatesResponse,
     CoverageBare,
+    CoverageExact,
     Diagnostics,
     Entity,
     EntityRoleSubject,
@@ -24,6 +26,7 @@ from qre.models import (
     QueryEcho,
     ResolveResponse,
     StatVar,
+    TimeWindow,
     Timing,
 )
 
@@ -225,3 +228,98 @@ def test_assemble_candidates_ordering_is_broadest_first():
     inner = result.root
     assert isinstance(inner, CandidatesResponse)
     assert inner.candidates.ordering == "broadest_first"
+
+
+# ---------------------------------------------------------------------------
+# applied_window / date_source in ResolutionTrace
+# ---------------------------------------------------------------------------
+
+
+def _make_exact_coverage(window: TimeWindow | None) -> CoverageExact:
+    return CoverageExact(
+        has_data=True,
+        observation_count=42,
+        dimensions=[
+            BreadthDim(label="sources", count=1),
+            BreadthDim(label="observations", count=42),
+        ],
+        window=window,
+    )
+
+
+def test_build_spec_applied_window_and_date_source_when_window_present():
+    """build_spec with CoverageExact(window=...) → applied_window set, date_source='query'."""
+    window = TimeWindow(start_year=2015, end_year=2020)
+    # Build a spec with windowed exact coverage
+    from qre.engine.assemble import build_shape_model, build_slot, build_spec
+    from qre.engine.bind import SlotBindingDraft
+    from qre.engine.families import DEV_FINANCE_FAMILY
+    from qre.engine.shape import build_shape
+
+    family = DEV_FINANCE_FAMILY
+    shape_draft = build_shape(family)
+    five_tuple_refs = _make_five_tuple_refs()
+
+    scheme_draft = SlotBindingDraft(
+        axis="what",
+        property_dcid="DevelopmentFinanceScheme",
+        kind="value",
+        value_dcids=["ODAGrants"],
+    )
+    purpose_draft = SlotBindingDraft(
+        axis="how",
+        property_dcid="DevelopmentFinancePurpose",
+        kind="value",
+        value_dcids=["DAC/Health"],
+    )
+    recipient_draft = SlotBindingDraft(
+        axis="where",
+        property_dcid="DevelopmentFinanceRecipient",
+        kind="value",
+        value_dcids=["country/ETH"],
+    )
+
+    slots = []
+    slot_key_models = []
+    for slot_draft_key, binding_draft, grounded in [
+        (shape_draft.slot_keys[0], scheme_draft, [GraphRef(dcid="ODAGrants", label="ODA Grants")]),
+        (shape_draft.slot_keys[1], purpose_draft, [GraphRef(dcid="DAC/Health", label="Health")]),
+        (
+            shape_draft.slot_keys[2],
+            recipient_draft,
+            [GraphRef(dcid="country/ETH", label="Ethiopia")],
+        ),
+    ]:
+        prop_ref = GraphRef(dcid=slot_draft_key.property_dcid, label=slot_draft_key.property_dcid)
+        slot = build_slot(slot_draft_key, binding_draft, grounded, property_ref=prop_ref)
+        slots.append(slot)
+        slot_key_models.append(slot.key)
+
+    shape_model = build_shape_model(shape_draft, slot_key_models, five_tuple_refs, member_count=1)
+    sv_ref = GraphRef(dcid="ONE/CRS_DAC/Health-ODAGrants-ETH", label="Health ODA")
+    stat_vars = [StatVar(ref=sv_ref, shape_id=shape_draft.shape_id, slot_values=[])]
+
+    result_spec = build_spec(
+        shape=shape_model,
+        slots=slots,
+        stat_vars=stat_vars,
+        entities=[_make_entity("country/ETH", "Ethiopia")],
+        coverage=_make_exact_coverage(window),
+        pipeline_trace=_make_pipeline_steps(),
+        timing_by_step={},
+    )
+
+    assert result_spec.resolution.applied_window == window
+    assert result_spec.resolution.date_source == "query"
+
+
+def test_build_spec_applied_window_and_date_source_none_when_no_window():
+    """build_spec with CoverageBare(window=None) → applied_window=None, date_source=None."""
+    spec = _make_spec(
+        sv_dcid="ONE/CRS_DAC/Health-ODAGrants-ETH",
+        purpose_dcid="DAC/Health",
+        recipient_dcid="country/ETH",
+    )
+    # _make_spec uses CoverageBare(has_data=True) which has window=None
+    assert spec.resolution.applied_window is None
+    assert spec.resolution.date_source is None

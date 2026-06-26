@@ -17,13 +17,12 @@ three kinds of knowledge that the general engine does not need:
      collapsed taxonomy that under-covers the full scheme space.
 
   3. construct_sv_dcid — the ONE/CRS_DAC/<Purpose>-<Scheme>-<Recipient>
-     template.  The spike confirmed that the general detect-confirm
-     path cannot reliably reproduce every dev-finance golden (df-04 aggregate
-     scheme, df-09 unbound-scheme probing, df-12 no-observations to Nauru).
-     construct_sv_dcid therefore remains as a registered per-namespace
-     constructor pre-step inside DevFinanceResolver, called before the general
-     observation probe.  The standard family has no template and routes
-     exclusively through detect-confirm.
+     template. The general detect-confirm path cannot reliably reproduce every
+     dev-finance golden (df-04 aggregate scheme, df-09 unbound-scheme probing,
+     df-12 no-observations to Nauru). construct_sv_dcid thus remains a
+     registered per-namespace constructor pre-step inside DevFinanceResolver,
+     called before the general observation probe. The standard family has no
+     template and routes exclusively through detect-confirm.
 
 Pure module (data + helpers): no I/O, no LLM, no graph calls in this module.
 The resolver's resolve() method receives a graph and calls it, but the module
@@ -38,6 +37,7 @@ from qre.engine.families.protocol import FamilyRule
 
 if TYPE_CHECKING:
     from qre.engine.bind import SlotBindingDraft
+    from qre.engine.extract import DateRequest
     from qre.engine.graph import EngineGraphClient
     from qre.engine.retrieve import Materialised, NoDataDraft
     from qre.engine.shape import ShapeDraft
@@ -268,6 +268,7 @@ def _construct_resolve(
     recipient_dcid: str | None,
     donor_dcid: str | None,
     graph: "EngineGraphClient",
+    date_request: "DateRequest | None" = None,
 ) -> "Materialised | NoDataDraft | None":
     """Run the construct_sv_dcid path and return a result, or None to fall through.
 
@@ -312,7 +313,16 @@ def _construct_resolve(
         if not probe_facets or not any(f.obs_count > 0 for f in probe_facets):
             return NoDataDraft(reason="no_observations")
 
-        coverage = coverage_from_facets(probe_facets)
+        # This probes a single scheme (SCHEMES[0]) as a has-data sentinel for a spec
+        # that spans all schemes, so an exact count would understate the real footprint.
+        # Emit the breadth lens, not a misleading exact count.
+        coverage = coverage_from_facets(
+            probe_facets,
+            date_request=date_request,
+            facet_label="donors",
+            obs_label="years",
+            allow_exact=False,
+        )
         return Materialised(
             sv_dcids=[],
             facets=probe_facets,
@@ -364,7 +374,9 @@ def _construct_resolve(
     if not has_data:
         return NoDataDraft(reason="no_observations")
 
-    coverage = coverage_from_facets(all_facets)
+    coverage = coverage_from_facets(
+        all_facets, date_request=date_request, facet_label="donors", obs_label="years"
+    )
     return Materialised(
         sv_dcids=confirmed_svs,
         facets=all_facets,
@@ -380,24 +392,22 @@ def _construct_resolve(
 class _DevFinanceResolver:
     """Resolver for the ONE/CRS_DAC/* family.
 
-    Per the spike verdict (KEEP construct_sv_dcid): resolve() first tries
-    construct_sv_dcid(scheme, purpose, recipient) + confirm — today's exact
-    materialise path preserving df-04/df-09/df-12 behaviour byte-for-byte.
+    Resolution strategy: try construct_sv_dcid(scheme, purpose, recipient) + confirm
+    first — this is the exact materialise path preserving df-04/df-09/df-12 behaviour.
     Falls through to discover.graph_confirm_resolve only when construct yields nothing
     (e.g. unbound purpose, which cannot be templated).
 
-    The spike evidence: detect returns 35-44 noisy SVs per dev-finance query; the
-    expected recipient-specific SV is usually absent from the detect results; the
-    ~16k flat CRS lattice is not enumerable via detect alone.  construct_sv_dcid
-    therefore survives as a registered per-namespace constructor pre-step.
+    Why construct_sv_dcid survives: detect returns 35-44 noisy SVs per dev-finance
+    query; the expected recipient-specific SV is often absent from detect results; and
+    the 16k flat CRS lattice is not enumerable via detect alone. construct_sv_dcid
+    thus remains a registered per-namespace constructor pre-step.
 
-    The resolver is instantiated once at module level (``DEV_FINANCE_RESOLVER``).
+    Instantiated once at module level (``DEV_FINANCE_RESOLVER``).
 
     ``slot_taxonomy_seed`` is the private adapter copy of the scheme and purpose
-    taxonomies.  discover.read_slot_taxonomy consumes it (B1) so the bind prompt
-    always receives the full hand-verified taxonomy, not just the subset that a
-    single detected SV happens to carry.  This seed replaces the engine-global
-    SCHEMES/PURPOSES imports that core.py no longer carries.
+    taxonomies. discover.read_slot_taxonomy consumes it so the bind prompt always
+    receives the full hand-verified taxonomy, not just the subset a single detected
+    SV happens to carry.
     """
 
     namespace: str = _SV_PREFIX
@@ -445,14 +455,15 @@ class _DevFinanceResolver:
         recipient_dcid: str | None,
         donor_dcid: str | None,
         graph: "EngineGraphClient",
+        date_request: "DateRequest | None" = None,
     ) -> "Materialised | NoDataDraft":
         """Resolve dev-finance slots to confirmed SVs and observation facets.
 
-        Strategy (KEEP construct_sv_dcid per the spike verdict):
-          1. Try construct_sv_dcid(scheme, purpose, recipient) + confirm.  This
-             is today's exact materialise path and preserves df-04 aggregate,
-             df-09 unbound-scheme, and df-12 no_observations behaviour.
-          2. If construct yields nothing (no slots matched), fall through to
+        Strategy:
+          1. Try construct_sv_dcid(scheme, purpose, recipient) + confirm. This
+             is the exact materialise path preserving df-04, df-09, and df-12
+             behaviour.
+          2. If construct yields nothing, fall through to
              discover.graph_confirm_resolve as a general fallback.
         """
         # --- Construct path (the primary dev-finance path) ---
@@ -461,6 +472,7 @@ class _DevFinanceResolver:
             recipient_dcid=recipient_dcid,
             donor_dcid=donor_dcid,
             graph=graph,
+            date_request=date_request,
         )
         if result is not None:
             return result
@@ -476,6 +488,9 @@ class _DevFinanceResolver:
             recipient_dcid=recipient_dcid,
             donor_dcid=donor_dcid,
             graph=graph,
+            date_request=date_request,
+            facet_label="donors",
+            obs_label="years",
         )
 
 

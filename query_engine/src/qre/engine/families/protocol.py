@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from qre.engine.bind import SlotBindingDraft
+    from qre.engine.extract import DateRequest
     from qre.engine.graph import EngineGraphClient
     from qre.engine.retrieve import Materialised, MaterialisedCandidates, NoDataDraft
     from qre.engine.shape import ShapeDraft
@@ -46,6 +47,7 @@ class FamilyResolver(Protocol):
         recipient_dcid: str | None,
         donor_dcid: str | None,
         graph: "EngineGraphClient",
+        date_request: "DateRequest | None" = None,
     ) -> "Materialised | NoDataDraft | MaterialisedCandidates":
         """Resolve confirmed shape + bindings to an observation result.
 

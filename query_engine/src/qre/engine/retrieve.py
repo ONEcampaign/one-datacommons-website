@@ -11,11 +11,15 @@ Result types:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from qre.engine.bind import SlotBindingDraft
 from qre.engine.graph import EngineGraphClient, Facet
 from qre.engine.shape import ShapeDraft
 from qre.models import Coverage
+
+if TYPE_CHECKING:
+    from qre.engine.extract import DateRequest
 
 
 @dataclass
@@ -54,6 +58,7 @@ def materialise(
     donor_dcid: str | None,
     *,
     graph: EngineGraphClient,
+    date_request: "DateRequest | None" = None,
 ) -> Materialised | NoDataDraft | MaterialisedCandidates:
     """Delegate resolution to the shape's family resolver.
 
@@ -78,6 +83,7 @@ def materialise(
             recipient_dcid=recipient_dcid,
             donor_dcid=donor_dcid,
             graph=graph,
+            date_request=date_request,
         )
 
     # Legacy fallback: no family_rule stamped on the shape (build_shape path).
@@ -90,4 +96,5 @@ def materialise(
         recipient_dcid=recipient_dcid,
         donor_dcid=donor_dcid,
         graph=graph,
+        date_request=date_request,
     )

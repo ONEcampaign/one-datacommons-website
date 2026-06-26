@@ -14,7 +14,13 @@ Covers:
 """
 from __future__ import annotations
 
-from qre.engine.discover import derive_shapes, read_constraints, read_five_tuple, read_slot_taxonomy
+from qre.engine.discover import (
+    derive_shapes,
+    graph_confirm_resolve,
+    read_constraints,
+    read_five_tuple,
+    read_slot_taxonomy,
+)
 from qre.engine.families import (
     MEAS_DENOM_DCID,
     MEAS_PROP_DCID,
@@ -26,6 +32,8 @@ from qre.engine.families import (
     STAT_TYPE_DCID,
 )
 from qre.engine.families.dev_finance import PURPOSES, SCHEMES
+from qre.engine.retrieve import Materialised
+from qre.engine.shape import ShapeDraft
 from tests.fixtures import FakeGraph
 
 # ---------------------------------------------------------------------------
@@ -485,3 +493,60 @@ class TestReadSlotTaxonomy:
         assert set(taxonomy[f"how:{PROP_PURPOSE}"]) == set(PURPOSES)
         # Recipient slot excluded (core.py injects it)
         assert f"where:{PROP_RECIPIENT}" not in taxonomy
+
+
+# ---------------------------------------------------------------------------
+# graph_confirm_resolve: coverage dimension labels
+# ---------------------------------------------------------------------------
+
+
+class TestGraphConfirmResolveLabels:
+    """DevFinanceResolver falls back to graph_confirm_resolve; the fallback coverage
+    must keep the dev-finance donors/years labels, not regress to sources/observations."""
+
+    def _shape_with_sv(self, sv_dcid: str) -> ShapeDraft:
+        return ShapeDraft(
+            shape_id="dev_finance_crs_dac",
+            label="dev finance",
+            pop_type_dcid=POP_TYPE_DCID,
+            meas_prop_dcid=MEAS_PROP_DCID,
+            stat_type_dcid=STAT_TYPE_DCID,
+            meas_qual_dcid=None,
+            meas_denom_dcid=None,
+            slot_keys=(),
+            sv_arc_facts={sv_dcid: _crs_arcs("DAC/Health", "ODAGrants", "country/ETH")},
+        )
+
+    def _graph_for(self, sv_dcid: str) -> FakeGraph:
+        obs = {
+            f"{sv_dcid}|country/ETH": [
+                {"earliestDate": "2010", "latestDate": "2020", "obsCount": 11}
+            ]
+        }
+        return FakeGraph(nodes={}, obs=obs, detect={}, resolve={})
+
+    def test_devfinance_fallback_uses_donors_years(self):
+        sv = "ONE/CRS_DAC/SomeHealthSV"
+        result = graph_confirm_resolve(
+            shape=self._shape_with_sv(sv),
+            bindings=[],
+            recipient_dcid="country/ETH",
+            donor_dcid="country/USA",
+            graph=self._graph_for(sv),
+            facet_label="donors",
+            obs_label="years",
+        )
+        assert isinstance(result, Materialised)
+        assert {d.label for d in result.coverage.dimensions} == {"donors", "years"}
+
+    def test_default_labels_are_sources_observations(self):
+        sv = "ONE/CRS_DAC/SomeHealthSV"
+        result = graph_confirm_resolve(
+            shape=self._shape_with_sv(sv),
+            bindings=[],
+            recipient_dcid="country/ETH",
+            donor_dcid="country/USA",
+            graph=self._graph_for(sv),
+        )
+        assert isinstance(result, Materialised)
+        assert {d.label for d in result.coverage.dimensions} == {"sources", "observations"}

@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from qre.engine.errors import GraphInfraError
 from qre.engine.graph import Facet
+from qre.models import in_window
 
 _T = TypeVar("_T", bound=BaseModel)
 
@@ -203,6 +204,10 @@ class FakeGraph:
                 earliest_date=f.get("earliestDate"),
                 latest_date=f.get("latestDate"),
                 obs_count=f.get("obsCount", 0),
+                dates=f.get(
+                    "dates",
+                    [o["date"] for o in f.get("observations", []) if o.get("date")],
+                ),
             )
             for f in raw
         ]
@@ -223,9 +228,14 @@ class FakeGraph:
             return self._impl.count_observations(
                 stat_vars=stat_vars, entities=entities, window=window
             )
-        total = 0
-        for sv in stat_vars:
-            for entity in entities:
-                for f in self.observation_facets(stat_var=sv, entity=entity):
-                    total += f.obs_count
+        facets = [
+            f
+            for sv in stat_vars
+            for entity in entities
+            for f in self.observation_facets(stat_var=sv, entity=entity)
+        ]
+        if window is None:
+            total = sum(f.obs_count for f in facets)
+        else:
+            total = sum(1 for f in facets for d in f.dates if in_window(d, window))
         return total if total > 0 else None
