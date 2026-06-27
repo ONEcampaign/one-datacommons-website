@@ -81,7 +81,7 @@
       ]
     },
     "candidate_count": { "type": ["integer", "null"], "minimum": 2 },
-    "status": { "const": "VERIFIED_AGAINST_GRAPH" },
+    "status": { "enum": ["VERIFIED_AGAINST_GRAPH", "DEFERRED"] },
     "notes": { "type": "string" }
   },
   "allOf": [
