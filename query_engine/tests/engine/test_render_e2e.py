@@ -1,10 +1,6 @@
 """End-to-end rendered_sentence tests for resolve(..., include_sentence=True).
 
 Each test asserts the EXACT rendered_sentence produced by the offline harness.
-Sentences were captured 2026-06-27 and must stay stable; a drift means the render
-layer or fixture labels changed and both need to be audited together.
-
-Gate: all 8 cases must pass before the faithful donor read-back feature ships.
 """
 from __future__ import annotations
 
@@ -34,7 +30,7 @@ def _resolve(
 
 
 # ---------------------------------------------------------------------------
-# Case 1: donor + recipient both voiced (headline gate)
+# Case 1: donor + recipient both voiced
 # ---------------------------------------------------------------------------
 
 
