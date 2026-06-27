@@ -40,6 +40,7 @@ from qre.engine.discover import (
 from qre.engine.errors import GroundingMiss
 from qre.engine.extract import DateRequest, Extraction, dates_to_request, extract
 from qre.engine.families import (
+    DONOR_ROLE_DCID,
     PROP_RECIPIENT,
     RECIPIENT_ROLE_DCID,
 )
@@ -54,7 +55,6 @@ from qre.engine.place_role import (
     SEAM_OFF_WARN_CODE,
     DirectionalRole,
     EntityRoleDraft,
-    SubjectRole,
     directional_roles,
 )
 from qre.engine.retrieve import Materialised, MaterialisedCandidates, NoDataDraft, materialise
@@ -123,14 +123,18 @@ def _build_entity(
     role_draft: EntityRoleDraft,
     entity_ref: GraphRef,
     entity_type_ref: GraphRef | None,
-    recipient_role_ref: GraphRef | None,
+    role_refs: dict[str, GraphRef],
 ) -> Entity:
     """Build a grounded Entity from a role draft."""
     role = role_draft.role
     if isinstance(role, DirectionalRole) and role.kind == "directional":
+        # The role GraphRef audits how the directional role is sourced: the recipient
+        # from the DevelopmentFinanceRecipient constraint, the donor from
+        # observationAbout. render reads entity.ref.label, not this ref.
         entity_role = EntityRoleDirectional(
             kind="directional",
-            role=recipient_role_ref or GraphRef(dcid=role.role_dcid, label=role.role_dcid),
+            role=role_refs.get(role.role_dcid)
+            or GraphRef(dcid=role.role_dcid, label=role.role_dcid),
             direction=role.direction,
         )
     else:
@@ -242,6 +246,12 @@ async def _resolve_pipeline(
 
     inp = request.input
 
+    include_sentence: bool
+    if request.options and request.options.include_sentence is not None:
+        include_sentence = request.options.include_sentence
+    else:
+        include_sentence = False
+
     def _no_data(
         reason: str,
         variables: list[str] | None = None,
@@ -254,7 +264,7 @@ async def _resolve_pipeline(
             extract_skipped=extract_skipped,
         )
         diag = _make_diagnostics(ENGINE_BUILD_ID, warnings, timing, total_ms)
-        return assemble_no_data(reason, echo, diag)
+        return assemble_no_data(reason, echo, diag, include_sentence=include_sentence)
 
     if inp.kind != "raw_text":
         # spec_resubmit → not yet implemented; parsed → app layer rejects with 400
@@ -263,6 +273,7 @@ async def _resolve_pipeline(
             query="",
             engine_build=ENGINE_BUILD_ID,
             start_ms=start_ms,
+            include_sentence=include_sentence,
         )
 
     query: str = inp.query  # type: ignore[union-attr]
@@ -351,7 +362,6 @@ async def _resolve_pipeline(
         # Sort key: (-score, -registry_index) — highest score leads; for equal
         # scores, higher registry_index wins (STANDARD_RULE is last in REGISTRY,
         # so it has the highest index and therefore leads when dev-finance scores 0).
-        # This matches the original "else: std_shapes + df_shapes" fallback branch.
         # FamilyRule is not hashable (axis_pins is a dict), so use id() for lookup.
         _registry_index = {id(rule): i for i, rule in enumerate(REGISTRY)}
         shapes_found = sorted(
@@ -433,6 +443,7 @@ async def _resolve_pipeline(
         resolved_pairs,
         place_as_constraint=True,
         recipient_role_dcid=RECIPIENT_ROLE_DCID,
+        donor_role_dcid=DONOR_ROLE_DCID,
     )
 
     # When seam=ON (pac=True) the two role calls would be identical; skip the redundant second.
@@ -446,6 +457,7 @@ async def _resolve_pipeline(
             resolved_pairs,
             place_as_constraint=False,
             recipient_role_dcid=RECIPIENT_ROLE_DCID,
+            donor_role_dcid=DONOR_ROLE_DCID,
         )
 
     # Emit seam warnings
@@ -473,10 +485,11 @@ async def _resolve_pipeline(
     recipient_dcid: str | None = None
     donor_dcid: str | None = None
     for dcid, role_draft in roles_for_sv.items():
-        if isinstance(role_draft.role, DirectionalRole) and role_draft.role.direction == "to":
-            recipient_dcid = dcid
-        elif isinstance(role_draft.role, SubjectRole):
-            donor_dcid = dcid
+        if isinstance(role_draft.role, DirectionalRole):
+            if role_draft.role.direction == "to":
+                recipient_dcid = dcid
+            elif role_draft.role.direction == "from":
+                donor_dcid = dcid
 
     # Treat a bare entity as the recipient only when no directional signal was detected.
     # If directional_detected_sv is True, at least one entity had a "from" or "to"
@@ -626,7 +639,7 @@ async def _resolve_pipeline(
             )
             (
                 ft_refs,
-                rr_ref,
+                role_refs,
                 cand_slots,
                 cand_slot_key_models,
                 cand_sv_refs,
@@ -646,7 +659,7 @@ async def _resolve_pipeline(
             )
             cand_stat_vars = build_stat_vars(cand_sv_refs, cand_shape.shape_id, cand_slots)
             cand_entities = [
-                _build_entity(rd, er, etr, rr_ref)
+                _build_entity(rd, er, etr, role_refs)
                 for rd, er, etr in cand_entity_data
             ]
             cand_spec = build_spec(
@@ -677,12 +690,16 @@ async def _resolve_pipeline(
             total_ms = _now_ms() - start_ms
             echo = _make_query_echo(query, [variable], extract_skipped=False)
             diag = _make_diagnostics(ENGINE_BUILD_ID, warnings, timing, total_ms)
-            return assemble_definite(unique_specs[0], echo, diag)
+            return assemble_definite(unique_specs[0], echo, diag, include_sentence=include_sentence)
 
         total_ms = _now_ms() - start_ms
         echo = _make_query_echo(query, [variable], extract_skipped=False)
         diag = _make_diagnostics(ENGINE_BUILD_ID, warnings, timing, total_ms)
-        return assemble_candidates(unique_specs, echo, diag, max_candidates=QRE_MAX_CANDIDATES)
+        return assemble_candidates(
+            unique_specs, echo, diag,
+            max_candidates=QRE_MAX_CANDIDATES,
+            include_sentence=include_sentence,
+        )
 
     # Definite path: single Materialised result.
     grounding_result = await asyncio.to_thread(
@@ -696,7 +713,7 @@ async def _resolve_pipeline(
 
     (
         five_tuple_refs,
-        recipient_role_ref,
+        role_refs,
         slots,
         slot_key_models,
         sv_refs,
@@ -716,7 +733,7 @@ async def _resolve_pipeline(
 
     # Assemble Entity objects from grounded data
     entity_objects: list[Entity] = [
-        _build_entity(role_draft, entity_ref, entity_type_ref, recipient_role_ref)
+        _build_entity(role_draft, entity_ref, entity_type_ref, role_refs)
         for role_draft, entity_ref, entity_type_ref in entity_objects_data
     ]
 
@@ -738,7 +755,7 @@ async def _resolve_pipeline(
     echo = _make_query_echo(query, [variable], extract_skipped=False)
     diag = _make_diagnostics(ENGINE_BUILD_ID, warnings, timing, total_ms)
 
-    return assemble_definite(spec, echo, diag)
+    return assemble_definite(spec, echo, diag, include_sentence=include_sentence)
 
 
 def _materialise_standard_candidates(
@@ -834,12 +851,14 @@ def _ground_answer(
         b.property_dcid: b for b in bindings
     }
 
-    # Ground the recipient role node
-    recipient_role_ref: GraphRef | None = None
-    try:
-        recipient_role_ref = graphref(RECIPIENT_ROLE_DCID, graph=graph)
-    except GroundingMiss:
-        recipient_role_ref = GraphRef(dcid=RECIPIENT_ROLE_DCID, label=RECIPIENT_ROLE_DCID)
+    # Ground the directional role nodes. Recipient is constraint-sourced
+    # (DevelopmentFinanceRecipient); donor is observation-sourced (observationAbout).
+    role_refs: dict[str, GraphRef] = {}
+    for role_dcid in (RECIPIENT_ROLE_DCID, DONOR_ROLE_DCID):
+        try:
+            role_refs[role_dcid] = graphref(role_dcid, graph=graph)
+        except GroundingMiss:
+            role_refs[role_dcid] = GraphRef(dcid=role_dcid, label=role_dcid)
 
     # Build grounded Slots
     slots = []
@@ -892,7 +911,7 @@ def _ground_answer(
 
     return (
         five_tuple_refs,
-        recipient_role_ref,
+        role_refs,
         slots,
         slot_key_models,
         sv_refs,
@@ -942,6 +961,7 @@ def _quick_no_data(
     query: str,
     engine_build: str,
     start_ms: int,
+    include_sentence: bool = False,
 ) -> ResolveResponse:
     """Build a no_data response without any LLM or graph calls."""
     total_ms = _now_ms() - start_ms
@@ -953,7 +973,7 @@ def _quick_no_data(
         extract_skipped=True,
     )
     diag = _make_diagnostics(engine_build, [], {}, total_ms)
-    return assemble_no_data(reason, echo, diag)
+    return assemble_no_data(reason, echo, diag, include_sentence=include_sentence)
 
 
 def resolve(request: ResolveRequest) -> ResolveResponse:

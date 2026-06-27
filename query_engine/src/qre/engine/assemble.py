@@ -33,6 +33,7 @@ from qre.models import (
     StatVar,
     StatVarSlotValue,
 )
+from qre.render import no_data_phrase, render_candidates_summary, render_sentence
 
 
 def build_slot(
@@ -255,13 +256,17 @@ def assemble_definite(
     spec: "Spec",  # noqa: F821
     query_echo: QueryEcho,
     diagnostics: Diagnostics,
+    *,
+    include_sentence: bool = False,
 ) -> ResolveResponse:
     """Wrap a Spec into a DefiniteResponse."""
+    rendered = render_sentence(spec) if include_sentence else None
     return ResolveResponse(
         root=DefiniteResponse(
             query_echo=query_echo,
             diagnostics=diagnostics,
             interpretation=spec,
+            rendered_sentence=rendered,
         )
     )
 
@@ -270,13 +275,17 @@ def assemble_no_data(
     reason: str,
     query_echo: QueryEcho,
     diagnostics: Diagnostics,
+    *,
+    include_sentence: bool = False,
 ) -> ResolveResponse:
     """Build a NoDataResponse with the given reason."""
+    rendered = no_data_phrase(reason) if include_sentence else None
     return ResolveResponse(
         root=NoDataResponse(
             query_echo=query_echo,
             diagnostics=diagnostics,
             no_data=NoData(reason=reason),  # type: ignore[arg-type]
+            rendered_sentence=rendered,
         )
     )
 
@@ -287,6 +296,7 @@ def assemble_candidates(
     diagnostics: Diagnostics,
     *,
     max_candidates: int | None = None,
+    include_sentence: bool = False,
 ) -> ResolveResponse:
     """Build a CandidatesResponse from multiple competing Specs.
 
@@ -294,10 +304,11 @@ def assemble_candidates(
     lexicographic tiebreak) and clamped to max_candidates.
 
     Args:
-        specs:          Competing Spec objects (must have len >= 2 before clamping).
-        query_echo:     The query echo to include in the response.
-        diagnostics:    The diagnostics envelope.
-        max_candidates: Upper bound on the number of specs. None defaults to len(specs).
+        specs:            Competing Spec objects (must have len >= 2 before clamping).
+        query_echo:       The query echo to include in the response.
+        diagnostics:      The diagnostics envelope.
+        max_candidates:   Upper bound on the number of specs. None defaults to len(specs).
+        include_sentence: When True, render a count summary in rendered_sentence.
 
     Returns:
         A ResolveResponse wrapping a CandidatesResponse.
@@ -308,6 +319,9 @@ def assemble_candidates(
     sorted_specs = sorted(specs, key=lambda s: (-s.shape.member_count, s.spec_id))
     clamped = sorted_specs[:cap]
 
+    # Count reflects the specs actually returned, not the pre-clamp total.
+    rendered = render_candidates_summary(len(clamped)) if include_sentence else None
+
     return ResolveResponse(
         root=CandidatesResponse(
             query_echo=query_echo,
@@ -316,5 +330,6 @@ def assemble_candidates(
                 max_candidates=cap,
                 specs=clamped,
             ),
+            rendered_sentence=rendered,
         )
     )

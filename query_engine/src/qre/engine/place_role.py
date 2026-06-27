@@ -1,11 +1,13 @@
 """Place-role classification for the QRE engine.
 
-Decides whether a resolved entity is a donor (from → subject) or recipient
-(to → directional) based on directional prepositions in the raw query.
+Decides whether a resolved entity is a donor (from → directional/from) or
+recipient (to → directional/to) based on directional prepositions in the raw
+query.
 
 Seam flag:
-  place_as_constraint=True (default): recipients become EntityRoleDirectional,
-    donors EntityRoleSubject.
+  place_as_constraint=True (default): recipients (to) become EntityRoleDirectional
+    with direction="to"; donors (from) become EntityRoleDirectional with
+    direction="from".
   place_as_constraint=False: all entities become EntityRoleSubject; a warning is
     emitted when directionality is detected.
 
@@ -116,6 +118,7 @@ def directional_roles(
     *,
     place_as_constraint: bool,
     recipient_role_dcid: str,
+    donor_role_dcid: str,
 ) -> tuple[dict[str, EntityRoleDraft], bool, bool]:
     """Assign directional roles to a list of resolved entities.
 
@@ -124,11 +127,15 @@ def directional_roles(
         resolved_entities: List of (dcid, surface) pairs. surface is the
             verbatim query text used to name the entity, or None.
         place_as_constraint: When True (server default), recipients (detected
-            via "to <entity>") receive EntityRoleDirectional; donors receive
-            EntityRoleSubject. When False, all entities receive EntityRoleSubject
-            regardless of detected directionality.
-        recipient_role_dcid: The dcid for the directional role node (e.g.
-            "DevelopmentFinanceRecipient"). Used only when place_as_constraint=True.
+            via "to <entity>") become EntityRoleDirectional with direction="to";
+            donors (detected via "from <entity>") become EntityRoleDirectional
+            with direction="from". When False, all entities receive
+            EntityRoleSubject regardless of detected directionality.
+        recipient_role_dcid: The dcid for the recipient directional role node
+            (e.g. "DevelopmentFinanceRecipient"). Used only when
+            place_as_constraint=True.
+        donor_role_dcid: The dcid for the donor directional role node (e.g.
+            "observationAbout"). Used only when place_as_constraint=True.
 
     Returns:
         3-tuple of (roles, seam_off, directional_detected):
@@ -154,7 +161,11 @@ def directional_roles(
                 )
             elif direction == "from":
                 detected_any_direction = True
-                role = SubjectRole()
+                role = DirectionalRole(
+                    kind="directional",
+                    direction="from",
+                    role_dcid=donor_role_dcid,
+                )
             else:
                 # Ambiguous — default to subject (fail-open)
                 role = SubjectRole()

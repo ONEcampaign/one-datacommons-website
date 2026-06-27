@@ -40,6 +40,7 @@ from qre.models import (  # noqa: I001
     EntityRoleSubject,
     GraphRef,
     NoData,
+    NoDataReason,
     NoDataResponse,
     ParsedInput,
     PipelineStep,
@@ -65,6 +66,7 @@ from qre.models import (  # noqa: I001
     ValueKind,
     Warning,  # noqa: F401 — importable as qre.Warning; omitted from __all__ to avoid shadowing builtin
 )
+from qre.render import no_data_phrase, render_candidates_summary, render_sentence
 
 
 __all__ = [
@@ -93,11 +95,15 @@ __all__ = [
     "EntityRoleSubject",
     "GraphRef",
     "NoData",
+    "NoDataReason",
     "NoDataResponse",
     "ParsedInput",
     "PipelineStep",
     "QueryEcho",
     "RawTextInput",
+    "no_data_phrase",
+    "render_candidates_summary",
+    "render_sentence",
     "ResolutionTrace",
     "ResolvedFilter",
     "ResolveInput",

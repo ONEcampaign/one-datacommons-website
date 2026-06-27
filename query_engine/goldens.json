@@ -52,9 +52,9 @@
     "expected_entities": [
       {
         "dcid": "country/USA",
-        "role_kind": "subject",
+        "role_kind": "directional",
         "direction": "from",
-        "role_dcid": null
+        "role_dcid": "observationAbout"
       },
       {
         "dcid": "country/ETH",
@@ -66,7 +66,7 @@
     "expected_no_data_reason": null,
     "candidate_count": null,
     "status": "VERIFIED_AGAINST_GRAPH",
-    "notes": "Probed staging. SV ONE/CRS_DAC/Health-ODAGrants-ETH confirmed: populationType=DevelopmentFinance,\nmeasuredProperty=DevelopmentFinanceFlow, statType=measuredValue, DevelopmentFinanceScheme=ODAGrants,\nDevelopmentFinancePurpose=DAC/Health (rollup node \"Health Total\"), DevelopmentFinanceRecipient=country/ETH.\nObservation probe: country/USA as observationAbout yields 402 observations, date range 1991-2024 (18 facets).\ncountry/USA and country/ETH both confirmed as valid entity dcids.\nDAC/Health confirmed as a DevelopmentFinancePurposeEnum node (CRS purpose code 12000).\nODAGrants confirmed as a Property node (Official Development Assistance Grants).\nSeam-ON (rendered above): donor country/USA is role_kind=subject direction=from (observationAbout subject);\nrecipient country/ETH is role_kind=directional direction=to bound via DevelopmentFinanceRecipient constraint.\nSeam-OFF rendering: both entities become role_kind=subject with direction=null and role_dcid=null;\nthe eval harness spawns the seam-OFF pair mechanically from the seam-ON spec.\n[conformance: fixed country/USA role_kind from 'directional' to 'subject'; Rule 6 -- named donor is subject, only recipient is directional]\n"
+    "notes": "Probed staging. SV ONE/CRS_DAC/Health-ODAGrants-ETH confirmed: populationType=DevelopmentFinance,\nmeasuredProperty=DevelopmentFinanceFlow, statType=measuredValue, DevelopmentFinanceScheme=ODAGrants,\nDevelopmentFinancePurpose=DAC/Health (rollup node \"Health Total\"), DevelopmentFinanceRecipient=country/ETH.\nObservation probe: country/USA as observationAbout yields 402 observations, date range 1991-2024 (18 facets).\ncountry/USA and country/ETH both confirmed as valid entity dcids.\nDAC/Health confirmed as a DevelopmentFinancePurposeEnum node (CRS purpose code 12000).\nODAGrants confirmed as a Property node (Official Development Assistance Grants).\nSeam-ON (rendered above): donor country/USA is role_kind=directional direction=from, role_dcid=observationAbout (observation-sourced);\nrecipient country/ETH is role_kind=directional direction=to bound via DevelopmentFinanceRecipient constraint.\nSeam-OFF rendering: both entities become role_kind=subject with direction=null and role_dcid=null;\nthe eval harness spawns the seam-OFF pair mechanically from the seam-ON spec.\n[conformance: named donor is a directional 'from' role sourced from observationAbout, symmetric with the recipient's directional 'to'; supersedes the earlier Rule-6 subject treatment per place-as-constraint-seam.md]\n"
   },
   {
     "slice": "main",
@@ -127,15 +127,15 @@
       },
       {
         "dcid": "country/GBR",
-        "role_kind": "subject",
+        "role_kind": "directional",
         "direction": "from",
-        "role_dcid": null
+        "role_dcid": "observationAbout"
       }
     ],
     "expected_no_data_reason": null,
     "candidate_count": null,
     "status": "VERIFIED_AGAINST_GRAPH",
-    "notes": "Probed ONE/CRS_DAC/Health-ODAGrants-KEN on staging: confirmed 3 constraintProperties (DevelopmentFinancePurpose=DAC/Health, DevelopmentFinanceScheme=ODAGrants, DevelopmentFinanceRecipient=country/KEN), populationType=DevelopmentFinance, measuredProperty=DevelopmentFinanceFlow, statType=measuredValue. obs probe for (variable=ONE/CRS_DAC/Health-ODAGrants-KEN, entity=country/GBR) returned 432 observations spanning 1988-2024 across 18 facets -- fully live. country/GBR (UK) and country/KEN (Kenya) both confirmed as valid entity dcids. Seam-OFF rendering: country/KEN becomes role_kind=subject (no directional), country/GBR becomes role_kind=subject (no directional); eval-gate spawns this pair.\n"
+    "notes": "Probed ONE/CRS_DAC/Health-ODAGrants-KEN on staging: confirmed 3 constraintProperties (DevelopmentFinancePurpose=DAC/Health, DevelopmentFinanceScheme=ODAGrants, DevelopmentFinanceRecipient=country/KEN), populationType=DevelopmentFinance, measuredProperty=DevelopmentFinanceFlow, statType=measuredValue. obs probe for (variable=ONE/CRS_DAC/Health-ODAGrants-KEN, entity=country/GBR) returned 432 observations spanning 1988-2024 across 18 facets -- fully live. country/GBR (UK) and country/KEN (Kenya) both confirmed as valid entity dcids. Seam-ON rendering: country/GBR is role_kind=directional direction=from, role_dcid=observationAbout (observation-sourced); country/KEN is role_kind=directional direction=to via DevelopmentFinanceRecipient constraint. Seam-OFF rendering: country/KEN becomes role_kind=subject (no directional), country/GBR becomes role_kind=subject (no directional); eval-gate spawns this pair. [conformance: named donor is a directional 'from' role sourced from observationAbout, symmetric with the recipient's directional 'to'; supersedes the earlier Rule-6 subject treatment per place-as-constraint-seam.md]\n"
   },
   {
     "slice": "main",
@@ -190,9 +190,9 @@
     "expected_entities": [
       {
         "dcid": "country/DEU",
-        "role_kind": "subject",
+        "role_kind": "directional",
         "direction": "from",
-        "role_dcid": null
+        "role_dcid": "observationAbout"
       },
       {
         "dcid": "country/ETH",
@@ -204,7 +204,7 @@
     "expected_no_data_reason": null,
     "candidate_count": null,
     "status": "VERIFIED_AGAINST_GRAPH",
-    "notes": "Probed ONE/CRS_DAC/Health-OfficialDevelopmentAssistance-ETH on staging: confirmed\npopulationType=DevelopmentFinance, measuredProperty=DevelopmentFinanceFlow,\nstatType=measuredValue, DevelopmentFinanceScheme=OfficialDevelopmentAssistance,\nDevelopmentFinancePurpose=DAC/Health, DevelopmentFinanceRecipient=country/ETH.\nConfirmed 372 observations (1997-2024) with country/DEU as observationAbout donor.\nDAC/Health confirmed as aggregate rollup node (name \"Health (Total)\", isPartOf parent\nfor DAC/BasicHealth etc.); binding_kind=value on the how axis because DAC/Health is\na real aggregate node, not a set. country/ETH as subject yields 0 observations,\nconfirming ETH is the constraint (DevelopmentFinanceRecipient), not the donor.\nOfficialDevelopmentAssistance confirmed as aggregate scheme (grants+loans combined).\nSeam-OFF rendering: country/ETH becomes role_kind subject with no directional role;\nthis would fail to find data as ETH is a constraint value, not observationAbout.\nSeam-ON rendering shown above: country/DEU is subject (from/donor),\ncountry/ETH is directional to/DevelopmentFinanceRecipient constraint.\n"
+    "notes": "Probed ONE/CRS_DAC/Health-OfficialDevelopmentAssistance-ETH on staging: confirmed\npopulationType=DevelopmentFinance, measuredProperty=DevelopmentFinanceFlow,\nstatType=measuredValue, DevelopmentFinanceScheme=OfficialDevelopmentAssistance,\nDevelopmentFinancePurpose=DAC/Health, DevelopmentFinanceRecipient=country/ETH.\nConfirmed 372 observations (1997-2024) with country/DEU as observationAbout donor.\nDAC/Health confirmed as aggregate rollup node (name \"Health (Total)\", isPartOf parent\nfor DAC/BasicHealth etc.); binding_kind=value on the how axis because DAC/Health is\na real aggregate node, not a set. country/ETH as subject yields 0 observations,\nconfirming ETH is the constraint (DevelopmentFinanceRecipient), not the donor.\nOfficialDevelopmentAssistance confirmed as aggregate scheme (grants+loans combined).\nSeam-OFF rendering: country/ETH becomes role_kind subject with no directional role;\nthis would fail to find data as ETH is a constraint value, not observationAbout.\nSeam-ON rendering shown above: country/DEU is role_kind=directional direction=from, role_dcid=observationAbout (observation-sourced);\ncountry/ETH is directional to/DevelopmentFinanceRecipient constraint.\n[conformance: named donor is a directional 'from' role sourced from observationAbout, symmetric with the recipient's directional 'to'; supersedes the earlier Rule-6 subject treatment per place-as-constraint-seam.md]\n"
   },
   {
     "slice": "main",
@@ -259,9 +259,9 @@
     "expected_entities": [
       {
         "dcid": "country/USA",
-        "role_kind": "subject",
+        "role_kind": "directional",
         "direction": "from",
-        "role_dcid": null
+        "role_dcid": "observationAbout"
       },
       {
         "dcid": "country/KEN",
@@ -273,7 +273,7 @@
     "expected_no_data_reason": null,
     "candidate_count": null,
     "status": "VERIFIED_AGAINST_GRAPH",
-    "notes": "Probed ONE/CRS_DAC/STDcontrolincludingHIVAIDS-ODAGrants-KEN on dc-staging.one.org:\nconstraintProperties = [DevelopmentFinanceScheme=ODAGrants, DevelopmentFinancePurpose=DAC/STDcontrolincludingHIVAIDS, DevelopmentFinanceRecipient=country/KEN];\npopulationType=DevelopmentFinance, measuredProperty=DevelopmentFinanceFlow, statType=measuredValue.\nObservation probe: country/USA as observationAbout -> 378 obs across 18 facets, 1995-2024.\ncountry/KEN confirmed (name=Kenya); country/USA confirmed (name=United States);\nODAGrants confirmed (name=Official Development Assistance Grants);\nDAC/STDcontrolincludingHIVAIDS confirmed (name=STD control including HIV/AIDS).\nSeam-ON (rendered above): recipient country/KEN is directional role_kind with role_dcid=DevelopmentFinanceRecipient, donor country/USA is role_kind=subject direction=from.\nSeam-OFF: same spec; country/KEN becomes role_kind=subject, direction=null, role_dcid=null (treated symmetrically as an observation subject alongside country/USA). Eval-gate spawns the off pair mechanically.\n"
+    "notes": "Probed ONE/CRS_DAC/STDcontrolincludingHIVAIDS-ODAGrants-KEN on dc-staging.one.org:\nconstraintProperties = [DevelopmentFinanceScheme=ODAGrants, DevelopmentFinancePurpose=DAC/STDcontrolincludingHIVAIDS, DevelopmentFinanceRecipient=country/KEN];\npopulationType=DevelopmentFinance, measuredProperty=DevelopmentFinanceFlow, statType=measuredValue.\nObservation probe: country/USA as observationAbout -> 378 obs across 18 facets, 1995-2024.\ncountry/KEN confirmed (name=Kenya); country/USA confirmed (name=United States);\nODAGrants confirmed (name=Official Development Assistance Grants);\nDAC/STDcontrolincludingHIVAIDS confirmed (name=STD control including HIV/AIDS).\nSeam-ON (rendered above): recipient country/KEN is directional role_kind with role_dcid=DevelopmentFinanceRecipient, donor country/USA is role_kind=directional direction=from, role_dcid=observationAbout (observation-sourced).\nSeam-OFF: same spec; country/KEN becomes role_kind=subject, direction=null, role_dcid=null (treated symmetrically as an observation subject alongside country/USA). Eval-gate spawns the off pair mechanically.\n[conformance: named donor is a directional 'from' role sourced from observationAbout, symmetric with the recipient's directional 'to'; supersedes the earlier Rule-6 subject treatment per place-as-constraint-seam.md]\n"
   },
   {
     "slice": "main",
@@ -328,9 +328,9 @@
     "expected_entities": [
       {
         "dcid": "country/FRA",
-        "role_kind": "subject",
+        "role_kind": "directional",
         "direction": "from",
-        "role_dcid": null
+        "role_dcid": "observationAbout"
       },
       {
         "dcid": "country/KEN",
@@ -342,7 +342,7 @@
     "expected_no_data_reason": null,
     "candidate_count": null,
     "status": "VERIFIED_AGAINST_GRAPH",
-    "notes": "Probed on staging. ONE/CRS_DAC/BasicHealth-ODAGrants-KEN exists with constraintProperties\nDevelopmentFinanceScheme=ODAGrants, DevelopmentFinancePurpose=DAC/BasicHealth,\nDevelopmentFinanceRecipient=country/KEN. obs(country/FRA) = 258 facets, date range 2000-2024.\nDAC/BasicHealth confirmed as DevelopmentFinancePurposeEnum (name \"Basic Health (Semi-Aggregate)\",\nisPartOf=DAC/Health). ODAGrants confirmed as a Property node (scheme). country/FRA and\ncountry/KEN both exist on staging.\nSeam-OFF rendering: country/KEN becomes role_kind=subject (no directional role); country/FRA\nremains the subject donor -- eval-gate spawns the off pair mechanically from the seam-ON spec.\n"
+    "notes": "Probed on staging. ONE/CRS_DAC/BasicHealth-ODAGrants-KEN exists with constraintProperties\nDevelopmentFinanceScheme=ODAGrants, DevelopmentFinancePurpose=DAC/BasicHealth,\nDevelopmentFinanceRecipient=country/KEN. obs(country/FRA) = 258 facets, date range 2000-2024.\nDAC/BasicHealth confirmed as DevelopmentFinancePurposeEnum (name \"Basic Health (Semi-Aggregate)\",\nisPartOf=DAC/Health). ODAGrants confirmed as a Property node (scheme). country/FRA and\ncountry/KEN both exist on staging.\nSeam-ON rendering: country/FRA is role_kind=directional direction=from, role_dcid=observationAbout (observation-sourced);\ncountry/KEN is role_kind=directional direction=to via DevelopmentFinanceRecipient constraint.\nSeam-OFF rendering: country/KEN becomes role_kind=subject (no directional role); country/FRA\nalso becomes role_kind=subject -- eval-gate spawns the off pair mechanically from the seam-ON spec.\n[conformance: named donor is a directional 'from' role sourced from observationAbout, symmetric with the recipient's directional 'to'; supersedes the earlier Rule-6 subject treatment per place-as-constraint-seam.md]\n"
   },
   {
     "slice": "main",
@@ -1880,15 +1880,15 @@
       },
       {
         "dcid": "country/USA",
-        "role_kind": "subject",
+        "role_kind": "directional",
         "direction": "from",
-        "role_dcid": null
+        "role_dcid": "observationAbout"
       }
     ],
     "expected_no_data_reason": null,
     "candidate_count": null,
     "status": "VERIFIED_AGAINST_GRAPH",
-    "notes": "Probed ONE/CRS_DAC/Malariacontrol-ODAGrants-ETH on staging: confirmed populationType=DevelopmentFinance,\nmeasuredProperty=DevelopmentFinanceFlow, statType=measuredValue, DevelopmentFinanceScheme=ODAGrants,\nDevelopmentFinancePurpose=DAC/Malariacontrol, DevelopmentFinanceRecipient=country/ETH.\n270 observations (2007-2024) with observationAbout=country/USA confirmed via /tmp/qre_probe.py obs.\nDAC/Malariacontrol confirmed as leaf node (no inverse isPartOf children).\ncountry/USA and country/ETH both confirmed live on staging.\nSeam-ON (shown above): ETH is directional \"to\" via DevelopmentFinanceRecipient constraint; USA is the\nsubject donor. Seam-OFF rendering: same spec, country/ETH becomes role_kind: subject (no directional\nrole), and country/USA also becomes role_kind: subject -- the seam resolves directionality mechanically.\n"
+    "notes": "Probed ONE/CRS_DAC/Malariacontrol-ODAGrants-ETH on staging: confirmed populationType=DevelopmentFinance,\nmeasuredProperty=DevelopmentFinanceFlow, statType=measuredValue, DevelopmentFinanceScheme=ODAGrants,\nDevelopmentFinancePurpose=DAC/Malariacontrol, DevelopmentFinanceRecipient=country/ETH.\n270 observations (2007-2024) with observationAbout=country/USA confirmed via /tmp/qre_probe.py obs.\nDAC/Malariacontrol confirmed as leaf node (no inverse isPartOf children).\ncountry/USA and country/ETH both confirmed live on staging.\nSeam-ON (shown above): ETH is directional \"to\" via DevelopmentFinanceRecipient constraint; USA is the\ndonor country, role_kind=directional direction=from, role_dcid=observationAbout (observation-sourced).\nSeam-OFF rendering: same spec, country/ETH becomes role_kind: subject (no directional\nrole), and country/USA also becomes role_kind: subject -- the seam resolves directionality mechanically.\n[conformance: named donor is a directional 'from' role sourced from observationAbout, symmetric with the recipient's directional 'to'; supersedes the earlier Rule-6 subject treatment per place-as-constraint-seam.md]\n"
   },
   {
     "slice": "holdout",
@@ -2010,9 +2010,9 @@
     "expected_entities": [
       {
         "dcid": "country/USA",
-        "role_kind": "subject",
+        "role_kind": "directional",
         "direction": "from",
-        "role_dcid": null
+        "role_dcid": "observationAbout"
       },
       {
         "dcid": "country/NRU",
@@ -2024,7 +2024,7 @@
     "expected_no_data_reason": "no_observations",
     "candidate_count": null,
     "status": "VERIFIED_AGAINST_GRAPH",
-    "notes": "Probed staging graph: ONE/CRS_DAC/Health-ODAGrants-NRU node confirmed with\nDevelopmentFinancePurpose=DAC/Health, DevelopmentFinanceScheme=ODAGrants,\nDevelopmentFinanceRecipient=country/NRU. country/NRU (Nauru) and country/USA\nboth confirmed live. Observation probe for ONE/CRS_DAC/Health-ODAGrants-NRU @\ncountry/USA returned n_facets=0, n_observations=0 -- USA has no reported health\nODA grants to Nauru in the CRS_DAC dataset. The SV is structurally valid; the\nno_data arises from missing observations, not a missing variable.\nSeam-OFF rendering: country/NRU role_kind: subject (the recipient entity becomes\nthe observationAbout subject, no directional role); seam-ON rendering shown above\n(country/USA as subject/from, country/NRU as directional/to via\nDevelopmentFinanceRecipient constraint).\n"
+    "notes": "Probed staging graph: ONE/CRS_DAC/Health-ODAGrants-NRU node confirmed with\nDevelopmentFinancePurpose=DAC/Health, DevelopmentFinanceScheme=ODAGrants,\nDevelopmentFinanceRecipient=country/NRU. country/NRU (Nauru) and country/USA\nboth confirmed live. Observation probe for ONE/CRS_DAC/Health-ODAGrants-NRU @\ncountry/USA returned n_facets=0, n_observations=0 -- USA has no reported health\nODA grants to Nauru in the CRS_DAC dataset. The SV is structurally valid; the\nno_data arises from missing observations, not a missing variable.\nSeam-OFF rendering: country/NRU role_kind: subject (the recipient entity becomes\nthe observationAbout subject, no directional role); seam-ON rendering shown above\n(country/USA as role_kind=directional direction=from role_dcid=observationAbout (observation-sourced),\ncountry/NRU as directional/to via DevelopmentFinanceRecipient constraint).\n[conformance: named donor is a directional 'from' role sourced from observationAbout, symmetric with the recipient's directional 'to'; supersedes the earlier Rule-6 subject treatment per place-as-constraint-seam.md]\n"
   },
   {
     "slice": "holdout",

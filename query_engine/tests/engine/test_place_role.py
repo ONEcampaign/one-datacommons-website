@@ -12,6 +12,7 @@ from qre.engine.place_role import (
 )
 
 RECIPIENT_ROLE_DCID = "DevelopmentFinanceRecipient"
+DONOR_ROLE_DCID = "observationAbout"
 
 
 # ---------------------------------------------------------------------------
@@ -30,6 +31,7 @@ def _roles(
         entities,
         place_as_constraint=seam_on,
         recipient_role_dcid=RECIPIENT_ROLE_DCID,
+        donor_role_dcid=DONOR_ROLE_DCID,
     )
     return roles
 
@@ -46,13 +48,14 @@ def _roles_with_flags(
         entities,
         place_as_constraint=seam_on,
         recipient_role_dcid=RECIPIENT_ROLE_DCID,
+        donor_role_dcid=DONOR_ROLE_DCID,
     )
 
 
 
 
 def test_from_donor_to_recipient() -> None:
-    """'from USA to Ethiopia' → USA=subject, ETH=directional/to."""
+    """'from USA to Ethiopia' → USA=directional/from, ETH=directional/to."""
     result = _roles(
         "health ODA grants from USA to Ethiopia",
         [("country/USA", "USA"), ("country/ETH", "Ethiopia")],
@@ -64,20 +67,25 @@ def test_from_donor_to_recipient() -> None:
     usa_role = result["country/USA"].role
     eth_role = result["country/ETH"].role
 
-    assert isinstance(usa_role, SubjectRole)
+    assert isinstance(usa_role, DirectionalRole)
+    assert usa_role.direction == "from"
+    assert usa_role.role_dcid == DONOR_ROLE_DCID
     assert isinstance(eth_role, DirectionalRole)
     assert eth_role.direction == "to"
     assert eth_role.role_dcid == RECIPIENT_ROLE_DCID
 
 
-def test_from_donor_is_subject_not_directional() -> None:
-    """The donor (from) is subject — not DirectionalRole with direction=from."""
+def test_from_donor_is_directional_from() -> None:
+    """The donor (from) is DirectionalRole with direction=from, not a SubjectRole."""
     result = _roles(
         "ODA from USA to Kenya",
         [("country/USA", "USA"), ("country/KEN", "Kenya")],
         seam_on=True,
     )
-    assert isinstance(result["country/USA"].role, SubjectRole)
+    usa_role = result["country/USA"].role
+    assert isinstance(usa_role, DirectionalRole)
+    assert usa_role.direction == "from"
+    assert usa_role.role_dcid == DONOR_ROLE_DCID
 
 
 
@@ -210,8 +218,11 @@ def test_multiple_entities_correct_roles() -> None:
     result = _roles(query, entities, seam_on=True)
 
     assert len(result) == 3
-    # USA is donor → subject
-    assert isinstance(result["country/USA"].role, SubjectRole)
+    # USA is donor → directional/from
+    usa_role = result["country/USA"].role
+    assert isinstance(usa_role, DirectionalRole)
+    assert usa_role.direction == "from"
+    assert usa_role.role_dcid == DONOR_ROLE_DCID
     # ETH is recipient → directional/to
     assert isinstance(result["country/ETH"].role, DirectionalRole)
     assert result["country/ETH"].role.direction == "to"

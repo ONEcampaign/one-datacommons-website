@@ -201,6 +201,19 @@ RECIPIENT_ROLE_DCID = "DevelopmentFinanceRecipient"
 # Label confirmed live: "Development Finance Recipient"
 RECIPIENT_ROLE_LABEL = "Development Finance Recipient"
 
+# ---------------------------------------------------------------------------
+# Donor-role dcid (the EntityRoleDirectional.role GraphRef target for a named
+# "from" donor). The donor is the observation's observationAbout entity, not a
+# constraint property (see .design/place-as-constraint-seam.md), so its role
+# GraphRef is observationAbout — the live DC property that sources the directional
+# role, parallel to DevelopmentFinanceRecipient for the recipient. render.py reads
+# entity.ref.label, never this ref; it exists only to satisfy the contract field
+# and the eval groundedness walk (which requires a live node).
+# ---------------------------------------------------------------------------
+
+DONOR_ROLE_DCID = "observationAbout"
+DONOR_ROLE_LABEL = "observation about"
+
 
 # ---------------------------------------------------------------------------
 # Typed family record

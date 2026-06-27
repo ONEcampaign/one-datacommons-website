@@ -36,9 +36,9 @@ These are expected engine outputs for the QRE Phase 0 evaluation harness. All go
   expected_stat_vars: ["ONE/CRS_DAC/Health-ODAGrants-ETH"]
   expected_entities:
     - dcid: "country/USA"
-      role_kind: "subject"
+      role_kind: "directional"
       direction: "from"
-      role_dcid: null
+      role_dcid: "observationAbout"
     - dcid: "country/ETH"
       role_kind: "directional"
       direction: "to"
@@ -54,11 +54,11 @@ These are expected engine outputs for the QRE Phase 0 evaluation harness. All go
     country/USA and country/ETH both confirmed as valid entity dcids.
     DAC/Health confirmed as a DevelopmentFinancePurposeEnum node (CRS purpose code 12000).
     ODAGrants confirmed as a Property node (Official Development Assistance Grants).
-    Seam-ON (rendered above): donor country/USA is role_kind=subject direction=from (observationAbout subject);
+    Seam-ON (rendered above): donor country/USA is role_kind=directional direction=from, role_dcid=observationAbout (observation-sourced);
     recipient country/ETH is role_kind=directional direction=to bound via DevelopmentFinanceRecipient constraint.
     Seam-OFF rendering: both entities become role_kind=subject with direction=null and role_dcid=null;
     the eval harness spawns the seam-OFF pair mechanically from the seam-ON spec.
-    [conformance: fixed country/USA role_kind from 'directional' to 'subject'; Rule 6 -- named donor is subject, only recipient is directional]
+    [conformance: named donor is a directional 'from' role sourced from observationAbout, symmetric with the recipient's directional 'to'; supersedes the earlier Rule-6 subject treatment per place-as-constraint-seam.md]
 
 - id: "df-03"
   query: "health ODA grants from UK to Kenya"
@@ -95,9 +95,9 @@ These are expected engine outputs for the QRE Phase 0 evaluation harness. All go
       direction: "to"
       role_dcid: "DevelopmentFinanceRecipient"
     - dcid: "country/GBR"
-      role_kind: "subject"
+      role_kind: "directional"
       direction: "from"
-      role_dcid: null
+      role_dcid: "observationAbout"
   expected_no_data_reason: null
   candidate_count: null
   status: VERIFIED_AGAINST_GRAPH
@@ -109,8 +109,11 @@ These are expected engine outputs for the QRE Phase 0 evaluation harness. All go
     obs probe for (variable=ONE/CRS_DAC/Health-ODAGrants-KEN, entity=country/GBR)
     returned 432 observations spanning 1988-2024 across 18 facets -- fully live.
     country/GBR (UK) and country/KEN (Kenya) both confirmed as valid entity dcids.
+    Seam-ON rendering: country/GBR is role_kind=directional direction=from, role_dcid=observationAbout (observation-sourced);
+    country/KEN is role_kind=directional direction=to via DevelopmentFinanceRecipient constraint.
     Seam-OFF rendering: country/KEN becomes role_kind=subject (no directional),
     country/GBR becomes role_kind=subject (no directional); eval-gate spawns this pair.
+    [conformance: named donor is a directional 'from' role sourced from observationAbout, symmetric with the recipient's directional 'to'; supersedes the earlier Rule-6 subject treatment per place-as-constraint-seam.md]
 
 - id: "df-04"
   query: "health official development assistance from Germany to Ethiopia"
@@ -143,9 +146,9 @@ These are expected engine outputs for the QRE Phase 0 evaluation harness. All go
   expected_stat_vars: ["ONE/CRS_DAC/Health-OfficialDevelopmentAssistance-ETH"]
   expected_entities:
     - dcid: "country/DEU"
-      role_kind: "subject"
+      role_kind: "directional"
       direction: "from"
-      role_dcid: null
+      role_dcid: "observationAbout"
     - dcid: "country/ETH"
       role_kind: "directional"
       direction: "to"
@@ -166,8 +169,9 @@ These are expected engine outputs for the QRE Phase 0 evaluation harness. All go
     OfficialDevelopmentAssistance confirmed as aggregate scheme (grants+loans combined).
     Seam-OFF rendering: country/ETH becomes role_kind subject with no directional role;
     this would fail to find data as ETH is a constraint value, not observationAbout.
-    Seam-ON rendering shown above: country/DEU is subject (from/donor),
+    Seam-ON rendering shown above: country/DEU is role_kind=directional direction=from, role_dcid=observationAbout (observation-sourced);
     country/ETH is directional to/DevelopmentFinanceRecipient constraint.
+    [conformance: named donor is a directional 'from' role sourced from observationAbout, symmetric with the recipient's directional 'to'; supersedes the earlier Rule-6 subject treatment per place-as-constraint-seam.md]
 
 - id: "df-05"
   query: "HIV/AIDS ODA grants from USA to Kenya"
@@ -201,9 +205,9 @@ These are expected engine outputs for the QRE Phase 0 evaluation harness. All go
     - "ONE/CRS_DAC/STDcontrolincludingHIVAIDS-ODAGrants-KEN"
   expected_entities:
     - dcid: "country/USA"
-      role_kind: "subject"
+      role_kind: "directional"
       direction: "from"
-      role_dcid: null
+      role_dcid: "observationAbout"
     - dcid: "country/KEN"
       role_kind: "directional"
       direction: "to"
@@ -219,8 +223,9 @@ These are expected engine outputs for the QRE Phase 0 evaluation harness. All go
     country/KEN confirmed (name=Kenya); country/USA confirmed (name=United States);
     ODAGrants confirmed (name=Official Development Assistance Grants);
     DAC/STDcontrolincludingHIVAIDS confirmed (name=STD control including HIV/AIDS).
-    Seam-ON (rendered above): recipient country/KEN is directional role_kind with role_dcid=DevelopmentFinanceRecipient, donor country/USA is role_kind=subject direction=from.
+    Seam-ON (rendered above): recipient country/KEN is directional role_kind with role_dcid=DevelopmentFinanceRecipient, donor country/USA is role_kind=directional direction=from, role_dcid=observationAbout (observation-sourced).
     Seam-OFF: same spec; country/KEN becomes role_kind=subject, direction=null, role_dcid=null (treated symmetrically as an observation subject alongside country/USA). Eval-gate spawns the off pair mechanically.
+    [conformance: named donor is a directional 'from' role sourced from observationAbout, symmetric with the recipient's directional 'to'; supersedes the earlier Rule-6 subject treatment per place-as-constraint-seam.md]
 
 - id: "df-13"
   query: "basic health ODA grants from France to Kenya"
@@ -253,9 +258,9 @@ These are expected engine outputs for the QRE Phase 0 evaluation harness. All go
   expected_stat_vars: ["ONE/CRS_DAC/BasicHealth-ODAGrants-KEN"]
   expected_entities:
     - dcid: "country/FRA"
-      role_kind: "subject"
+      role_kind: "directional"
       direction: "from"
-      role_dcid: null
+      role_dcid: "observationAbout"
     - dcid: "country/KEN"
       role_kind: "directional"
       direction: "to"
@@ -270,8 +275,11 @@ These are expected engine outputs for the QRE Phase 0 evaluation harness. All go
     DAC/BasicHealth confirmed as DevelopmentFinancePurposeEnum (name "Basic Health (Semi-Aggregate)",
     isPartOf=DAC/Health). ODAGrants confirmed as a Property node (scheme). country/FRA and
     country/KEN both exist on staging.
+    Seam-ON rendering: country/FRA is role_kind=directional direction=from, role_dcid=observationAbout (observation-sourced);
+    country/KEN is role_kind=directional direction=to via DevelopmentFinanceRecipient constraint.
     Seam-OFF rendering: country/KEN becomes role_kind=subject (no directional role); country/FRA
-    remains the subject donor -- eval-gate spawns the off pair mechanically from the seam-ON spec.
+    also becomes role_kind=subject -- eval-gate spawns the off pair mechanically from the seam-ON spec.
+    [conformance: named donor is a directional 'from' role sourced from observationAbout, symmetric with the recipient's directional 'to'; supersedes the earlier Rule-6 subject treatment per place-as-constraint-seam.md]
 
 - id: "df-06"
   query: "health ODA grants to Ethiopia"
@@ -1471,9 +1479,9 @@ These are expected engine outputs for the QRE Phase 0 evaluation harness. All go
       direction: "to"
       role_dcid: "DevelopmentFinanceRecipient"
     - dcid: "country/USA"
-      role_kind: "subject"
+      role_kind: "directional"
       direction: "from"
-      role_dcid: null
+      role_dcid: "observationAbout"
   expected_no_data_reason: null
   candidate_count: null
   status: VERIFIED_AGAINST_GRAPH
@@ -1485,8 +1493,10 @@ These are expected engine outputs for the QRE Phase 0 evaluation harness. All go
     DAC/Malariacontrol confirmed as leaf node (no inverse isPartOf children).
     country/USA and country/ETH both confirmed live on staging.
     Seam-ON (shown above): ETH is directional "to" via DevelopmentFinanceRecipient constraint; USA is the
-    subject donor. Seam-OFF rendering: same spec, country/ETH becomes role_kind: subject (no directional
+    donor country, role_kind=directional direction=from, role_dcid=observationAbout (observation-sourced).
+    Seam-OFF rendering: same spec, country/ETH becomes role_kind: subject (no directional
     role), and country/USA also becomes role_kind: subject -- the seam resolves directionality mechanically.
+    [conformance: named donor is a directional 'from' role sourced from observationAbout, symmetric with the recipient's directional 'to'; supersedes the earlier Rule-6 subject treatment per place-as-constraint-seam.md]
 
 - id: "df-10"
   query: "education ODA to India"
@@ -1576,9 +1586,9 @@ These are expected engine outputs for the QRE Phase 0 evaluation harness. All go
   expected_stat_vars: ["ONE/CRS_DAC/Health-ODAGrants-NRU"]
   expected_entities:
     - dcid: "country/USA"
-      role_kind: "subject"
+      role_kind: "directional"
       direction: "from"
-      role_dcid: null
+      role_dcid: "observationAbout"
     - dcid: "country/NRU"
       role_kind: "directional"
       direction: "to"
@@ -1596,8 +1606,9 @@ These are expected engine outputs for the QRE Phase 0 evaluation harness. All go
     no_data arises from missing observations, not a missing variable.
     Seam-OFF rendering: country/NRU role_kind: subject (the recipient entity becomes
     the observationAbout subject, no directional role); seam-ON rendering shown above
-    (country/USA as subject/from, country/NRU as directional/to via
-    DevelopmentFinanceRecipient constraint).
+    (country/USA as role_kind=directional direction=from role_dcid=observationAbout (observation-sourced),
+    country/NRU as directional/to via DevelopmentFinanceRecipient constraint).
+    [conformance: named donor is a directional 'from' role sourced from observationAbout, symmetric with the recipient's directional 'to'; supersedes the earlier Rule-6 subject treatment per place-as-constraint-seam.md]
 
 - id: "who-03"
   query: "external spending on administration of health financing"

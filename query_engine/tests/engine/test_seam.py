@@ -17,7 +17,7 @@ def make_request(query: str, pac: bool | None = None) -> ResolveRequest:
 
 class TestSeamBehavior:
     def test_seam_on_recipient_is_directional(self):
-        """df-01 seam=ON: ETH is directional (to), USA is subject (from)."""
+        """df-01 seam=ON: ETH is directional (to), USA is directional (from)."""
         result = offline_resolve(make_request("health ODA grants from USA to Ethiopia", pac=True))
         inner = result.root
         assert inner.status == "definite"
@@ -25,7 +25,9 @@ class TestSeamBehavior:
         spec = inner.interpretation
         entity_roles = {e.ref.dcid: e.role for e in spec.entities}
         assert entity_roles["country/ETH"].kind == "directional"
-        assert entity_roles["country/USA"].kind == "subject"
+        assert entity_roles["country/USA"].kind == "directional"
+        assert entity_roles["country/USA"].direction == "from"
+        assert entity_roles["country/USA"].role.dcid == "observationAbout"
 
     def test_seam_off_both_are_subjects(self):
         """df-01 seam=OFF: both ETH and USA become subject."""

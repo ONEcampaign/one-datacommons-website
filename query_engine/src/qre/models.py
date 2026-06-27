@@ -253,7 +253,14 @@ class EntityRoleDirectional(BaseModel):
     kind: Literal["directional"] = Field(
         default="directional", description="directional flow endpoint role discriminator"
     )
-    role: GraphRef = Field(description="the directional role, e.g. recipient")
+    role: GraphRef = Field(
+        description=(
+            "provenance of how the directional role is sourced "
+            "(constraint property for recipients, "
+            "observation property observationAbout for donors); "
+            "consumers read entity.ref for the entity name, not this field"
+        )
+    )
     direction: Direction = Field(description="from or to")
 
 
@@ -529,6 +536,15 @@ class _ResponseBase(BaseModel):
     diagnostics: Diagnostics = Field(
         description="run health, warnings, timing, build stamp"
     )
+    rendered_sentence: str | None = Field(
+        default=None,
+        description=(
+            "a human-readable string when options.include_sentence is set; null "
+            "otherwise. For a definite response: the confirmation sentence. For "
+            "candidates: a count summary (e.g. '2 possible interpretations.'). For "
+            "no_data: a phrase describing the reason."
+        ),
+    )
 
 
 class DefiniteResponse(_ResponseBase):
@@ -667,6 +683,14 @@ class ResolveOptions(BaseModel):
     place_as_constraint: bool | None = Field(
         default=None,
         description="overrides the server default for place-as-constraint handling",
+    )
+    include_sentence: bool | None = Field(
+        default=None,
+        description=(
+            "when true, the engine returns a human-readable string in "
+            "rendered_sentence: the confirmation sentence for definite, a count "
+            "summary for candidates, or a reason phrase for no_data"
+        ),
     )
 
 

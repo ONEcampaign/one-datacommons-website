@@ -120,6 +120,7 @@
       }
     }
   },
+  "observationAbout": { "label": "observation about", "type": "Property" },
   "ODAGrants": {
     "label": "Official Development Assistance Grants",
     "type": "Property",

@@ -17,6 +17,7 @@ from __future__ import annotations
 # These remain transitional until shape.py reads from the resolver directly.
 from qre.engine.families.dev_finance import (
     DEV_FINANCE_FAMILY,
+    DONOR_ROLE_DCID,
     LABEL_PURPOSE,
     LABEL_RECIPIENT,
     LABEL_SCHEME,
@@ -54,6 +55,7 @@ __all__ = [
     "MEAS_QUAL_DCID",
     "POP_TYPE_DCID",
     "PROP_PURPOSE",
+    "DONOR_ROLE_DCID",
     "PROP_RECIPIENT",
     "PROP_SCHEME",
     "RECIPIENT_ROLE_DCID",

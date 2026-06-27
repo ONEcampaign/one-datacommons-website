@@ -8,8 +8,10 @@ from qre.models import (
     DefiniteResponse,
     NoDataResponse,
     RawTextInput,
+    ResolveOptions,
     ResolveRequest,
 )
+from qre.render import no_data_phrase
 from tests.engine._harness import offline_resolve
 
 
@@ -143,9 +145,10 @@ class TestDefiniteGoldens:
         spec = inner.interpretation
         sv_dcids = [sv.ref.dcid for sv in spec.stat_vars]
         assert "ONE/CRS_DAC/BasicHealth-ODAGrants-KEN" in sv_dcids
-        # FRA is subject (donor), KEN is directional (recipient)
+        # FRA is directional/from (donor), KEN is directional/to (recipient)
         entity_roles = {e.ref.dcid: e.role for e in spec.entities}
-        assert entity_roles["country/FRA"].kind == "subject"
+        assert entity_roles["country/FRA"].kind == "directional"
+        assert entity_roles["country/FRA"].direction == "from"
         assert entity_roles["country/KEN"].kind == "directional"
 
 
@@ -194,3 +197,47 @@ class TestExtraEdgeCases:
         assert echo.raw_query == "health ODA grants from USA to Ethiopia"
         assert echo.entry_path == "raw_text"
         assert not echo.extract_skipped
+
+
+class TestIncludeSentence:
+    def test_definite_flag_on_renders_sentence(self):
+        """With include_sentence=True, a definite response has a non-empty rendered_sentence."""
+        request = ResolveRequest(
+            input=RawTextInput(query="health ODA grants to Ethiopia"),
+            options=ResolveOptions(include_sentence=True),
+        )
+        result = offline_resolve(request)
+        inner = result.root
+        assert inner.status == "definite"
+        assert isinstance(inner, DefiniteResponse)
+        assert isinstance(inner.rendered_sentence, str)
+        assert inner.rendered_sentence  # non-empty
+        assert "Ethiopia" in inner.rendered_sentence
+
+    def test_definite_flag_off_rendered_sentence_is_none(self):
+        """Without options, rendered_sentence is None on a definite response."""
+        result = offline_resolve(make_request("health ODA grants to Ethiopia"))
+        inner = result.root
+        assert inner.status == "definite"
+        assert inner.rendered_sentence is None
+
+    def test_no_data_flag_on_renders_reason_phrase(self):
+        """With include_sentence=True, a no_data response carries the reason phrase."""
+        request = ResolveRequest(
+            input=RawTextInput(query="health ODA per capita to Ethiopia"),
+            options=ResolveOptions(include_sentence=True),
+        )
+        result = offline_resolve(request)
+        inner = result.root
+        assert inner.status == "no_data"
+        assert isinstance(inner, NoDataResponse)
+        assert inner.no_data.reason == "denominator_not_available"
+        assert inner.rendered_sentence == no_data_phrase("denominator_not_available")
+        assert inner.rendered_sentence  # non-empty
+
+    def test_no_data_flag_off_rendered_sentence_is_none(self):
+        """Without include_sentence, rendered_sentence is None on a no_data response."""
+        result = offline_resolve(make_request("health ODA per capita to Ethiopia"))
+        inner = result.root
+        assert inner.status == "no_data"
+        assert inner.rendered_sentence is None

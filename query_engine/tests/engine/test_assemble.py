@@ -29,6 +29,7 @@ from qre.models import (
     TimeWindow,
     Timing,
 )
+from qre.render import render_candidates_summary
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -323,3 +324,58 @@ def test_build_spec_applied_window_and_date_source_none_when_no_window():
     # _make_spec uses CoverageBare(has_data=True) which has window=None
     assert spec.resolution.applied_window is None
     assert spec.resolution.date_source is None
+
+
+# ---------------------------------------------------------------------------
+# include_sentence wiring for assemble_candidates
+# ---------------------------------------------------------------------------
+
+
+def test_assemble_candidates_include_sentence_true():
+    """assemble_candidates with include_sentence=True renders a count summary."""
+    spec_health = _make_spec(
+        sv_dcid="ONE/CRS_DAC/Health-ODAGrants-ETH",
+        purpose_dcid="DAC/Health",
+        recipient_dcid="country/ETH",
+    )
+    spec_malaria = _make_spec(
+        sv_dcid="ONE/CRS_DAC/Malariacontrol-ODAGrants-ETH",
+        purpose_dcid="DAC/Malariacontrol",
+        recipient_dcid="country/ETH",
+    )
+
+    result = assemble_candidates(
+        specs=[spec_health, spec_malaria],
+        query_echo=_make_query_echo(),
+        diagnostics=_make_diagnostics(),
+        include_sentence=True,
+    )
+
+    inner = result.root
+    assert isinstance(inner, CandidatesResponse)
+    returned_count = len(inner.candidates.specs)
+    assert inner.rendered_sentence == render_candidates_summary(returned_count)
+
+
+def test_assemble_candidates_include_sentence_default_is_none():
+    """assemble_candidates without include_sentence leaves rendered_sentence as None."""
+    spec_health = _make_spec(
+        sv_dcid="ONE/CRS_DAC/Health-ODAGrants-ETH",
+        purpose_dcid="DAC/Health",
+        recipient_dcid="country/ETH",
+    )
+    spec_malaria = _make_spec(
+        sv_dcid="ONE/CRS_DAC/Malariacontrol-ODAGrants-ETH",
+        purpose_dcid="DAC/Malariacontrol",
+        recipient_dcid="country/ETH",
+    )
+
+    result = assemble_candidates(
+        specs=[spec_health, spec_malaria],
+        query_echo=_make_query_echo(),
+        diagnostics=_make_diagnostics(),
+    )
+
+    inner = result.root
+    assert isinstance(inner, CandidatesResponse)
+    assert inner.rendered_sentence is None
