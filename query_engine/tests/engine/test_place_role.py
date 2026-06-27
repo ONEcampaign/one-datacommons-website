@@ -88,6 +88,54 @@ def test_from_donor_is_directional_from() -> None:
     assert usa_role.role_dcid == DONOR_ROLE_DCID
 
 
+def test_normalized_donor_surface_falls_back_to_from() -> None:
+    """A donor whose mention the extractor normalized away from the query token
+    ('UK' -> 'United Kingdom') still gets direction=from via the positional fallback:
+    the recipient claims 'to' directly, the unclaimed 'from' goes to the lone
+    undetected donor."""
+    result = _roles(
+        "health ODA grants from UK to Kenya",
+        [("country/GBR", "United Kingdom"), ("country/KEN", "Kenya")],
+        seam_on=True,
+    )
+    gbr_role = result["country/GBR"].role
+    ken_role = result["country/KEN"].role
+    assert isinstance(gbr_role, DirectionalRole)
+    assert gbr_role.direction == "from"
+    assert gbr_role.role_dcid == DONOR_ROLE_DCID
+    assert isinstance(ken_role, DirectionalRole)
+    assert ken_role.direction == "to"
+
+
+def test_normalized_recipient_surface_falls_back_to_to() -> None:
+    """Symmetric to the donor case: a recipient whose mention the extractor
+    normalized away ('UK' -> 'United Kingdom') still gets direction=to. The donor
+    claims 'from' directly; the unclaimed 'to' goes to the lone undetected recipient."""
+    result = _roles(
+        "health ODA grants from USA to UK",
+        [("country/USA", "USA"), ("country/GBR", "United Kingdom")],
+        seam_on=True,
+    )
+    usa_role = result["country/USA"].role
+    gbr_role = result["country/GBR"].role
+    assert isinstance(usa_role, DirectionalRole)
+    assert usa_role.direction == "from"
+    assert isinstance(gbr_role, DirectionalRole)
+    assert gbr_role.direction == "to"
+    assert gbr_role.role_dcid == RECIPIENT_ROLE_DCID
+
+
+def test_fallback_does_not_fire_without_preposition() -> None:
+    """A bare entity (no from/to in the query) stays a subject — the fallback needs
+    an unclaimed preposition, so a normalized mention alone does not fabricate one."""
+    result = _roles(
+        "health ODA grants Kenya",
+        [("country/KEN", "Kenya")],
+        seam_on=True,
+    )
+    assert isinstance(result["country/KEN"].role, SubjectRole)
+
+
 
 
 def test_to_only_recipient_only() -> None:

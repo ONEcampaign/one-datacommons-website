@@ -150,8 +150,36 @@ def directional_roles(
     detected_any_direction = False
 
     if place_as_constraint:
+        # Pass 1: detect each entity's direction from the query prepositions.
+        directions: dict[str, Literal["from", "to"] | None] = {
+            dcid: _detect_direction(query, surface, dcid)
+            for dcid, surface in resolved_entities
+        }
+
+        # Pass 2: positional fallback. The extractor sometimes normalizes a mention
+        # away from its query token (e.g. "UK" -> "United Kingdom"), so pass 1's
+        # surface anchor misses it. If a "from"/"to" preposition is present in the
+        # query but unclaimed, and exactly one entity is still undetected, assign it
+        # the unclaimed direction by elimination. Gated to a lone undetected entity,
+        # so it can never mis-split an ambiguous pair.
+        # ponytail: single-undetected heuristic; a query with two normalized-away
+        # entities still falls open to subjects (no dev-finance golden hits that).
+        undetected = [dcid for dcid, d in directions.items() if d is None]
+        if len(undetected) == 1:
+            query_tokens = set(_tokenize(query))
+            claimed = {d for d in directions.values() if d is not None}
+            # In the normal two-entity case the other entity already claimed one
+            # direction, so only the unclaimed preposition matches. "from" is tried
+            # first solely for the degenerate single-entity query carrying both
+            # prepositions, which no real query produces.
+            for prep_set, fallback_dir in ((_DONOR_PREPS, "from"), (_RECIPIENT_PREPS, "to")):
+                if fallback_dir not in claimed and query_tokens & prep_set:
+                    directions[undetected[0]] = fallback_dir
+                    break
+
+        # Build the roles from the resolved directions.
         for dcid, surface in resolved_entities:
-            direction = _detect_direction(query, surface, dcid)
+            direction = directions[dcid]
             if direction == "to":
                 detected_any_direction = True
                 role: RoleDraft = DirectionalRole(
