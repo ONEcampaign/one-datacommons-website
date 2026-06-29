@@ -3,8 +3,9 @@
 Two categories only:
 
 * EngineInfraError (and subclasses) — fail-loud for transport/timeout/LLM parse
-  failures. The FastAPI endpoint maps these to HTTP 500. The eval harness scores
-  the item as a skip.
+  failures. `GraphInfraError` and `LLMInfraError` map to HTTP 503 (retriable);
+  only unexpected exceptions map to HTTP 500. The eval harness scores the item
+  as a skip.
 
 * GroundingMiss — raised when a dcid the LLM proposed cannot be confirmed by the
   graph (absent node on a genuine 200 response). Caught upstream by the grounding

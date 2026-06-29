@@ -22,6 +22,7 @@ from fastapi.responses import JSONResponse
 
 from qre.engine.config import ENGINE_BUILD_ID, QRE_MAX_QUERY_CHARS
 from qre.engine.core import resolve_async
+from qre.engine.errors import EngineInfraError
 from qre.engine.graph import EngineGraphClient, LiveGraphClient
 from qre.engine.llm import LLM
 from qre.models import ResolveRequest, ResolveResponse
@@ -67,6 +68,14 @@ def create_app(
         version="1.0",
         lifespan=lifespan,
     )
+
+    @app.exception_handler(EngineInfraError)
+    async def infra_error_handler(request: Request, exc: EngineInfraError):
+        logger.error("Engine infrastructure error: %s", exc, exc_info=exc)
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Service temporarily unavailable"},
+        )
 
     @app.exception_handler(Exception)
     async def unhandled_error_handler(request: Request, exc: Exception):

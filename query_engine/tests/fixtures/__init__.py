@@ -102,6 +102,9 @@ class _RaiseOnAny:
     def node_labels_batch(self, dcids: list[str]) -> dict[str, str]:
         raise GraphInfraError("FakeGraph(raise=True): simulated transport error")
 
+    def node_arcs_batch(self, dcids: list[str]) -> dict[str, dict | None]:
+        raise GraphInfraError("FakeGraph(raise=True): simulated transport error")
+
     def exists(self, dcid: str) -> bool:
         raise GraphInfraError(f"FakeGraph(raise=True): simulated transport error for {dcid!r}")
 
@@ -229,6 +232,20 @@ class FakeGraph:
             label = node.get("label")
             if label:
                 result[dcid] = label
+        return result
+
+    def node_arcs_batch(self, dcids: list[str]) -> dict[str, dict | None]:
+        """Batch arcs from the nodes fixture; absent/empty-arc dcids map to None."""
+        if self._impl is not None:
+            return self._impl.node_arcs_batch(dcids)
+        result: dict[str, dict | None] = {}
+        for dcid in dcids:
+            node = self._nodes.get(dcid)
+            if node is None:
+                result[dcid] = None
+                continue
+            arcs = node.get("arcs")
+            result[dcid] = arcs if arcs else None
         return result
 
     def exists(self, dcid: str) -> bool:

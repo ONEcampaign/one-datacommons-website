@@ -136,6 +136,23 @@ class _RecordingGraph:
         ]
         return result
 
+    def node_arcs_batch(self, dcids: list[str]) -> dict[str, dict | None]:
+        time.sleep(_RECORD_THROTTLE_S)
+        result = self._graph.node_arcs_batch(dcids)
+        for dcid, arcs in result.items():
+            if arcs is not None:
+                node = self._nodes.setdefault(dcid, {"label": None, "type": None})
+                node["arcs"] = _strip_secrets(arcs)
+        return result
+
+    def node_labels_batch(self, dcids: list[str]) -> dict[str, str]:
+        time.sleep(_RECORD_THROTTLE_S)
+        result = self._graph.node_labels_batch(dcids)
+        for dcid, label in result.items():
+            node = self._nodes.setdefault(dcid, {"label": None, "type": None})
+            node["label"] = label
+        return result
+
     def exists(self, dcid: str) -> bool:
         return self._graph.exists(dcid)
 

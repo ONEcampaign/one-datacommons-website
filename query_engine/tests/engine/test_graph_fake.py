@@ -167,6 +167,24 @@ def test_raise_on_call_node_arcs() -> None:
         g.node_arcs("ODAGrants")
 
 
+def test_node_arcs_batch_present_and_absent() -> None:
+    """Batch fetch returns arcs for a present dcid and None for an absent dcid."""
+    g = FakeGraph()
+    result = g.node_arcs_batch(["country/KEN", "totally/made/up"])
+    # Present dcid returns arcs dict
+    assert result["country/KEN"] is not None
+    assert "typeOf" in result["country/KEN"]
+    # Absent dcid maps to None — not omitted
+    assert "totally/made/up" in result
+    assert result["totally/made/up"] is None
+
+
+def test_node_arcs_batch_raise_on_call() -> None:
+    g = FakeGraph(raise_on_call=True)
+    with pytest.raises(GraphInfraError):
+        g.node_arcs_batch(["country/KEN"])
+
+
 def test_raise_on_call_exists() -> None:
     g = FakeGraph(raise_on_call=True)
     with pytest.raises(GraphInfraError):

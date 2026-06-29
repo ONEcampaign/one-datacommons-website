@@ -121,6 +121,17 @@ class EngineGraphClient(Protocol):
 
         Returns {dcid: label} for confirmed reads only. Missing nodes are omitted — never
         fabricated. Raises GraphInfraError on transport or non-2xx.
+        Contrast: node_arcs_batch maps absent dcids to None instead of omitting them.
+        """
+        ...
+
+    def node_arcs_batch(self, dcids: list[str]) -> dict[str, dict | None]:
+        """Batch-fetch the full ->* arcs dict for each dcid via a single POST /v2/node.
+
+        Returns {dcid: arcs-or-None} for every requested dcid. A dcid absent from the
+        response (or with empty arcs) maps to None — NOT omitted — so the None-on-absent
+        invariant matches the single-call node_arcs exactly. Raises GraphInfraError on
+        transport or non-2xx.
         """
         ...
 
@@ -346,6 +357,7 @@ class LiveGraphClient:
 
         Returns {dcid: label} for confirmed reads only. Missing nodes are omitted.
         Raises GraphInfraError on transport or non-2xx.
+        Contrast: node_arcs_batch maps absent dcids to None instead of omitting them.
         """
         if not dcids:
             return {}
@@ -364,6 +376,28 @@ class LiveGraphClient:
             values = [n["value"] for n in name_nodes if n.get("value")]
             if values:
                 result[dcid] = _pick_label(values)
+        return result
+
+    def node_arcs_batch(self, dcids: list[str]) -> dict[str, dict | None]:
+        """Batch-fetch the ->* arcs dict for each dcid via a single POST /v2/node call.
+
+        Returns {dcid: arcs-or-None} for every requested dcid. Absent or empty-arc nodes
+        map to None (None-on-absent), matching the single-call node_arcs path.
+        Raises GraphInfraError on transport or non-2xx.
+        """
+        if not dcids:
+            return {}
+        url = f"{self._v2_base}/node"
+        body = self._post(url, {"nodes": dcids, "property": "->*"})
+        data = body.get("data", {})
+        result: dict[str, dict | None] = {}
+        for dcid in dcids:
+            node_data = data.get(dcid)
+            if node_data is None:
+                result[dcid] = None
+                continue
+            arcs = node_data.get("arcs", {})
+            result[dcid] = arcs if arcs else None
         return result
 
     def close(self) -> None:

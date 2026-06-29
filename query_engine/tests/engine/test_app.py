@@ -16,11 +16,6 @@ def make_client() -> TestClient:
     return TestClient(app, raise_server_exceptions=False)
 
 
-def _patched_client() -> TestClient:
-    app = create_app(graph=FakeGraph(), llm=FakeLLM())
-    return TestClient(app, raise_server_exceptions=False)
-
-
 class TestHealthz:
     def test_healthz_ok(self):
         client = make_client()
@@ -78,8 +73,8 @@ class TestResolveEndpoint:
         )
         assert resp.status_code == 422
 
-    def test_500_on_infra_error(self):
-        # Use a raising graph to trigger EngineInfraError
+    def test_503_on_graph_infra_error(self):
+        # A graph that raises GraphInfraError at detect_svs routes to 503
         from qre.engine.app import create_app as _create_app
         from qre.engine.errors import GraphInfraError
 
@@ -98,6 +93,65 @@ class TestResolveEndpoint:
                 raise GraphInfraError("simulated error")
 
         app = _create_app(graph=ErrorGraph(), llm=FakeLLM())
+        client = TestClient(app, raise_server_exceptions=False)
+
+        with patch("qre.engine.extract.date") as mock_date:
+            mock_date.today.return_value = PINNED_DATE
+            mock_date.side_effect = None
+            resp = client.post(
+                "/api/qre/resolve",
+                json={"input": {
+                    "kind": "raw_text",
+                    "query": "health ODA grants from USA to Ethiopia",
+                }},
+            )
+        assert resp.status_code == 503
+        assert resp.json() == {"detail": "Service temporarily unavailable"}
+
+    def test_503_on_llm_infra_error(self):
+        # An LLM that raises LLMInfraError at extract routes to 503
+        from qre.engine.app import create_app as _create_app
+        from qre.engine.errors import LLMInfraError
+
+        class _ErrorLLM:
+            def generate_structured(self, *, prompt, system, schema):
+                raise LLMInfraError("simulated LLM error")
+
+        app = _create_app(graph=FakeGraph(), llm=_ErrorLLM())
+        client = TestClient(app, raise_server_exceptions=False)
+
+        with patch("qre.engine.extract.date") as mock_date:
+            mock_date.today.return_value = PINNED_DATE
+            mock_date.side_effect = None
+            resp = client.post(
+                "/api/qre/resolve",
+                json={"input": {
+                    "kind": "raw_text",
+                    "query": "health ODA grants from USA to Ethiopia",
+                }},
+            )
+        assert resp.status_code == 503
+        assert resp.json() == {"detail": "Service temporarily unavailable"}
+
+    def test_500_on_generic_error(self):
+        # A non-infra exception falls through to the generic handler → 500
+        from qre.engine.app import create_app as _create_app
+
+        class _BoomGraph:
+            def node_label(self, dcid):
+                raise RuntimeError("boom")
+            def node_arcs(self, dcid):
+                raise RuntimeError("boom")
+            def node_type(self, dcid):
+                raise RuntimeError("boom")
+            def resolve_entity(self, name):
+                raise RuntimeError("boom")
+            def detect_svs(self, query):
+                raise RuntimeError("boom")
+            def observation_facets(self, *, stat_var, entity):
+                raise RuntimeError("boom")
+
+        app = _create_app(graph=_BoomGraph(), llm=FakeLLM())
         client = TestClient(app, raise_server_exceptions=False)
 
         with patch("qre.engine.extract.date") as mock_date:

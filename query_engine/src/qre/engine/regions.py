@@ -63,6 +63,8 @@ from qre.models import (
 
 logger = logging.getLogger(__name__)
 
+MULTI_RECIPIENT_TRUNCATED = "MULTI_RECIPIENT_TRUNCATED"
+
 
 # ---------------------------------------------------------------------------
 # RegionResult: per-variable resolution seam
@@ -630,12 +632,22 @@ async def resolve_variable(
     # Find recipient and donor dcids from the seam=ON roles (always, for SV construction)
     recipient_dcid: str | None = None
     donor_dcid: str | None = None
+    to_dcids: list[str] = []
     for dcid, role_draft in roles_for_sv.items():
         if isinstance(role_draft.role, DirectionalRole):
             if role_draft.role.direction == "to":
                 recipient_dcid = dcid
+                to_dcids.append(dcid)
             elif role_draft.role.direction == "from":
                 donor_dcid = dcid
+    if len(to_dcids) > 1:
+        warnings.append(
+            Warning(
+                code=MULTI_RECIPIENT_TRUNCATED,
+                severity="warn",
+                message=f"{len(to_dcids)} directional recipients detected; only 1 used.",
+            )
+        )
 
     # Treat a bare entity as the recipient only when no directional signal was detected.
     # If directional_detected_sv is True, at least one entity had a "from" or "to"
@@ -650,6 +662,16 @@ async def resolve_variable(
     elif recipient_dcid is None and not directional_detected_sv and rcl.resolved_entity_names:
         # Multiple bare entities (no directional prepositions): use the last entity (heuristic)
         recipient_dcid = next(reversed(list(rcl.resolved_entity_names.values())))
+        warnings.append(
+            Warning(
+                code=MULTI_RECIPIENT_TRUNCATED,
+                severity="warn",
+                message=(
+                    f"{len(rcl.resolved_entity_names)} bare entities detected; "
+                    "only 1 used as recipient (heuristic)."
+                ),
+            )
+        )
 
     # --- Build slot taxonomy for bind ---
     # Use the per-shape taxonomy stamped by discover.read_slot_taxonomy.

@@ -344,21 +344,11 @@ def derive_shapes(
             QRE_MAX_CONFIRM_CANDIDATES,
         )
 
-    # Shared label cache across groups: property dcids are stable schema nodes
-    # (same dcid always has the same label), so we call node_label at most once
-    # per distinct property dcid across the entire derive_shapes call.
-    _label_cache: dict[str, str] = {}
-
-    def _prop_label(prop_dcid: str) -> str:
-        if prop_dcid not in _label_cache:
-            lbl = graph.node_label(prop_dcid)
-            _label_cache[prop_dcid] = lbl if lbl is not None else prop_dcid
-        return _label_cache[prop_dcid]
-
-    # Confirm each SV and read arc facts
+    # Confirm each SV and read arc facts (single batched node_arcs round-trip)
+    arcs_by_dcid = graph.node_arcs_batch(candidates)
     sv_facts: dict[str, dict] = {}
     for sv_dcid in candidates:
-        arcs = graph.node_arcs(sv_dcid)
+        arcs = arcs_by_dcid.get(sv_dcid)
         if arcs is None:
             logger.debug("derive_shapes: dropped unconfirmable sv %r", sv_dcid)
             continue
@@ -375,6 +365,13 @@ def derive_shapes(
 
     if not sv_facts:
         return []
+
+    # Fetch display labels for all constraint props in a single round-trip;
+    # .get(p, p) below falls back to the prop dcid as its own label when absent.
+    all_constraint_props = list(
+        {p for facts in sv_facts.values() for p in facts["constraints"]}
+    )
+    prop_labels_raw = graph.node_labels_batch(all_constraint_props)
 
     # Group confirmed SVs by five-tuple
     groups: dict[FiveTuple, list[str]] = defaultdict(list)
@@ -397,16 +394,16 @@ def derive_shapes(
 
         constraint_props = list(prop_observed_values.keys())
 
-        # Build prop_labels using the shared cache
-        prop_labels: dict[str, str] = {p: _prop_label(p) for p in constraint_props}
+        # Build prop_labels using the batch result
+        prop_labels: dict[str, str] = {p: prop_labels_raw.get(p, p) for p in constraint_props}
 
         # Determine shape_id and label from the matched family rule
         matched_rule = rule_for(candidate_svs=group_svs)
-        _rule_shape_id = (
+        rule_shape_id = (
             (matched_rule.shape_id or matched_rule.namespace.rstrip("/")) if matched_rule else ""
         )
-        if _rule_shape_id:
-            shape_id = _rule_shape_id
+        if rule_shape_id:
+            shape_id = rule_shape_id
             shape_label = matched_rule.label
         else:
             # Standard: use five-tuple string as identity for deduplication

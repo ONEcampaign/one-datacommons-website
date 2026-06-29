@@ -47,3 +47,10 @@ class TestRecall:
         graph = FakeGraph(raise_on_call=True)
         with pytest.raises(GraphInfraError):
             run(recall("health ODA grants", ["Ethiopia"], graph=graph))
+
+    def test_graph_error_propagates_two_entities(self):
+        """Plain gather must still raise loud with two entities (detect + 2 resolves)."""
+        from qre.engine.errors import GraphInfraError
+        graph = FakeGraph(raise_on_call=True)
+        with pytest.raises(GraphInfraError):
+            run(recall("health ODA grants", ["Ethiopia", "Kenya"], graph=graph))

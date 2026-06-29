@@ -48,13 +48,16 @@ async def recall(
         via node reads in the materialise stage.
     """
     detect_query = raw_query or variable
-    svs, _entity_dcids, scores = await asyncio.to_thread(graph.detect_svs, detect_query)
-
-    resolved: dict[str, str] = {}
-    for name in entities:
-        dcid = await asyncio.to_thread(graph.resolve_entity, name)
-        if dcid is not None:
-            resolved[name] = dcid
+    all_coros = [asyncio.to_thread(graph.detect_svs, detect_query)] + [
+        asyncio.to_thread(graph.resolve_entity, name) for name in entities
+    ]
+    all_results = await asyncio.gather(*all_coros)  # plain; NOT return_exceptions=True
+    svs, _entity_dcids, scores = all_results[0]
+    resolved: dict[str, str] = {
+        name: dcid
+        for name, dcid in zip(entities, all_results[1:], strict=True)
+        if dcid is not None
+    }
 
     return Recall(
         candidate_svs=svs,
