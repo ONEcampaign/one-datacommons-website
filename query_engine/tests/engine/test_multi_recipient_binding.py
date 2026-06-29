@@ -247,7 +247,7 @@ def test_fallback_path_donor_facets_not_n_fold_inflated():
     }
     graph = FakeGraph(nodes={}, detect={}, resolve={}, obs=obs)
 
-    # Scheme bound, purpose absent from bindings — _construct_resolve returns None
+    # Scheme bound, purpose absent from bindings; _construct_resolve returns None
     # for this combination, so graph_confirm_resolve is the active path.
     # Where-axis carries two recipients (the N=2 case that exposed the N-fold bug).
     bindings = [
@@ -297,6 +297,6 @@ def test_fallback_path_donor_facets_not_n_fold_inflated():
     # all_facets has one Facet with obs_count=100.
     total_obs = sum(f.obs_count for f in result.facets)
     assert total_obs == 100, (
-        f"expected total obs_count=100 (one donor probe); got {total_obs} — "
+        f"expected total obs_count=100 (one donor probe); got {total_obs}. "
         "N-fold inflation means probe_donor is still inside the recipient loop"
     )

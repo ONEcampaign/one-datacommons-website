@@ -40,7 +40,7 @@ def _run(cosine_score: float | None) -> object:
     """Run resolve_variable with a single standard SV at the given cosine score.
 
     cosine_score=None means the detect entry carries no cosine_scores, so FakeGraph
-    defaults every SV to 1.0 — the offline-fixture sentinel.
+    defaults every SV to 1.0, the offline-fixture sentinel.
     """
     detect_entry: dict = {"svs": [_SV]}
     if cosine_score is not None:
