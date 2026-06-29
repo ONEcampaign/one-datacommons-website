@@ -57,18 +57,20 @@ def _run(variable: str, role_query: str, entities: list[str]):
     )
 
 
-def test_directional_two_recipient_no_longer_warns():
-    """Directional two 'to' recipients no longer trigger MULTI_RECIPIENT_TRUNCATED.
+def test_standard_directional_two_recipient_warns():
+    """Standard directional two 'to' recipients re-trigger MULTI_RECIPIENT_TRUNCATED.
 
-    Directional multi-recipient queries carry all recipients via BindingSet.
-    The MULTI_RECIPIENT_TRUNCATED warning does not fire for this path.
+    The BindingSet fix that carries every recipient only applies on the
+    dev-finance constraint-slot branch. On the standard family path the where
+    binding stays scalar and truncates to to_dcids[0], so the warning must fire
+    to keep the drop loud.
     """
     result = _run(
         "exports",
         role_query="exports to Kenya and to Uganda",
         entities=["Kenya", "Uganda"],
     )
-    assert not any(w.code == MULTI_RECIPIENT_TRUNCATED for w in result.warnings)
+    assert any(w.code == MULTI_RECIPIENT_TRUNCATED for w in result.warnings)
 
 
 def test_multi_bare_entity_warns():

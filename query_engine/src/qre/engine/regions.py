@@ -745,9 +745,20 @@ async def resolve_variable(
         # with bare count SV, etc.).  Build a minimal where-only binding from the resolved
         # entity so the grounding stage has a recipient to display.  No property_dcid for
         # the entity-only where slot (matches the SlotKeyDraft(property_dcid=None) pattern).
-        # Standard family keeps a scalar where-binding; BindingSet multi-recipient support
-        # is a dev-finance specialization only.
+        # Standard family keeps a scalar where-binding (recipient_dcid == to_dcids[0]);
+        # BindingSet multi-recipient support is a dev-finance specialization only.  Because
+        # this path truncates to the first recipient, a directional multi-recipient query
+        # re-emits MULTI_RECIPIENT_TRUNCATED here to keep the drop loud. The set-binding
+        # fix only covers the dev-finance branch above, so this path stays fail-loud.
         pipeline_steps.append(make_pipeline_step("bind", ran=False))
+        if len(to_dcids) > 1:
+            warnings.append(
+                Warning(
+                    code=MULTI_RECIPIENT_TRUNCATED,
+                    severity="warn",
+                    message=f"{len(to_dcids)} directional recipients detected; only 1 used.",
+                )
+            )
         bindings = []
         if recipient_dcid:
             bindings.append(
