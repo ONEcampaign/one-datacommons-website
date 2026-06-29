@@ -32,8 +32,8 @@ def _load_seam_both_goldens() -> list[dict]:
 
 
 _SEAM_BOTH = _load_seam_both_goldens()
-assert len(_SEAM_BOTH) == 7, (
-    f"Expected 7 seam:both goldens, got {len(_SEAM_BOTH)}. "
+assert len(_SEAM_BOTH) == 8, (
+    f"Expected 8 seam:both goldens, got {len(_SEAM_BOTH)}. "
     "A seam:both tag may have been silently added or removed."
 )
 

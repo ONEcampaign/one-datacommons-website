@@ -1439,6 +1439,68 @@ These are expected engine outputs for the QRE Phase 0 evaluation harness. All go
   candidate_count: 2
   status: DEFERRED
   notes: "DEFERRED (2026-06-26): the golden is verified against the graph, but the engine cannot resolve it live -- resolve_entity filters to Country-typed entities, so 'California' (geoId/06, a US State) returns no_data/entity_not_resolved on every endpoint. This is the sub-national geo gap (see .design/phase-1-steps.md risks). Excluded from the qre-standard-main merge gate via the gate-only status filter; the offline test (test_candidates_trigger.py TestCandR2*) is skipped under the same reason. Un-defer when recall() falls back to detect's entity resolution for sub-national places.\n\nProbed both SVs on prod (datacommons.one.org) 2026-06-20.\n\nMedian_Income_Person five-tuple: populationType=Person, measuredProperty=income,\nstatType=medianValue, measurementQualifier=null, measurementDenominator=null.\nConstraintProperties=[age=Years15Onwards, incomeStatus=WithIncome].\nObservations at geoId/06: 29 observations across 2 facets, date range 2010-2024.\n\nMedian_Income_Household five-tuple: populationType=Household, measuredProperty=income,\nstatType=medianValue, measurementQualifier=null, measurementDenominator=null.\nConstraintProperties=[].\nObservations at geoId/06: 29 observations across 2 facets, date range 2010-2024.\n\nFive-tuples differ on populationType (Person vs Household). Both share measuredProperty=income\nand statType=medianValue, but the population type is structurally distinct: Person income\n(individual earner, age 15+, with income constraint) vs Household income (household-level\naggregate, no individual age/income-status constraint). The query \"income in California\"\ndoes not specify a subject unit (person vs household), producing genuine ambiguity between\nthese two shapes. geoId/06 confirmed as California (State node, containedInPlace=country/USA).\nNo seam: California is a standard geo entity (no donor/recipient directionality).\nNo conjunction: query names only one concept (income) and one place (California)."
+
+- id: "df-14"
+  query: "health ODA grants from USA to Kenya and Ethiopia"
+  entry_path: "raw_text"
+  tags:
+    - behaviour: definite
+    - domain: development_finance
+    - seam: both
+    - conjunction: none
+  expected_status: "definite"
+  expected_shape:
+    population_type_dcid: "DevelopmentFinance"
+    measured_property_dcid: "DevelopmentFinanceFlow"
+    stat_type_dcid: "measuredValue"
+    measurement_qualifier_dcid: null
+    measurement_denominator_dcid: null
+  expected_slots:
+    - axis: "what"
+      property_dcid: "DevelopmentFinanceScheme"
+      binding_kind: "value"
+      value_dcid: "ODAGrants"
+    - axis: "how"
+      property_dcid: "DevelopmentFinancePurpose"
+      binding_kind: "value"
+      value_dcid: "DAC/Health"
+    - axis: "where"
+      property_dcid: "DevelopmentFinanceRecipient"
+      binding_kind: "set"
+      value_dcid:
+        - "country/KEN"
+        - "country/ETH"
+  expected_stat_vars:
+    - "ONE/CRS_DAC/Health-ODAGrants-KEN"
+    - "ONE/CRS_DAC/Health-ODAGrants-ETH"
+  expected_entities:
+    - dcid: "country/USA"
+      role_kind: "directional"
+      direction: "from"
+      role_dcid: "observationAbout"
+    - dcid: "country/KEN"
+      role_kind: "directional"
+      direction: "to"
+      role_dcid: "DevelopmentFinanceRecipient"
+    - dcid: "country/ETH"
+      role_kind: "directional"
+      direction: "to"
+      role_dcid: "DevelopmentFinanceRecipient"
+  expected_no_data_reason: null
+  candidate_count: null
+  status: VERIFIED_AGAINST_GRAPH
+  notes: >
+    Two-recipient directional dev-finance query. The phrase "to Kenya and Ethiopia"
+    binds both recipients on the where-axis as binding_kind=set over country/KEN and
+    country/ETH (the multi-recipient set binding). Grounded live against staging
+    (dc-staging.one.org) on 2026-06-29 with gemini-3.1-flash-lite. Result is definite,
+    spec_id spec_54e719956acae88f, member_count 2. Both SVs confirmed,
+    ONE/CRS_DAC/Health-ODAGrants-KEN ("Health [Grants to Kenya]") and
+    ONE/CRS_DAC/Health-ODAGrants-ETH ("Health [Grants to Ethiopia]"), with
+    Scheme=ODAGrants and Purpose=DAC/Health. Donor country/USA is directional from
+    via observationAbout. Both recipients are directional to via
+    DevelopmentFinanceRecipient. No MULTI_RECIPIENT_TRUNCATED warning fires because
+    the set binding carries both recipients rather than truncating to one.
 ```
 
 ## Holdout slice

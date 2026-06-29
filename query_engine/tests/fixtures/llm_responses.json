@@ -1084,5 +1084,16 @@
       "Brazil"
     ],
     "dates": []
+  },
+  "Extraction:326618c1a9688cabe6d25b2012c841315d4eb9ae": {
+    "variables": [
+      "health ODA grants"
+    ],
+    "entities": [
+      "USA",
+      "Kenya",
+      "Ethiopia"
+    ],
+    "dates": []
   }
 }

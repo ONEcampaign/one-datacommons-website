@@ -36274,5 +36274,4735 @@
         ]
       }
     }
+  },
+  "ONE/CRS_DAC/Health-ODALoans-A": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Health [ODA Loans to America]"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "name": "America",
+            "types": [
+              "DevelopmentFinanceRecipientEnum"
+            ],
+            "dcid": "DAC/America"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Health (Total)",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/Health"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "name": "DAC Region",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DACGeoRegion"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "General health sector support, including policy, planning, and administration; covers activities and programmes that promote overall health system strengthening and improvement. [ODA Loans to America]"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/Health-ODALoans-america": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Continent"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "General health sector support, including policy, planning, and administration; covers activities and programmes that promote overall health system strengthening and improvement. [ODA Loans to America]"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "america"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Health [ODA Loans to America]"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Health (Total)",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/Health"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/BasicHealth-ODALoans-A": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Basic Health [ODA Loans to America]"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "name": "America",
+            "types": [
+              "DevelopmentFinanceRecipientEnum"
+            ],
+            "dcid": "DAC/America"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Support for basic health services, including primary health care, basic health infrastructure, and programmes that aim to achieve universal health coverage. [ODA Loans to America]"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Basic Health (Semi-Aggregate)",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/BasicHealth"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "name": "DAC Region",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DACGeoRegion"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/BasicHealth-ODALoans-america": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Continent"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Basic Health (Semi-Aggregate)",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/BasicHealth"
+          }
+        ]
+      },
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "america"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Support for basic health services, including primary health care, basic health infrastructure, and programmes that aim to achieve universal health coverage. [ODA Loans to America]"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Basic Health [ODA Loans to America]"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/Health-ODALoans-DPGC_X": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "name": "Developing countries, unspecified",
+            "types": [
+              "DevelopmentFinanceRecipientEnum"
+            ],
+            "dcid": "DAC/DevelopingCountriesUnspecified"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "General health sector support, including policy, planning, and administration; covers activities and programmes that promote overall health system strengthening and improvement. [ODA Loans to Regional and Unspecified]"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Health (Total)",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/Health"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Health [ODA Loans to Regional and Unspecified]"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/HealthGeneral-ODALoans-america": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Health, General (Semi-Aggregate)",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/HealthGeneral"
+          }
+        ]
+      },
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "america"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Continent"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Health, General [ODA Loans to America]"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Activities covering overall health sector support and general health services that cannot be attributed to specific health sub-sectors. [ODA Loans to America]"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/Healtheducation-ODALoans-america": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "america"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Health education [ODA Loans to America]"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Health education",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/Healtheducation"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Continent"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Information, education and training of the population for improving health knowledge and practices; public health and awareness campaigns; promotion of improved personal hygiene practices, including use of sanitation facilities and handwashing with soap. [ODA Loans to America]"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/Health-ODALoans-A_X": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Health (Total)",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/Health"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Health [ODA Loans to America, regional]"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "name": "America, unspecified",
+            "types": [
+              "DevelopmentFinanceRecipientEnum"
+            ],
+            "dcid": "DAC/AmericaUnspecified"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "General health sector support, including policy, planning, and administration; covers activities and programmes that promote overall health system strengthening and improvement. [ODA Loans to America, regional]"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/Basichealthcare-ODALoans-america": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "america"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Basic and primary health care programmes; paramedical and nursing care programmes; supply of drugs, medicines and vaccines related to basic health care; activities aimed at achieving universal health coverage. [ODA Loans to America]"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Basic health care [ODA Loans to America]"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Basic health care",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/Basichealthcare"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Continent"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/BasicHealth-ODALoans-A_X": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Support for basic health services, including primary health care, basic health infrastructure, and programmes that aim to achieve universal health coverage. [ODA Loans to America, regional]"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "name": "America, unspecified",
+            "types": [
+              "DevelopmentFinanceRecipientEnum"
+            ],
+            "dcid": "DAC/AmericaUnspecified"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Basic Health [ODA Loans to America, regional]"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Basic Health (Semi-Aggregate)",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/BasicHealth"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/Medicalservices-ODALoans-america": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Medical services",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/Medicalservices"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Medical services [ODA Loans to America]"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "america"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Continent"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Laboratories, specialised clinics and hospitals (including equipment and supplies); ambulances; dental services; medical rehabilitation. Excludes noncommunicable diseases (123xx). [ODA Loans to America]"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/HealthGeneral-ODALoans-DPGC_X": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "name": "Developing countries, unspecified",
+            "types": [
+              "DevelopmentFinanceRecipientEnum"
+            ],
+            "dcid": "DAC/DevelopingCountriesUnspecified"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Health, General (Semi-Aggregate)",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/HealthGeneral"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Activities covering overall health sector support and general health services that cannot be attributed to specific health sub-sectors. [ODA Loans to Regional and Unspecified]"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Health, General [ODA Loans to Regional and Unspecified]"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/Medicalresearch-ODALoans-america": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Medical research [ODA Loans to America]"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "america"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Continent"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Medical research",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/Medicalresearch"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "General medical research (excluding basic health research and research for prevention and control of NCDs (12382)). [ODA Loans to America]"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/Medicalservices-ODALoans-DPGC_X": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Medical services",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/Medicalservices"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Laboratories, specialised clinics and hospitals (including equipment and supplies); ambulances; dental services; medical rehabilitation. Excludes noncommunicable diseases (123xx). [ODA Loans to Regional and Unspecified]"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "name": "Developing countries, unspecified",
+            "types": [
+              "DevelopmentFinanceRecipientEnum"
+            ],
+            "dcid": "DAC/DevelopingCountriesUnspecified"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Medical services [ODA Loans to Regional and Unspecified]"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/Health-ODALoans-COM": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Health [ODA Loans to Comoros]"
+          }
+        ]
+      },
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Health (Total)",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/Health"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "General health sector support, including policy, planning, and administration; covers activities and programmes that promote overall health system strengthening and improvement. [ODA Loans to Comoros]"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "types": [
+              "Country"
+            ],
+            "dcid": "country/COM"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/Basichealthinfrastructure-ODALoans-america": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "america"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Continent"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "District-level hospitals, clinics and dispensaries and related medical equipment; excluding specialised hospitals and clinics (12191). [ODA Loans to America]"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Basic health infrastructure [ODA Loans to America]"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Basic health infrastructure",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/Basichealthinfrastructure"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/BasicHealth-ODALoans-COM": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Basic Health (Semi-Aggregate)",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/BasicHealth"
+          }
+        ]
+      },
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "types": [
+              "Country"
+            ],
+            "dcid": "country/COM"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Support for basic health services, including primary health care, basic health infrastructure, and programmes that aim to achieve universal health coverage. [ODA Loans to Comoros]"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Basic Health [ODA Loans to Comoros]"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/Basichealthcare-ODALoans-COM": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "types": [
+              "Country"
+            ],
+            "dcid": "country/COM"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Basic and primary health care programmes; paramedical and nursing care programmes; supply of drugs, medicines and vaccines related to basic health care; activities aimed at achieving universal health coverage. [ODA Loans to Comoros]"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Basic health care",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/Basichealthcare"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Basic health care [ODA Loans to Comoros]"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/HealthGeneral-ODALoans-COM": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Health, General (Semi-Aggregate)",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/HealthGeneral"
+          }
+        ]
+      },
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "types": [
+              "Country"
+            ],
+            "dcid": "country/COM"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Activities covering overall health sector support and general health services that cannot be attributed to specific health sub-sectors. [ODA Loans to Comoros]"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Health, General [ODA Loans to Comoros]"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/Healthpersonneldevelopment-ODALoans-america": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Health personnel development",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/Healthpersonneldevelopment"
+          }
+        ]
+      },
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "america"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Continent"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Health personnel development [ODA Loans to America]"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Training of health staff for basic health care services. [ODA Loans to America]"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/Healthpolicyandadministrativemanagement-ODALoans-america": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Health sector policy, planning and programmes; aid to health ministries, public health administration; institution capacity building and advice; medical insurance programmes; including health system strengthening and health governance; unspecified health activities. [ODA Loans to America]"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Health policy and administrative management [ODA Loans to America]"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "america"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Health policy and administrative management",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/Healthpolicyandadministrativemanagement"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Continent"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/Health-ODALoans-E": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "name": "Europe",
+            "types": [
+              "DevelopmentFinanceRecipientEnum"
+            ],
+            "dcid": "DAC/Europe"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Health (Total)",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/Health"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "name": "DAC Region",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DACGeoRegion"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "General health sector support, including policy, planning, and administration; covers activities and programmes that promote overall health system strengthening and improvement. [ODA Loans to Europe]"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Health [ODA Loans to Europe]"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/Health-ODALoans-europe": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "europe"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "General health sector support, including policy, planning, and administration; covers activities and programmes that promote overall health system strengthening and improvement. [ODA Loans to Europe]"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Health [ODA Loans to Europe]"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Health (Total)",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/Health"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Continent"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/Basichealthinfrastructure-ODALoans-COM": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "types": [
+              "Country"
+            ],
+            "dcid": "country/COM"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Basic health infrastructure",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/Basichealthinfrastructure"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "District-level hospitals, clinics and dispensaries and related medical equipment; excluding specialised hospitals and clinics (12191). [ODA Loans to Comoros]"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Basic health infrastructure [ODA Loans to Comoros]"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/HealthGeneral-ODALoans-E": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "name": "DAC Region",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DACGeoRegion"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Activities covering overall health sector support and general health services that cannot be attributed to specific health sub-sectors. [ODA Loans to Europe]"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Health, General [ODA Loans to Europe]"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Health, General (Semi-Aggregate)",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/HealthGeneral"
+          }
+        ]
+      },
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "name": "Europe",
+            "types": [
+              "DevelopmentFinanceRecipientEnum"
+            ],
+            "dcid": "DAC/Europe"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/HealthGeneral-ODALoans-europe": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Health, General [ODA Loans to Europe]"
+          }
+        ]
+      },
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "europe"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Continent"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Activities covering overall health sector support and general health services that cannot be attributed to specific health sub-sectors. [ODA Loans to Europe]"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Health, General (Semi-Aggregate)",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/HealthGeneral"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/Medicalservices-ODALoans-COM": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Laboratories, specialised clinics and hospitals (including equipment and supplies); ambulances; dental services; medical rehabilitation. Excludes noncommunicable diseases (123xx). [ODA Loans to Comoros]"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Medical services [ODA Loans to Comoros]"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Medical services",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/Medicalservices"
+          }
+        ]
+      },
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "types": [
+              "Country"
+            ],
+            "dcid": "country/COM"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/CRS_DAC/BasicHealth-ODALoans-E": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "DevelopmentFinanceScheme": {
+        "nodes": [
+          {
+            "name": "Official Development Assistance Loans",
+            "types": [
+              "Property"
+            ],
+            "dcid": "ODALoans"
+          }
+        ]
+      },
+      "aggregationDimensions": {
+        "nodes": [
+          {
+            "name": "DAC Region",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DACGeoRegion"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Date"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Official Development Assistance Type",
+            "types": [
+              "Property"
+            ],
+            "dcid": "OfficialDevelopmentAssistanceType"
+          },
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "observationAbout"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Support for basic health services, including primary health care, basic health infrastructure, and programmes that aim to achieve universal health coverage. [ODA Loans to Europe]"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "Development Finance Flow",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceFlow"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Basic Health [ODA Loans to Europe]"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Development Finance",
+            "types": [
+              "Class"
+            ],
+            "dcid": "DevelopmentFinance"
+          }
+        ]
+      },
+      "DevelopmentFinancePurpose": {
+        "nodes": [
+          {
+            "name": "Basic Health (Semi-Aggregate)",
+            "types": [
+              "DevelopmentFinancePurposeEnum"
+            ],
+            "dcid": "DAC/BasicHealth"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Development Finance Scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceScheme"
+          },
+          {
+            "name": "Development Finance Purpose",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinancePurpose"
+          },
+          {
+            "name": "Development Finance Recipient",
+            "types": [
+              "Property"
+            ],
+            "dcid": "DevelopmentFinanceRecipient"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "DevelopmentFinanceRecipient": {
+        "nodes": [
+          {
+            "name": "Europe",
+            "types": [
+              "DevelopmentFinanceRecipientEnum"
+            ],
+            "dcid": "DAC/Europe"
+          }
+        ]
+      }
+    }
   }
 }
