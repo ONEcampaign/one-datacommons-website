@@ -1,18 +1,8 @@
 """Tests for place-as-constraint (seam) behavior in the engine."""
 from __future__ import annotations
 
-from qre.models import (
-    DefiniteResponse,
-    RawTextInput,
-    ResolveOptions,
-    ResolveRequest,
-)
-from tests.engine._harness import offline_resolve
-
-
-def make_request(query: str, pac: bool | None = None) -> ResolveRequest:
-    options = ResolveOptions(place_as_constraint=pac) if pac is not None else None
-    return ResolveRequest(input=RawTextInput(query=query), options=options)
+from qre.models import DefiniteResponse
+from tests.engine._harness import make_request, offline_resolve
 
 
 class TestSeamBehavior:

@@ -10,13 +10,19 @@ from datetime import date
 from unittest.mock import patch
 
 from qre.engine.core import resolve_async
-from qre.models import ResolveRequest, ResolveResponse
+from qre.models import RawTextInput, ResolveOptions, ResolveRequest, ResolveResponse
 from tests.fixtures import FakeGraph, FakeLLM
 
 PINNED_DATE = date(2026, 6, 23)
 
 _FAKE_GRAPH = FakeGraph()
 _FAKE_LLM = FakeLLM()
+
+
+def make_request(query: str, pac: bool | None = None) -> ResolveRequest:
+    """Build a ResolveRequest from a raw-text query and optional place_as_constraint."""
+    options = ResolveOptions(place_as_constraint=pac) if pac is not None else None
+    return ResolveRequest(input=RawTextInput(query=query), options=options)
 
 
 def offline_resolve(request: ResolveRequest) -> ResolveResponse:
