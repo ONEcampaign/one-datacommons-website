@@ -96,7 +96,9 @@ class _RaiseOnAny:
     def detect_svs(self, query: str) -> tuple[list[str], list[str], list[float]]:
         raise GraphInfraError(f"FakeGraph(raise=True): simulated transport error for {query!r}")
 
-    def observation_facets(self, *, stat_var: str, entity: str) -> list[Facet]:
+    def observation_facets(
+        self, *, stat_var: str, entity: str, needs_dates: bool = False
+    ) -> list[Facet]:
         raise GraphInfraError("FakeGraph(raise=True): simulated transport error")
 
     def node_labels_batch(self, dcids: list[str]) -> dict[str, str]:
@@ -200,9 +202,13 @@ class FakeGraph:
             out_scores = [1.0] * len(svs)
         return svs, entry.get("entities", []), out_scores
 
-    def observation_facets(self, *, stat_var: str, entity: str) -> list[Facet]:
+    def observation_facets(
+        self, *, stat_var: str, entity: str, needs_dates: bool = False
+    ) -> list[Facet]:
         if self._impl is not None:
-            return self._impl.observation_facets(stat_var=stat_var, entity=entity)
+            return self._impl.observation_facets(
+                stat_var=stat_var, entity=entity, needs_dates=needs_dates
+            )
         key = f"{stat_var}|{entity}"
         raw = self._obs.get(key, [])
         return [

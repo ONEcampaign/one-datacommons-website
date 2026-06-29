@@ -297,9 +297,18 @@ def _construct_resolve(
 
     scheme_binding = _find_binding(bindings, PROP_SCHEME)
     purpose_binding = _find_binding(bindings, PROP_PURPOSE)
+    recipient_binding = _find_binding(bindings, PROP_RECIPIENT)
 
     if recipient_dcid is None:
         return NoDataDraft(reason="variable_not_resolved")
+
+    # Derive the full recipient set from the where-axis binding (supports BindingSet for
+    # multi-recipient queries); fall back to the scalar resolver param when absent.
+    recipient_dcids_local = (
+        list(recipient_binding.value_dcids)
+        if (recipient_binding and recipient_binding.value_dcids)
+        else [recipient_dcid]
+    )
 
     probe_donor = donor_dcid or _DEFAULT_PROBE_DONOR
 
@@ -317,11 +326,14 @@ def _construct_resolve(
 
         probe_scheme = SCHEMES[0]
         probe_facets: list[Facet] = []
-        for purpose_dcid in probe_purpose_dcids:
-            probe_sv = construct_sv_dcid(probe_scheme, purpose_dcid, recipient_dcid)
-            probe_facets.extend(
-                graph.observation_facets(stat_var=probe_sv, entity=probe_donor)
-            )
+        for r in recipient_dcids_local:
+            for purpose_dcid in probe_purpose_dcids:
+                probe_sv = construct_sv_dcid(probe_scheme, purpose_dcid, r)
+                probe_facets.extend(
+                    graph.observation_facets(
+                        stat_var=probe_sv, entity=probe_donor, needs_dates=False
+                    )
+                )
 
         if not probe_facets or not any(f.obs_count > 0 for f in probe_facets):
             return NoDataDraft(reason="no_observations")
@@ -368,17 +380,21 @@ def _construct_resolve(
     if not scheme_dcids or not purpose_dcids:
         return NoDataDraft(reason="variable_not_resolved")
 
-    # Construct and confirm each (scheme × purpose) × recipient combination.
+    # Construct and confirm each recipient × (scheme × purpose) combination.
     confirmed_svs: list[str] = []
     all_facets: list[Facet] = []
-    for scheme in scheme_dcids:
-        for purpose in purpose_dcids:
-            sv_dcid = construct_sv_dcid(scheme, purpose, recipient_dcid)
-            if graph.node_label(sv_dcid) is None:
-                continue
-            confirmed_svs.append(sv_dcid)
-            facets = graph.observation_facets(stat_var=sv_dcid, entity=probe_donor)
-            all_facets.extend(facets)
+    for r in recipient_dcids_local:
+        for scheme in scheme_dcids:
+            for purpose in purpose_dcids:
+                sv_dcid = construct_sv_dcid(scheme, purpose, r)
+                if graph.node_label(sv_dcid) is None:
+                    continue
+                confirmed_svs.append(sv_dcid)
+                facets = graph.observation_facets(
+                    stat_var=sv_dcid, entity=probe_donor,
+                    needs_dates=(date_request is not None),
+                )
+                all_facets.extend(facets)
 
     if not confirmed_svs:
         return NoDataDraft(reason="no_observations")

@@ -21,6 +21,8 @@ from qre.engine.bind import SlotBindingDraft, bind
 from qre.engine.config import (
     QRE_DOMINANCE_MARGIN,
     QRE_MAX_CANDIDATES,
+    QRE_RELEVANCE_THRESHOLD,
+    QRE_WEAK_SCORE_THRESHOLD,
 )
 from qre.engine.discover import (
     derive_shapes,
@@ -64,6 +66,7 @@ from qre.models import (
 logger = logging.getLogger(__name__)
 
 MULTI_RECIPIENT_TRUNCATED = "MULTI_RECIPIENT_TRUNCATED"
+RETRIEVAL_SCORE_WEAK = "RETRIEVAL_SCORE_WEAK"
 
 
 # ---------------------------------------------------------------------------
@@ -568,6 +571,26 @@ async def resolve_variable(
     timing["shape"] = now_ms() - t0
     pipeline_steps.append(make_pipeline_step("shape", ran=True, ms=timing["shape"]))
 
+    # Warn when the top shape's representative cosine is above the relevance floor
+    # but below the weak-score threshold. The != 1.0 sentinel guard prevents false
+    # fires on the dev-finance fallback / offline-fixture default (shape.py:71).
+    # Not emitted on the candidates path (no single winning score there).
+    if (
+        not _is_candidates_path
+        and shape_draft.representative_score != 1.0  # noqa: PLR2004
+        and QRE_RELEVANCE_THRESHOLD < shape_draft.representative_score < QRE_WEAK_SCORE_THRESHOLD
+    ):
+        warnings.append(
+            Warning(
+                code=RETRIEVAL_SCORE_WEAK,
+                severity="info",
+                message=(
+                    f"top shape cosine {shape_draft.representative_score:.2f} is weak"
+                    f" (< {QRE_WEAK_SCORE_THRESHOLD})"
+                ),
+            )
+        )
+
     # Any named entity that failed to resolve fires entity_not_resolved to ensure
     # the engine never silently answers a different query.
     distinct_extracted = len(set(entities))
@@ -636,18 +659,14 @@ async def resolve_variable(
     for dcid, role_draft in roles_for_sv.items():
         if isinstance(role_draft.role, DirectionalRole):
             if role_draft.role.direction == "to":
-                recipient_dcid = dcid
                 to_dcids.append(dcid)
             elif role_draft.role.direction == "from":
                 donor_dcid = dcid
-    if len(to_dcids) > 1:
-        warnings.append(
-            Warning(
-                code=MULTI_RECIPIENT_TRUNCATED,
-                severity="warn",
-                message=f"{len(to_dcids)} directional recipients detected; only 1 used.",
-            )
-        )
+    # First element is the scalar stability anchor for _construct_resolve and the
+    # standard else-branch; spec_id.py sorts BindingSet dcids so the hash is
+    # order-independent regardless of detection order.
+    if to_dcids:
+        recipient_dcid = to_dcids[0]
 
     # Treat a bare entity as the recipient only when no directional signal was detected.
     # If directional_detected_sv is True, at least one entity had a "from" or "to"
@@ -662,6 +681,8 @@ async def resolve_variable(
     elif recipient_dcid is None and not directional_detected_sv and rcl.resolved_entity_names:
         # Multiple bare entities (no directional prepositions): use the last entity (heuristic)
         recipient_dcid = next(reversed(list(rcl.resolved_entity_names.values())))
+        # This warning fires for bare-entity multi-recipient only. Directional multi-recipient
+        # queries route through a BindingSet covering all recipients and do not reach this path.
         warnings.append(
             Warning(
                 code=MULTI_RECIPIENT_TRUNCATED,
@@ -713,13 +734,19 @@ async def resolve_variable(
                     axis="where", property_dcid=PROP_RECIPIENT, kind="value", value_dcids=[]
                 )
                 bindings.append(where_binding)
-            where_binding.kind = "value"
-            where_binding.value_dcids = [recipient_dcid]
+            if len(to_dcids) > 1:
+                where_binding.kind = "set"
+                where_binding.value_dcids = list(to_dcids)
+            else:
+                where_binding.kind = "value"
+                where_binding.value_dcids = [recipient_dcid]
     else:
         # No constraint slots (from slot_taxonomy): skip LLM bind entirely (standard family
         # with bare count SV, etc.).  Build a minimal where-only binding from the resolved
         # entity so the grounding stage has a recipient to display.  No property_dcid for
         # the entity-only where slot (matches the SlotKeyDraft(property_dcid=None) pattern).
+        # Standard family keeps a scalar where-binding; BindingSet multi-recipient support
+        # is a dev-finance specialization only.
         pipeline_steps.append(make_pipeline_step("bind", ran=False))
         bindings = []
         if recipient_dcid:

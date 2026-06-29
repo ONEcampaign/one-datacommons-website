@@ -122,8 +122,11 @@ class _RecordingGraph:
         self._detect[query] = {"svs": svs, "entities": entities, "cosine_scores": scores}
         return svs, entities, scores
 
-    def observation_facets(self, *, stat_var: str, entity: str):
+    def observation_facets(self, *, stat_var: str, entity: str, needs_dates: bool = False):
         time.sleep(_RECORD_THROTTLE_S)
+        # Recording stores only summary fields (obs_count/earliest_date/latest_date);
+        # per-observation dates are never stored in the fixture format.
+        # needs_dates is accepted for Protocol conformance but not threaded further.
         result = self._graph.observation_facets(stat_var=stat_var, entity=entity)
         key = f"{stat_var}|{entity}"
         self._obs[key] = [

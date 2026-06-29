@@ -108,7 +108,9 @@ class _StandardResolver:
 
         # Probe the representative SV against the subject entity.
         probe_entity = recipient_dcid
-        facets = graph.observation_facets(stat_var=representative_sv, entity=probe_entity)
+        facets = graph.observation_facets(
+            stat_var=representative_sv, entity=probe_entity, needs_dates=(date_request is not None)
+        )
 
         if not facets or not any(f.obs_count > 0 for f in facets):
             return NoDataDraft(reason="no_observations")

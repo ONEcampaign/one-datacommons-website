@@ -53,13 +53,18 @@ QRE_MAX_QUERY_CHARS: int = int(os.getenv("QRE_MAX_QUERY_CHARS", "2000"))
 # ---------------------------------------------------------------------------
 
 # Maximum number of recalled candidate SVs that derive_shapes will confirm via node_arcs.
-# Keeps per-query graph-call count bounded. Resolvers consume the carried arc facts.
-QRE_MAX_CONFIRM_CANDIDATES: int = int(os.getenv("QRE_MAX_CONFIRM_CANDIDATES", "25"))
+# The confirm fetch is one batched call so raising this pool widens recall without adding
+# round-trips. Resolvers consume the carried arc facts.
+QRE_MAX_CONFIRM_CANDIDATES: int = int(os.getenv("QRE_MAX_CONFIRM_CANDIDATES", "40"))
 
 # Minimum cosine similarity for a recalled SV to be treated as a match.
 # Suppresses low-confidence noise while keeping clear matches.
 # Gates variable_not_resolved for genuinely unknown variables.
 QRE_RELEVANCE_THRESHOLD: float = float(os.getenv("QRE_RELEVANCE_THRESHOLD", "0.5"))
+
+# Representative cosine above QRE_RELEVANCE_THRESHOLD but below this fires
+# RETRIEVAL_SCORE_WEAK (info); 0.65 marks a weak but non-trivial match.
+QRE_WEAK_SCORE_THRESHOLD: float = float(os.getenv("QRE_WEAK_SCORE_THRESHOLD", "0.65"))
 
 # Maximum number of candidate specs returned in a CandidatesResponse.
 # Clamped broadest-first when multiple five-tuple groups survive ranking.

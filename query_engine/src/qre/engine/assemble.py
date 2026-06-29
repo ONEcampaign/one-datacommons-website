@@ -128,6 +128,12 @@ def build_slot(
         return Slot(key=slot_key, binding=BindingValue(value=sv))
 
     if kind == "set":
+        # Axis-aware partial-grounding: on the where-axis, one confirmed value is better
+        # than BindingUnbound — preserve it as BindingValue so spec_id stays stable and
+        # the slot is not blanked when only one of two recipients grounds via graphrefs.
+        if slot_key_draft.axis == "where" and len(grounded_values) == 1:
+            sv = SlotValue(ref=grounded_values[0], value_kind="entity")
+            return Slot(key=slot_key, binding=BindingValue(value=sv))
         if len(grounded_values) < 2:  # noqa: PLR2004
             # Not enough confirmed values for a set — fall back to unbound
             return Slot(key=slot_key, binding=BindingUnbound())

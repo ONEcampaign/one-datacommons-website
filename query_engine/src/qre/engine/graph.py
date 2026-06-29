@@ -109,10 +109,16 @@ class EngineGraphClient(Protocol):
         """
         ...
 
-    def observation_facets(self, *, stat_var: str, entity: str) -> list[Facet]:
+    def observation_facets(
+        self, *, stat_var: str, entity: str, needs_dates: bool = False
+    ) -> list[Facet]:
         """Return orderedFacets for the (stat_var, entity) pair.
 
         An empty list means no observations. Raises GraphInfraError on transport error.
+        needs_dates=False drops the per-observation date/value payload, reducing response
+        size. needs_dates=True keeps the full select (current behavior). Facet.dates
+        defaults to [] when dates are not requested; summary fields (earliest_date,
+        latest_date, obs_count) still populate on the no-date path.
         """
         ...
 
@@ -179,6 +185,7 @@ class LiveGraphClient:
             "Content-Type": "application/json",
         }
         self._client = httpx.Client(timeout=_timeout)
+        self._label_cache: dict[str, str] = {}
 
     def _post(self, url: str, payload: dict) -> dict:
         """POST JSON payload and return parsed JSON body.
@@ -222,7 +229,12 @@ class LiveGraphClient:
         Deterministic: take the LAST name value (the fuller rollup label),
         falling back to the first when only one value is returned.
         Returns None on genuine 200 with absent/empty node.
+        Repeated calls for the same dcid return the cached label without a
+        further HTTP call. None results are not cached (absent nodes may later
+        be populated); a GraphInfraError never reaches the cache write.
         """
+        if dcid in self._label_cache:
+            return self._label_cache[dcid]
         arcs = self._node_data(dcid, "->name")
         if arcs is None:
             return None
@@ -230,7 +242,9 @@ class LiveGraphClient:
         values = [n["value"] for n in name_nodes if n.get("value")]
         if not values:
             return None
-        return _pick_label(values)
+        label = _pick_label(values)
+        self._label_cache[dcid] = label
+        return label
 
     def node_arcs(self, dcid: str) -> dict | None:
         """Return all ->* arcs for a node, or None if absent."""
@@ -312,22 +326,33 @@ class LiveGraphClient:
         entity_dcids: list[str] = body.get("entities", [])
         return sv_dcids, entity_dcids, sv_scores
 
-    def observation_facets(self, *, stat_var: str, entity: str) -> list[Facet]:
+    def observation_facets(
+        self, *, stat_var: str, entity: str, needs_dates: bool = False
+    ) -> list[Facet]:
         """Return orderedFacets for the (stat_var, entity) pair.
 
-        Uses POST /core/api/v2/observation with select=[variable,entity,date,value,facet].
+        Uses POST /core/api/v2/observation.
+        needs_dates=False → select=["variable","entity","facet"] with no "date" key,
+        reducing payload size when per-observation dates are not needed.
+        needs_dates=True → full 5-field select with "date": "" (current behavior).
+        Facet.dates defaults to [] on the no-date path; summary fields
+        (earliest_date, latest_date, obs_count) still populate so coverage_from_facets
+        keeps CoverageExact on the no-window path.
         The top-level ``facets`` map (keyed by opaque facetId) carries provenanceId and
         importName; these are mapped onto each returned Facet for provenance resolution.
         The entity param is the observationAbout (donor); the recipient is a constraint
         on the SV, not the entity arg.
         """
         url = f"{self._v2_base}/observation"
-        body = self._post(url, {
-            "select": ["variable", "entity", "date", "value", "facet"],
+        post_body: dict = {
+            "select": ["variable", "entity", "facet"],
             "variable": {"dcids": [stat_var]},
             "entity": {"dcids": [entity]},
-            "date": "",
-        })
+        }
+        if needs_dates:
+            post_body["select"] = ["variable", "entity", "date", "value", "facet"]
+            post_body["date"] = ""
+        body = self._post(url, post_body)
         top_facets_map: dict = body.get("facets", {})
         facets_raw = (
             body.get("byVariable", {})
@@ -432,7 +457,9 @@ class LiveGraphClient:
             f
             for sv in stat_vars
             for entity in entities
-            for f in self.observation_facets(stat_var=sv, entity=entity)
+            for f in self.observation_facets(
+                stat_var=sv, entity=entity, needs_dates=(window is not None)
+            )
         ]
         if window is None:
             total = sum(f.obs_count for f in facets)

@@ -57,19 +57,18 @@ def _run(variable: str, role_query: str, entities: list[str]):
     )
 
 
-def test_directional_two_recipient_warns():
-    """Directional two 'to' recipients trigger MULTI_RECIPIENT_TRUNCATED.
+def test_directional_two_recipient_no_longer_warns():
+    """Directional two 'to' recipients no longer trigger MULTI_RECIPIENT_TRUNCATED.
 
-    "exports to Kenya and to Uganda" places both Kenya and Uganda after an
-    explicit "to" preposition.  directional_roles assigns both direction="to",
-    so the to_dcids list has length 2 after the loop and the warning fires.
+    Directional multi-recipient queries carry all recipients via BindingSet.
+    The MULTI_RECIPIENT_TRUNCATED warning does not fire for this path.
     """
     result = _run(
         "exports",
         role_query="exports to Kenya and to Uganda",
         entities=["Kenya", "Uganda"],
     )
-    assert any(w.code == MULTI_RECIPIENT_TRUNCATED for w in result.warnings)
+    assert not any(w.code == MULTI_RECIPIENT_TRUNCATED for w in result.warnings)
 
 
 def test_multi_bare_entity_warns():

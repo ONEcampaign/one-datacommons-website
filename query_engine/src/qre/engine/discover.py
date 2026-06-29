@@ -490,7 +490,15 @@ def graph_confirm_resolve(
     if recipient_dcid is None:
         return NoDataDraft(reason="variable_not_resolved")
 
-    probe_entity = recipient_dcid
+    # Derive recipient set from the where-axis binding for multi-recipient support.
+    # Read generically by axis so discover.py stays family-agnostic; do NOT import
+    # dev_finance property constants here.
+    recipient_dcids: list[str] = [recipient_dcid]
+    for b in bindings:
+        if b.axis == "where" and b.kind in ("value", "set") and b.value_dcids:
+            recipient_dcids = list(b.value_dcids)
+            break
+
     probe_donor = donor_dcid or _DEFAULT_PROBE_DONOR
 
     # Build a lookup of bound constraint values: prop_dcid -> list[value_dcid]
@@ -521,16 +529,33 @@ def graph_confirm_resolve(
     if not surviving_svs:
         return NoDataDraft(reason="variable_not_resolved")
 
-    # Probe observations for each surviving SV.
+    # Probe observations for each surviving SV across all recipients.
+    # The recipient set is derived from the where-axis binding (supports BindingSet for
+    # multi-recipient dev-finance queries) with a scalar fallback for single-recipient paths.
+    # The probe_donor fallback fires ONCE PER SV (after the recipient loop), not once per
+    # recipient. Dev-finance observations are keyed by donor, so per-recipient probes return
+    # empty; firing the fallback inside the recipient loop would inflate all_facets N-fold.
     confirmed_svs: list[str] = []
     all_facets: list[Facet] = []
+    needs_dates = date_request is not None
     for sv_dcid in surviving_svs:
-        facets = graph.observation_facets(stat_var=sv_dcid, entity=probe_entity)
-        if not facets:
-            facets = graph.observation_facets(stat_var=sv_dcid, entity=probe_donor)
-        if facets and any(f.obs_count > 0 for f in facets):
+        sv_confirmed = False
+        for r_dcid in recipient_dcids:
+            facets = graph.observation_facets(
+                stat_var=sv_dcid, entity=r_dcid, needs_dates=needs_dates
+            )
+            if facets and any(f.obs_count > 0 for f in facets):
+                sv_confirmed = True
+                all_facets.extend(facets)
+        if not sv_confirmed:
+            fallback_facets = graph.observation_facets(
+                stat_var=sv_dcid, entity=probe_donor, needs_dates=needs_dates
+            )
+            if fallback_facets and any(f.obs_count > 0 for f in fallback_facets):
+                sv_confirmed = True
+                all_facets.extend(fallback_facets)
+        if sv_confirmed:
             confirmed_svs.append(sv_dcid)
-            all_facets.extend(facets)
 
     if not confirmed_svs:
         return NoDataDraft(reason="no_observations")

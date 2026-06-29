@@ -14,7 +14,9 @@ kind=parsed is rejected with HTTP 400 (not supported in v1).
 """
 from __future__ import annotations
 
+import asyncio
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
@@ -56,6 +58,10 @@ def create_app(
         if graph is None:
             _shared_graph = LiveGraphClient()
             logger.info("LiveGraphClient started")
+        loop = asyncio.get_running_loop()
+        loop.set_default_executor(
+            ThreadPoolExecutor(max_workers=16, thread_name_prefix="qre-io")
+        )
         try:
             yield
         finally:
