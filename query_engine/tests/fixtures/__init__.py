@@ -99,6 +99,9 @@ class _RaiseOnAny:
     def observation_facets(self, *, stat_var: str, entity: str) -> list[Facet]:
         raise GraphInfraError("FakeGraph(raise=True): simulated transport error")
 
+    def node_labels_batch(self, dcids: list[str]) -> dict[str, str]:
+        raise GraphInfraError("FakeGraph(raise=True): simulated transport error")
+
     def exists(self, dcid: str) -> bool:
         raise GraphInfraError(f"FakeGraph(raise=True): simulated transport error for {dcid!r}")
 
@@ -208,9 +211,25 @@ class FakeGraph:
                     "dates",
                     [o["date"] for o in f.get("observations", []) if o.get("date")],
                 ),
+                provenance_id=f.get("provenanceId"),
+                import_name=f.get("importName"),
             )
             for f in raw
         ]
+
+    def node_labels_batch(self, dcids: list[str]) -> dict[str, str]:
+        """Batch-fetch labels from the nodes fixture; absent nodes are omitted."""
+        if self._impl is not None:
+            return self._impl.node_labels_batch(dcids)
+        result: dict[str, str] = {}
+        for dcid in dcids:
+            node = self._nodes.get(dcid)
+            if node is None:
+                continue
+            label = node.get("label")
+            if label:
+                result[dcid] = label
+        return result
 
     def exists(self, dcid: str) -> bool:
         if self._impl is not None:

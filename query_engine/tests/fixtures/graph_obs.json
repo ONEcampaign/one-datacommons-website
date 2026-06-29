@@ -1,10 +1,12 @@
 {
-  "_comment": "Observation facets keyed by 'sv|entity'. Sourced from §0 live staging probe facts + goldens.json notes. Each value is a list of facet dicts with earliestDate, latestDate, obsCount. Used by FakeGraph.observation_facets.",
+  "_comment": "Observation facets keyed by 'sv|entity'. Sourced from \u00a70 live staging probe facts + goldens.json notes. Each value is a list of facet dicts with earliestDate, latestDate, obsCount. Used by FakeGraph.observation_facets.",
   "ONE/CRS_DAC/Health-ODAGrants-ETH|country/USA": [
     {
       "earliestDate": "1991",
       "latestDate": "2024",
-      "obsCount": 402
+      "obsCount": 402,
+      "provenanceId": "dc/base/HumanCRS",
+      "importName": "HumanCRS"
     }
   ],
   "ONE/CRS_DAC/Health-ODAGrants-KEN|country/USA": [
@@ -310,5 +312,27 @@
   "Percent_Student_AsAFractionOf_Count_Teacher|country/NRU": [],
   "Count_Death_Upto1Years_CertainConditionsOriginatingInThePerinatalPeriod|country/ETH": [],
   "Count_Death_LessThan1Year_AsAFractionOf_Count_BirthEvent|country/ETH": [],
-  "Count_Death_Infant|country/ETH": []
+  "Count_Death_Infant|country/ETH": [],
+  "Count_Person|country/BRA": [
+    {
+      "earliestDate": "1960",
+      "latestDate": "2024",
+      "obsCount": 65
+    }
+  ],
+  "_test_provenance/known|country/TEST": [
+    {
+      "earliestDate": "2010",
+      "latestDate": "2020",
+      "obsCount": 10,
+      "provenanceId": "dc/base/HumanCRS",
+      "importName": "HumanCRS"
+    },
+    {
+      "earliestDate": "2010",
+      "latestDate": "2020",
+      "obsCount": 5,
+      "importName": "UnknownImport"
+    }
+  ]
 }

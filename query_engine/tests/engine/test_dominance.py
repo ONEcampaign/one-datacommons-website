@@ -9,7 +9,7 @@ import importlib
 
 import pytest
 
-from qre.engine.core import _top_dominates
+from qre.engine.regions import _top_dominates
 from qre.engine.shape import ShapeDraft
 
 # ---------------------------------------------------------------------------

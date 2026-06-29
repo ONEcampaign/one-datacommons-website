@@ -1,8 +1,13 @@
 """Assemble stage: build grounded Spec and ResolveResponse from pipeline parts.
 
 Pure assembly: no LLM, no graph calls.
+
+Public envelope helpers (now_ms, make_pipeline_step, make_query_echo, make_diagnostics)
+live here so both core.py and conjoin.py can import them without cycles.
 """
 from __future__ import annotations
+
+import time
 
 from qre.engine.bind import SlotBindingDraft
 from qre.engine.shape import ShapeDraft, SlotKeyDraft
@@ -32,8 +37,53 @@ from qre.models import (
     SlotValue,
     StatVar,
     StatVarSlotValue,
+    Timing,
+    Warning,
 )
 from qre.render import no_data_phrase, render_candidates_summary, render_sentence
+
+# ---------------------------------------------------------------------------
+# Envelope helpers — moved from core.py so conjoin.py can import without cycles
+# ---------------------------------------------------------------------------
+
+
+def now_ms() -> int:
+    """Current monotonic time in milliseconds."""
+    return int(time.monotonic() * 1000)
+
+
+def make_pipeline_step(step: str, ran: bool, ms: int | None = None) -> PipelineStep:
+    """Build a PipelineStep record."""
+    return PipelineStep(step=step, ran=ran, ms=ms)  # type: ignore[arg-type]
+
+
+def make_query_echo(
+    query: str,
+    variable_text: list[str],
+    extract_skipped: bool,
+) -> QueryEcho:
+    """Build a QueryEcho from the raw query text and variable list."""
+    return QueryEcho(
+        entry_path="raw_text",
+        raw_query=query,
+        normalized_query=query.strip() or None,
+        variable_text=variable_text,
+        extract_skipped=extract_skipped,
+    )
+
+
+def make_diagnostics(
+    engine_build: str,
+    warnings: list[Warning],
+    timing_by_step: dict[str, int],
+    total_ms: int,
+) -> Diagnostics:
+    """Build a Diagnostics envelope."""
+    return Diagnostics(
+        engine_build=engine_build,
+        warnings=warnings,
+        timing_ms=Timing(total=total_ms, by_step=timing_by_step or None),
+    )
 
 
 def build_slot(
@@ -193,6 +243,9 @@ def build_spec(
     coverage: Coverage,
     pipeline_trace: list[PipelineStep],
     timing_by_step: dict[str, int],
+    *,
+    variable_text: str | None = None,
+    resolved_sources: list[GraphRef] | None = None,
 ) -> "Spec":  # noqa: F821 — imported below
     """Assemble a Spec with a deterministic spec_id.
 
@@ -204,6 +257,9 @@ def build_spec(
         coverage: Observation footprint.
         pipeline_trace: Pipeline step records.
         timing_by_step: Step name → latency in ms.
+        variable_text: The variable text this Spec answers; None for single-variable responses.
+        resolved_sources: Provenance GraphRefs resolved from observation facets; defaults to []
+            when not supplied (e.g. hand-built specs in tests or conjunction paths).
 
     Returns:
         A fully-assembled Spec.
@@ -234,7 +290,7 @@ def build_spec(
     resolution = ResolutionTrace(
         resolved_stat_vars=resolved_sv_refs,
         resolved_entities=resolved_entity_refs,
-        resolved_sources=[],
+        resolved_sources=resolved_sources or [],
         slot_filters=slot_filters,
         applied_window=coverage.window,
         date_source="query" if coverage.window is not None else None,
@@ -249,6 +305,7 @@ def build_spec(
         entities=entities,
         coverage=coverage,
         resolution=resolution,
+        variable_text=variable_text,
     )
 
 
@@ -257,15 +314,29 @@ def assemble_definite(
     query_echo: QueryEcho,
     diagnostics: Diagnostics,
     *,
+    additional_interpretations: "list[Spec] | None" = None,  # noqa: F821 — imported below
     include_sentence: bool = False,
+    n_measures: int = 1,
 ) -> ResolveResponse:
-    """Wrap a Spec into a DefiniteResponse."""
-    rendered = render_sentence(spec) if include_sentence else None
+    """Wrap a Spec into a DefiniteResponse.
+
+    Args:
+        spec: The resolved Spec.
+        query_echo: The query echo envelope.
+        diagnostics: The diagnostics envelope.
+        additional_interpretations: Other definite Specs for cross-shape conjunction;
+            None for single-region responses, [] for interim (cross-shape detected,
+            no resolved extras), populated list for resolved cross-shape parts.
+        include_sentence: When True, render a confirmation sentence.
+        n_measures: Total variables in the query; affects rendered_sentence formatting.
+    """
+    rendered = render_sentence(spec, n_measures=n_measures) if include_sentence else None
     return ResolveResponse(
         root=DefiniteResponse(
             query_echo=query_echo,
             diagnostics=diagnostics,
             interpretation=spec,
+            additional_interpretations=additional_interpretations,
             rendered_sentence=rendered,
         )
     )
@@ -277,9 +348,18 @@ def assemble_no_data(
     diagnostics: Diagnostics,
     *,
     include_sentence: bool = False,
+    n_measures: int = 1,
 ) -> ResolveResponse:
-    """Build a NoDataResponse with the given reason."""
-    rendered = no_data_phrase(reason) if include_sentence else None
+    """Build a NoDataResponse with the given reason.
+
+    Args:
+        reason: The NoDataReason code.
+        query_echo: The query echo envelope.
+        diagnostics: The diagnostics envelope.
+        include_sentence: When True, render a no-data phrase.
+        n_measures: Total variables in the query; affects rendered_sentence formatting.
+    """
+    rendered = no_data_phrase(reason, n_measures=n_measures) if include_sentence else None
     return ResolveResponse(
         root=NoDataResponse(
             query_echo=query_echo,
@@ -297,6 +377,7 @@ def assemble_candidates(
     *,
     max_candidates: int | None = None,
     include_sentence: bool = False,
+    n_measures: int = 1,
 ) -> ResolveResponse:
     """Build a CandidatesResponse from multiple competing Specs.
 
@@ -309,6 +390,7 @@ def assemble_candidates(
         diagnostics:      The diagnostics envelope.
         max_candidates:   Upper bound on the number of specs. None defaults to len(specs).
         include_sentence: When True, render a count summary in rendered_sentence.
+        n_measures:       Total variables in the query; affects rendered_sentence formatting.
 
     Returns:
         A ResolveResponse wrapping a CandidatesResponse.
@@ -320,7 +402,11 @@ def assemble_candidates(
     clamped = sorted_specs[:cap]
 
     # Count reflects the specs actually returned, not the pre-clamp total.
-    rendered = render_candidates_summary(len(clamped)) if include_sentence else None
+    rendered = (
+        render_candidates_summary(len(clamped), n_measures=n_measures)
+        if include_sentence
+        else None
+    )
 
     return ResolveResponse(
         root=CandidatesResponse(

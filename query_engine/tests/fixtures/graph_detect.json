@@ -1,5 +1,5 @@
 {
-  "_comment": "detect_svs() results keyed by query string. Sourced from §0 live staging probe facts. Values are {svs: [...], entities: [...]}. Used by FakeGraph.detect_svs. Detect is a RECALL aid only — the engine confirms every SV via node_arcs.",
+  "_comment": "detect_svs() results keyed by query string. Sourced from \u00a70 live staging probe facts. Values are {svs: [...], entities: [...]}. Used by FakeGraph.detect_svs. Detect is a RECALL aid only \u2014 the engine confirms every SV via node_arcs.",
   "health ODA grants from USA to Ethiopia": {
     "svs": [
       "ONE/CRS_DAC/Health-ODAGrants-ETH",
@@ -1296,5 +1296,17 @@
       0.5972080230712891,
       0.5964031219482422
     ]
+  },
+  "population": {
+    "svs": [
+      "Count_Person"
+    ],
+    "entities": []
+  },
+  "GDP": {
+    "svs": [
+      "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+    ],
+    "entities": []
   }
 }

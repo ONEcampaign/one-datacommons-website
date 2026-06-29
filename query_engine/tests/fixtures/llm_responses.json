@@ -1074,5 +1074,15 @@
       "Ethiopia"
     ],
     "dates": []
+  },
+  "Extraction:00bd3c33938ac585aaf54e606e67f26446f9ad77": {
+    "variables": [
+      "population",
+      "GDP"
+    ],
+    "entities": [
+      "Brazil"
+    ],
+    "dates": []
   }
 }

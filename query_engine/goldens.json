@@ -2264,6 +2264,117 @@
     "expected_no_data_reason": null,
     "candidate_count": 3,
     "status": "VERIFIED_AGAINST_GRAPH",
-    "notes": "Probed prod. Three SVs all have 58 observations at country/ETH (1966-2023) and share\npopulationType=MortalityEvent, measuredProperty=count, statType=measuredValue, age=Years0,\nbut differ on gender constraint and measurement denominator (five-tuple differs on md):\n  - Count_Death_0Years_AsFractionOf_Count_BirthEvent_LiveBirth: no gender constraint,\n    md=Count_BirthEvent_LiveBirth (all-sex rate, the canonical IMR).\n  - Count_Death_0Years_Female_AsFractionOf_Count_BirthEvent_LiveBirth_Female: gender=Female,\n    md=Count_BirthEvent_LiveBirth_Female.\n  - Count_Death_0Years_Male_AsFractionOf_Count_BirthEvent_LiveBirth_Male: gender=Male,\n    md=Count_BirthEvent_LiveBirth_Male.\nGraph-probed five-tuples confirm all three measurementDenominators differ -> different five-tuples\n-> legitimately candidates per Rule 2 (not same-shape openness). candidate_count=3 matches\nlen(expected_stat_vars). Absolute count variants (Count_Death_Infant, WHO/CM_02) and the\nalternate-age-band rate (Count_Death_LessThan1Year_AsAFractionOf_Count_BirthEvent) have\n0 observations at ETH and are excluded from the candidate set. The seam is not applicable:\nno dev-finance or directional entity logic involved. country/ETH confirmed as a valid entity on prod."
+    "notes": "Probed prod. Three SVs all have 58 observations at country/ETH (1966-2023) and share\npopulationType=MortalityEvent, measuredProperty=count, statType=measuredValue, age=Years0,\nbut differ on gender constraint and measurement denominator (five-tuple differs on md):\n  - Count_Death_0Years_AsFractionOf_Count_BirthEvent_LiveBirth: no gender constraint,\n    md=Count_BirthEvent_LiveBirth (all-sex rate, the canonical IMR).\n  - Count_Death_0Years_Female_AsFractionOf_Count_BirthEvent_LiveBirth_Female: gender=Female,\n    md=Count_BirthEvent_LiveBirth_Female.\n  - Count_Death_0Years_Male_AsFractionOf_Count_BirthEvent_LiveBirth_Male: gender=Male,\n    md=Count_BirthEvent_LiveBirth_Male.\nGraph-probed five-tuples confirm all three measurementDenominators differ -> different five-tuples\n-> legitimately candidates per Rule 2 (not same-shape openness). candidate_count=3 matches\nlen(expected_stat_vars). Absolute count variants (Count_Death_Infant, WHO/CM_02) and the\nalternate-age-band rate (Count_Death_LessThan1Year_AsAFractionOf_Count_BirthEvent) have\n0 observations at ETH and are excluded from the candidate set. The seam is not applicable:\nno dev-finance or directional entity logic involved. country/ETH confirmed as a valid entity on prod.\n"
+  },
+  {
+    "slice": "holdout",
+    "id": "conj-01",
+    "query": "population and GDP in Brazil",
+    "entry_path": "raw_text",
+    "tags": [
+      {
+        "behaviour": "definite"
+      },
+      {
+        "domain": "standard"
+      },
+      {
+        "seam": "na"
+      },
+      {
+        "conjunction": "cross_shape"
+      }
+    ],
+    "expected_status": "definite",
+    "expected_shape": {
+      "population_type_dcid": "Person",
+      "measured_property_dcid": "count",
+      "stat_type_dcid": "measuredValue",
+      "measurement_qualifier_dcid": null,
+      "measurement_denominator_dcid": null
+    },
+    "expected_slots": [],
+    "expected_stat_vars": [
+      "Count_Person"
+    ],
+    "expected_entities": [
+      {
+        "dcid": "country/BRA",
+        "role_kind": "subject",
+        "direction": null,
+        "role_dcid": null
+      }
+    ],
+    "expected_no_data_reason": null,
+    "candidate_count": null,
+    "status": "DEFERRED",
+    "notes": "Cross-shape conjunction: population (Count_Person, five-tuple Person/count/measuredValue) and GDP (Amount_EconomicActivity_GrossDomesticProduction_Nominal, five-tuple EconomicActivity/amount/measuredValue/Nominal). Primary is population by earliest_index. additional_interpretations carries the GDP Spec. CONJUNCTION_CROSS_SHAPE emitted. Offline test fixtures: Extraction returns variables=[population, GDP], bare-variable detect entries added, Count_Person|country/BRA observation added. DEFERRED because dev-finance live baselines are staging-only and this golden exercises a new path.\n"
+  },
+  {
+    "slice": "holdout",
+    "id": "conj-02",
+    "query": "ODA grants and ODA loans to Ethiopia",
+    "entry_path": "raw_text",
+    "tags": [
+      {
+        "behaviour": "definite"
+      },
+      {
+        "domain": "development_finance"
+      },
+      {
+        "seam": "na"
+      },
+      {
+        "conjunction": "same_shape"
+      }
+    ],
+    "expected_status": "definite",
+    "expected_shape": {
+      "population_type_dcid": "DevelopmentFinance",
+      "measured_property_dcid": "DevelopmentFinanceFlow",
+      "stat_type_dcid": "measuredValue",
+      "measurement_qualifier_dcid": null,
+      "measurement_denominator_dcid": null
+    },
+    "expected_slots": [
+      {
+        "axis": "what",
+        "property_dcid": "DevelopmentFinanceScheme",
+        "binding_kind": "set",
+        "value_dcid": [
+          "ODAGrants",
+          "ODALoans"
+        ]
+      },
+      {
+        "axis": "how",
+        "property_dcid": "DevelopmentFinancePurpose",
+        "binding_kind": "unbound",
+        "value_dcid": null
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "binding_kind": "value",
+        "value_dcid": "country/ETH"
+      }
+    ],
+    "expected_stat_vars": [
+      "ONE/CRS_DAC/Health-ODAGrants-ETH",
+      "ONE/CRS_DAC/Health-ODALoans-ETH"
+    ],
+    "expected_entities": [
+      {
+        "dcid": "country/ETH",
+        "role_kind": "subject",
+        "direction": null,
+        "role_dcid": null
+      }
+    ],
+    "expected_no_data_reason": null,
+    "candidate_count": null,
+    "status": "DEFERRED",
+    "notes": "Same-shape conjunction: ODA grants and ODA loans share the same five-tuple (DevelopmentFinance/DevelopmentFinanceFlow/measuredValue) and differ only in the DevelopmentFinanceScheme slot (ODAGrants vs ODALoans). The engine collapses them via Tier-1 same-shape merge into one Spec with binding_kind=set on the scheme slot. No CONJUNCTION_CROSS_SHAPE warning because both conjuncts resolve to the same five-tuple shape. DEFERRED: awaiting offline fixture coverage for the dev-finance bind step on the per-variable \"ODA loans\" path."
   }
 ]

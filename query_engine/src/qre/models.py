@@ -428,6 +428,16 @@ class Spec(BaseModel):
     resolution: ResolutionTrace = Field(
         description="consolidated record of how the query was understood"
     )
+    variable_text: str | None = Field(
+        default=None,
+        description=(
+            "the variable text this Spec answers; the engine populates this for every "
+            "resolved variable, including single-variable (N=1) responses. "
+            "The single-region discriminator is additional_interpretations is None, "
+            "not variable_text. The None default exists only for hand-built Specs "
+            "(tests that call build_spec without passing variable_text)."
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------

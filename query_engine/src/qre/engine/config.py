@@ -65,6 +65,10 @@ QRE_RELEVANCE_THRESHOLD: float = float(os.getenv("QRE_RELEVANCE_THRESHOLD", "0.5
 # Clamped broadest-first when multiple five-tuple groups survive ranking.
 QRE_MAX_CANDIDATES: int = int(os.getenv("QRE_MAX_CANDIDATES", "6"))
 
+# Maximum number of variables resolved per query. Variables beyond this cap are
+# silently dropped and surfaced via a VARIABLES_CLAMPED warning.
+QRE_MAX_VARIABLES: int = int(os.getenv("QRE_MAX_VARIABLES", "6"))
+
 # Minimum cosine-score margin between the top standard shape's representative SV and the
 # second's for the engine to resolve definite rather than candidates.
 QRE_DOMINANCE_MARGIN: float = float(os.getenv("QRE_DOMINANCE_MARGIN", "0.15"))

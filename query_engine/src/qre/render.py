@@ -30,11 +30,14 @@ _NO_DATA_PHRASES: dict[str, str] = {
 _GENERIC_NO_DATA = "No data is available for this query."
 
 
-def render_sentence(spec: Spec) -> str:
+def render_sentence(spec: Spec, *, n_measures: int = 1) -> str:
     """Render the confirmation sentence for a resolved Spec.
 
     Walks the Spec in the fixed join order: measured thing, how-qualifiers, place,
     named subject, time window, source. Reads only labels already on the Spec.
+
+    When n_measures >= 2 the sentence carries a parenthetical noting this is the
+    primary conjunct of a multi-measure query.
     """
     parts: list[str] = []
 
@@ -84,18 +87,27 @@ def render_sentence(spec: Spec) -> str:
     if source_text:
         body = f"{body} {source_text}" if body else source_text
 
-    return _as_sentence(body)
+    sentence = _as_sentence(body)
+    if n_measures >= 2:
+        sentence += f" (Primary conjunct of a {n_measures}-measure query.)"
+    return sentence
 
 
-def render_candidates_summary(n: int) -> str:
+def render_candidates_summary(n: int, *, n_measures: int = 1) -> str:
     """Render the candidates count summary, e.g. "2 possible interpretations."."""
     noun = "interpretation" if n == 1 else "interpretations"
-    return f"{n} possible {noun}."
+    base = f"{n} possible {noun}."
+    if n_measures >= 2:
+        return f"{base} (Primary conjunct of a {n_measures}-measure query.)"
+    return base
 
 
-def no_data_phrase(reason: NoDataReason) -> str:
+def no_data_phrase(reason: NoDataReason, *, n_measures: int = 1) -> str:
     """Map a NoData.reason code to a human phrase; unknown codes fall back."""
-    return _NO_DATA_PHRASES.get(reason, _GENERIC_NO_DATA)
+    base = _NO_DATA_PHRASES.get(reason, _GENERIC_NO_DATA)
+    if n_measures >= 2:
+        return f"{base} (Primary conjunct of a {n_measures}-measure query.)"
+    return base
 
 
 # --- internal helpers -------------------------------------------------------

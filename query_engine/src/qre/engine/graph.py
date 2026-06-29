@@ -53,6 +53,8 @@ class Facet:
     latest_date: str | None
     obs_count: int
     dates: list[str] = field(default_factory=list)  # per-observation dates; empty when unknown
+    provenance_id: str | None = None   # provenanceId from the top-level facets map
+    import_name: str | None = None     # importName; dc/base/{importName} is a best-effort fallback
 
 
 # ---------------------------------------------------------------------------
@@ -111,6 +113,14 @@ class EngineGraphClient(Protocol):
         """Return orderedFacets for the (stat_var, entity) pair.
 
         An empty list means no observations. Raises GraphInfraError on transport error.
+        """
+        ...
+
+    def node_labels_batch(self, dcids: list[str]) -> dict[str, str]:
+        """Batch-fetch display labels for the given dcids via a single POST /v2/node call.
+
+        Returns {dcid: label} for confirmed reads only. Missing nodes are omitted — never
+        fabricated. Raises GraphInfraError on transport or non-2xx.
         """
         ...
 
@@ -294,17 +304,20 @@ class LiveGraphClient:
     def observation_facets(self, *, stat_var: str, entity: str) -> list[Facet]:
         """Return orderedFacets for the (stat_var, entity) pair.
 
-        Uses POST /core/api/v2/observation with select=[variable,entity,date,value].
+        Uses POST /core/api/v2/observation with select=[variable,entity,date,value,facet].
+        The top-level ``facets`` map (keyed by opaque facetId) carries provenanceId and
+        importName; these are mapped onto each returned Facet for provenance resolution.
         The entity param is the observationAbout (donor); the recipient is a constraint
         on the SV, not the entity arg.
         """
         url = f"{self._v2_base}/observation"
         body = self._post(url, {
-            "select": ["variable", "entity", "date", "value"],
+            "select": ["variable", "entity", "date", "value", "facet"],
             "variable": {"dcids": [stat_var]},
             "entity": {"dcids": [entity]},
             "date": "",
         })
+        top_facets_map: dict = body.get("facets", {})
         facets_raw = (
             body.get("byVariable", {})
             .get(stat_var, {})
@@ -312,15 +325,46 @@ class LiveGraphClient:
             .get(entity, {})
             .get("orderedFacets", [])
         )
-        return [
-            Facet(
-                earliest_date=f.get("earliestDate"),
-                latest_date=f.get("latestDate"),
-                obs_count=f.get("obsCount", 0),
-                dates=[o["date"] for o in f.get("observations", []) if o.get("date")],
+        result = []
+        for f in facets_raw:
+            facet_id = f.get("facetId")
+            facet_meta = top_facets_map.get(facet_id, {}) if facet_id else {}
+            result.append(
+                Facet(
+                    earliest_date=f.get("earliestDate"),
+                    latest_date=f.get("latestDate"),
+                    obs_count=f.get("obsCount", 0),
+                    dates=[o["date"] for o in f.get("observations", []) if o.get("date")],
+                    provenance_id=facet_meta.get("provenanceId"),
+                    import_name=facet_meta.get("importName"),
+                )
             )
-            for f in facets_raw
-        ]
+        return result
+
+    def node_labels_batch(self, dcids: list[str]) -> dict[str, str]:
+        """Batch-fetch display labels for the given dcids via a single POST /v2/node call.
+
+        Returns {dcid: label} for confirmed reads only. Missing nodes are omitted.
+        Raises GraphInfraError on transport or non-2xx.
+        """
+        if not dcids:
+            return {}
+        url = f"{self._v2_base}/node"
+        body = self._post(url, {"nodes": dcids, "property": "->name"})
+        data = body.get("data", {})
+        result: dict[str, str] = {}
+        for dcid in dcids:
+            node_data = data.get(dcid)
+            if node_data is None:
+                continue
+            arcs = node_data.get("arcs", {})
+            if not arcs:
+                continue
+            name_nodes = arcs.get("name", {}).get("nodes", [])
+            values = [n["value"] for n in name_nodes if n.get("value")]
+            if values:
+                result[dcid] = _pick_label(values)
+        return result
 
     def close(self) -> None:
         """Close the underlying httpx client. Safe to call more than once."""

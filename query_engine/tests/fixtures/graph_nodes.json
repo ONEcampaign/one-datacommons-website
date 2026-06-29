@@ -36261,5 +36261,18 @@
         ]
       }
     }
+  },
+  "dc/base/HumanCRS": {
+    "label": "Human CRS",
+    "type": "Provenance",
+    "arcs": {
+      "name": {
+        "nodes": [
+          {
+            "value": "Human CRS"
+          }
+        ]
+      }
+    }
   }
 }

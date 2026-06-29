@@ -1792,4 +1792,88 @@ These are expected engine outputs for the QRE Phase 0 evaluation harness. All go
     alternate-age-band rate (Count_Death_LessThan1Year_AsAFractionOf_Count_BirthEvent) have
     0 observations at ETH and are excluded from the candidate set. The seam is not applicable:
     no dev-finance or directional entity logic involved. country/ETH confirmed as a valid entity on prod.
+
+- id: "conj-01"
+  query: "population and GDP in Brazil"
+  entry_path: "raw_text"
+  tags:
+    - behaviour: definite
+    - domain: standard
+    - seam: na
+    - conjunction: cross_shape
+  expected_status: "definite"
+  expected_shape:
+    population_type_dcid: "Person"
+    measured_property_dcid: "count"
+    stat_type_dcid: "measuredValue"
+    measurement_qualifier_dcid: null
+    measurement_denominator_dcid: null
+  expected_slots: []
+  expected_stat_vars: ["Count_Person"]
+  expected_entities:
+    - dcid: "country/BRA"
+      role_kind: "subject"
+      direction: null
+      role_dcid: null
+  expected_no_data_reason: null
+  candidate_count: null
+  status: DEFERRED
+  notes: >
+    Cross-shape conjunction: population (Count_Person, five-tuple Person/count/measuredValue)
+    and GDP (Amount_EconomicActivity_GrossDomesticProduction_Nominal, five-tuple
+    EconomicActivity/amount/measuredValue/Nominal). Primary is population by earliest_index.
+    additional_interpretations carries the GDP Spec. CONJUNCTION_CROSS_SHAPE emitted.
+    Offline test fixtures: Extraction returns variables=[population, GDP], bare-variable
+    detect entries added, Count_Person|country/BRA observation added. DEFERRED because
+    dev-finance live baselines are staging-only and this golden exercises a new path.
+
+- id: "conj-02"
+  query: "ODA grants and ODA loans to Ethiopia"
+  entry_path: "raw_text"
+  tags:
+    - behaviour: definite
+    - domain: development_finance
+    - seam: na
+    - conjunction: same_shape
+  expected_status: "definite"
+  expected_shape:
+    population_type_dcid: "DevelopmentFinance"
+    measured_property_dcid: "DevelopmentFinanceFlow"
+    stat_type_dcid: "measuredValue"
+    measurement_qualifier_dcid: null
+    measurement_denominator_dcid: null
+  expected_slots:
+    - axis: "what"
+      property_dcid: "DevelopmentFinanceScheme"
+      binding_kind: "set"
+      value_dcid:
+        - "ODAGrants"
+        - "ODALoans"
+    - axis: "how"
+      property_dcid: "DevelopmentFinancePurpose"
+      binding_kind: "unbound"
+      value_dcid: null
+    - axis: "where"
+      property_dcid: "DevelopmentFinanceRecipient"
+      binding_kind: "value"
+      value_dcid: "country/ETH"
+  expected_stat_vars:
+    - "ONE/CRS_DAC/Health-ODAGrants-ETH"
+    - "ONE/CRS_DAC/Health-ODALoans-ETH"
+  expected_entities:
+    - dcid: "country/ETH"
+      role_kind: "subject"
+      direction: null
+      role_dcid: null
+  expected_no_data_reason: null
+  candidate_count: null
+  status: DEFERRED
+  notes: >
+    Same-shape conjunction: ODA grants and ODA loans share the same five-tuple
+    (DevelopmentFinance/DevelopmentFinanceFlow/measuredValue) and differ only in
+    the DevelopmentFinanceScheme slot (ODAGrants vs ODALoans). The engine collapses
+    them via Tier-1 same-shape merge into one Spec with binding_kind=set on the
+    scheme slot. No CONJUNCTION_CROSS_SHAPE warning because both conjuncts resolve
+    to the same five-tuple shape. DEFERRED: awaiting offline fixture coverage for
+    the dev-finance bind step on the per-variable "ODA loans" path.
 ```
