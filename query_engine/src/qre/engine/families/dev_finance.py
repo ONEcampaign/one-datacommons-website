@@ -362,7 +362,9 @@ def _construct_resolve(
         return None
 
     # Collect scheme and purpose dcids.
-    # scheme_binding is non-None here (scheme_kind is "value" or "set" only when bound).
+    # scheme_binding is non-None here: scheme_kind of "value"/"set" comes from
+    # scheme_binding.kind at line 316, so a non-"unbound" scheme_kind implies binding exists.
+    assert scheme_binding is not None
     if scheme_kind == "value":
         scheme_dcids = scheme_binding.value_dcids[:1] if scheme_binding.value_dcids else []
     elif scheme_kind == "set":

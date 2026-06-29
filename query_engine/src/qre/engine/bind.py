@@ -179,7 +179,7 @@ async def bind(
         extracted variable (A12 requirement).
     """
     prompt = _build_bind_prompt(variable, slot_taxonomy)
-    output: _BindOutput = await asyncio.to_thread(
+    output: _BindOutput = await asyncio.to_thread(  # ty: ignore[invalid-assignment]  # asyncio.to_thread TypeVar
         llm.generate_structured,
         prompt=prompt,
         system=_BIND_SYSTEM_PROMPT,

@@ -52,15 +52,15 @@ async def recall(
         asyncio.to_thread(graph.resolve_entity, name) for name in entities
     ]
     all_results = await asyncio.gather(*all_coros)  # plain; NOT return_exceptions=True
-    svs, _entity_dcids, scores = all_results[0]
-    resolved: dict[str, str] = {
+    svs, _entity_dcids, scores = all_results[0]  # ty: ignore[not-iterable]  # asyncio.gather heterogeneous
+    resolved: dict[str, str] = {  # ty: ignore[invalid-assignment]  # asyncio.gather heterogeneous
         name: dcid
         for name, dcid in zip(entities, all_results[1:], strict=True)
         if dcid is not None
     }
 
     return Recall(
-        candidate_svs=svs,
-        candidate_sv_scores=scores,
+        candidate_svs=svs,  # ty: ignore[invalid-argument-type]  # asyncio.gather heterogeneous
+        candidate_sv_scores=scores,  # ty: ignore[invalid-argument-type]  # asyncio.gather heterogeneous
         resolved_entity_names=resolved,
     )

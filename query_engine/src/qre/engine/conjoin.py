@@ -119,7 +119,7 @@ def collapse_same_shape(
     import dataclasses
 
     from qre.engine.assemble import build_spec
-    from qre.models import BindingSet, SlotValue
+    from qre.models import BindingSet, BindingValue, SlotValue
 
     if not definite:
         return [], []
@@ -192,6 +192,8 @@ def collapse_same_shape(
         seen_dcids: set[str] = set()
         for r in group:
             s = next(sl for sl in r.spec.slots if _slot_key_t(sl) == diff_key)
+            # all_value check above guarantees every diff-slot is BindingValue here.
+            assert isinstance(s.binding, BindingValue)
             ref = s.binding.value.ref
             if ref and ref.dcid not in seen_dcids:
                 seen_dcids.add(ref.dcid)

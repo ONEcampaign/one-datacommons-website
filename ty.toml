@@ -1,0 +1,17 @@
+# ty configuration for repo-root invocations (editor, harness).
+#
+# The active Python package is query_engine/ (python 3.12 + engine extras).
+# Without explicit scoping, ty picks up the repo-root .venv (python 3.14)
+# which lacks httpx, fastapi, google-genai, and qre, producing ~1400
+# false-positive unresolved-import errors.
+#
+# Restrict scanning to query_engine/ and point at the correct venv.
+
+[src]
+include = ["query_engine"]
+# tests/eval imports conftest via relative import, a pytest convention that
+# ty's module resolver can't follow; exclude the subtree to suppress the noise.
+exclude = ["query_engine/tests/eval"]
+
+[environment]
+python = "query_engine/.venv"

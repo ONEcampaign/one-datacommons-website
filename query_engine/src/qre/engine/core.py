@@ -236,7 +236,7 @@ async def resolve_async(
         )
     finally:
         if owns_graph and hasattr(_graph, "close"):
-            _graph.close()
+            _graph.close()  # ty: ignore[call-non-callable]  # hasattr
 
 
 def _quick_no_data(

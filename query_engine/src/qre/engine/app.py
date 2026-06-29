@@ -66,7 +66,7 @@ def create_app(
             yield
         finally:
             if _shared_graph is not None and hasattr(_shared_graph, "close"):
-                _shared_graph.close()
+                _shared_graph.close()  # ty: ignore[call-non-callable]  # hasattr
                 logger.info("LiveGraphClient closed")
 
     app = FastAPI(

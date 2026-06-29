@@ -160,7 +160,7 @@ def read_slot_taxonomy(
 
     # Dev-finance path: use the seed from the resolver
     if rule is not None and hasattr(rule.resolver, "slot_taxonomy_seed"):
-        seed: dict[str, list[str]] = rule.resolver.slot_taxonomy_seed
+        seed: dict[str, list[str]] = rule.resolver.slot_taxonomy_seed  # ty: ignore[invalid-assignment]  # hasattr
         taxonomy: dict[str, list[str]] = {}
         for slot in shape_draft.slot_keys:
             prop = slot.property_dcid
@@ -404,6 +404,8 @@ def derive_shapes(
         )
         if rule_shape_id:
             shape_id = rule_shape_id
+            # rule_shape_id is non-empty only when matched_rule is not None (see ternary above).
+            assert matched_rule is not None
             shape_label = matched_rule.label
         else:
             # Standard: use five-tuple string as identity for deduplication

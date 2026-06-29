@@ -227,7 +227,7 @@ async def extract(
     """
     system = _system_instruction()
     # Run the sync LLM call off the event loop.
-    result: Extraction = await asyncio.to_thread(
+    result: Extraction = await asyncio.to_thread(  # ty: ignore[invalid-assignment]  # asyncio.to_thread TypeVar
         llm.generate_structured,
         prompt=query,
         system=system,

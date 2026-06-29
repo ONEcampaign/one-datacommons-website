@@ -8,6 +8,7 @@ live here so both core.py and conjoin.py can import them without cycles.
 from __future__ import annotations
 
 import time
+from typing import TYPE_CHECKING
 
 from qre.engine.bind import SlotBindingDraft
 from qre.engine.shape import ShapeDraft, SlotKeyDraft
@@ -41,6 +42,9 @@ from qre.models import (
     Warning,
 )
 from qre.render import no_data_phrase, render_candidates_summary, render_sentence
+
+if TYPE_CHECKING:
+    from qre.models import BindingKind, Spec  # circular at runtime; safe under TYPE_CHECKING
 
 # ---------------------------------------------------------------------------
 # Envelope helpers — moved from core.py so conjoin.py can import without cycles
@@ -129,7 +133,7 @@ def build_slot(
 
     if kind == "set":
         # Axis-aware partial-grounding: on the where-axis, one confirmed value is better
-        # than BindingUnbound — preserve it as BindingValue so spec_id stays stable and
+        # than BindingUnbound; preserve it as BindingValue so spec_id stays stable and
         # the slot is not blanked when only one of two recipients grounds via graphrefs.
         if slot_key_draft.axis == "where" and len(grounded_values) == 1:
             sv = SlotValue(ref=grounded_values[0], value_kind="entity")
@@ -189,6 +193,10 @@ def build_shape_model(
         meas_ref = GraphRef(dcid=shape_draft.meas_prop_dcid, label=shape_draft.meas_prop_dcid)
     if stat_ref is None:
         stat_ref = GraphRef(dcid=shape_draft.stat_type_dcid, label=shape_draft.stat_type_dcid)
+
+    # meas_prop is required (comment above); None only when meas_prop_dcid is absent,
+    # which callers must not allow for a fully-grounded Shape.
+    assert meas_ref is not None, "measured_property is required on a grounded Shape"
 
     return Shape(
         shape_id=shape_draft.shape_id,
@@ -270,7 +278,9 @@ def build_spec(
     Returns:
         A fully-assembled Spec.
     """
-    from qre.models import BindingKind, Spec  # late imports to avoid circular
+    from qre.models import (
+        Spec,  # noqa: PLC0415 (late import to avoid circular; Spec used at runtime)
+    )
 
     spec_id = compute_spec_id(shape.shape_id, slots)
 
@@ -365,7 +375,7 @@ def assemble_no_data(
         include_sentence: When True, render a no-data phrase.
         n_measures: Total variables in the query; affects rendered_sentence formatting.
     """
-    rendered = no_data_phrase(reason, n_measures=n_measures) if include_sentence else None
+    rendered = no_data_phrase(reason, n_measures=n_measures) if include_sentence else None  # ty: ignore[invalid-argument-type]
     return ResolveResponse(
         root=NoDataResponse(
             query_echo=query_echo,
