@@ -19,11 +19,12 @@ from langfuse import RegressionError
 from qre.engine import resolve
 from qre.engine.config import ENGINE_BUILD_ID, QRE_ENGINE_MODEL, QRE_GRAPH_BASE
 from qre.engine.graph import LiveGraphClient
-from qre.eval import check_gate, load_baseline, run_eval
+from qre.eval import check_gate, load_baseline, load_baseline_items, run_eval
 
 dataset_name = os.environ.get("QRE_DATASET", "qre-goldens-v1")
 baseline_path = os.environ.get("QRE_BASELINE")
 baseline = load_baseline(baseline_path) if baseline_path else None
+baseline_items = load_baseline_items(baseline_path) if baseline_path else None
 
 graph = LiveGraphClient()
 try:
@@ -41,7 +42,7 @@ finally:
 print(result.format())
 
 try:
-    check_gate(result, baseline=baseline)
+    check_gate(result, baseline=baseline, baseline_items=baseline_items)
 except RegressionError as exc:
     print(f"\nGATE FAILED: {exc}")
     sys.exit(1)

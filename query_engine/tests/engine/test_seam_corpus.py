@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 
+from qre.models import DefiniteResponse
 from tests.engine._harness import make_request, offline_resolve
 
 _GOLDENS_PATH = Path(__file__).parent.parent.parent / "goldens.json"
@@ -64,8 +65,12 @@ def test_seam_both_modes(golden):
 
     # Definite: directional ON, subject OFF, identical dcid set, anchored to the
     # corpus by dcid only (not role fields, to avoid re-deriving the expectation).
-    on_entities = on.root.interpretation.entities
-    off_entities = off.root.interpretation.entities
+    on_inner = on.root
+    off_inner = off.root
+    assert isinstance(on_inner, DefiniteResponse)
+    assert isinstance(off_inner, DefiniteResponse)
+    on_entities = on_inner.interpretation.entities
+    off_entities = off_inner.interpretation.entities
     assert on_entities and all(e.role.kind == "directional" for e in on_entities)
     assert off_entities and all(e.role.kind == "subject" for e in off_entities)
 

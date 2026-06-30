@@ -191,6 +191,52 @@ def test_build_task_raw_text():
     assert output["status"] == "definite"
 
 
+def test_build_task_spec_resubmit_does_not_raise():
+    """build_task's spec_resubmit branch must succeed when item.input carries shape_id+slots.
+
+    Regression guard for the KeyError that fired before golden_to_item() was fixed to
+    copy shape_id/slots into input — item.input was missing those keys so the runner
+    blew up before the engine ran.
+    """
+    we = make_worked_example_response()
+    task_fn = _make_engine_task(we)
+    lf_task = build_task(task_fn)
+
+    slots = [
+        {
+            "key": {
+                "axis": "what",
+                "property": {"dcid": "DevelopmentFinanceScheme", "label": "Scheme"},
+                "label": "scheme",
+            },
+            "binding": {
+                "kind": "value",
+                "value": {
+                    "ref": {"dcid": "ODAGrants", "label": "ODA Grants"},
+                    "value_kind": "enum_value",
+                    "time_window": None,
+                    "literal": None,
+                },
+            },
+        }
+    ]
+    item = FakeDatasetItem(
+        inp={
+            "query": "spec_resubmit: health ODA grants to Ethiopia",
+            "entry_path": "spec_resubmit",
+            "shape_id": "dev_finance_crs_dac",
+            "slots": slots,
+            "stat_var_dcids": None,
+            "entity_dcids": None,
+        },
+        expected_output={},
+        metadata={},
+    )
+    # Must not raise KeyError (pre-fix) or ValueError (unsupported path).
+    output = lf_task(item=item)
+    assert "schema_version" in output
+
+
 def test_build_task_unsupported_entry_path():
     we = make_worked_example_response()
     task_fn = _make_engine_task(we)

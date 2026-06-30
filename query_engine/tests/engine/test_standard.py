@@ -21,6 +21,7 @@ from qre.models import (
     NoDataResponse,
     RawTextInput,
     ResolveRequest,
+    ResolveResponse,
 )
 from tests.engine._harness import offline_resolve
 from tests.fixtures import FakeGraph
@@ -133,7 +134,7 @@ class _ExtractOnlyLLM:
 
     def generate_structured(self, *, prompt, system, schema):
         if schema.__name__ == "Extraction":
-            return self._extraction
+            return self._extraction, None
         raise AssertionError(f"unexpected schema {schema.__name__!r} (standard shapes skip bind)")
 
 
@@ -170,7 +171,7 @@ class TestStandardShapeWithoutMeasPropNoData:
     yielding a clean no-data outcome.
     """
 
-    def _run(self) -> object:
+    def _run(self) -> ResolveResponse:
         req = ResolveRequest(input=RawTextInput(query="who aggregate thing in India"))
         graph = _graph_with_no_meas_prop_sv(
             sv_dcid="WHO/AggregateNoMeasProp",

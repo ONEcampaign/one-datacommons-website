@@ -21,9 +21,12 @@ from qre.models import (
     CandidateSet,
     CandidatesResponse,
     Coverage,
+    DateRange,
+    DateSource,
     DefiniteResponse,
     Diagnostics,
     Entity,
+    EntryPath,
     GraphRef,
     NoData,
     NoDataResponse,
@@ -38,12 +41,14 @@ from qre.models import (
     SlotValue,
     StatVar,
     StatVarSlotValue,
+    TimeWindow,
     Timing,
     Warning,
 )
 from qre.render import no_data_phrase, render_candidates_summary, render_sentence
 
 if TYPE_CHECKING:
+    from qre.engine.graph import Facet
     from qre.models import BindingKind, Spec  # circular at runtime; safe under TYPE_CHECKING
 
 # ---------------------------------------------------------------------------
@@ -58,17 +63,24 @@ def now_ms() -> int:
 
 def make_pipeline_step(step: str, ran: bool, ms: int | None = None) -> PipelineStep:
     """Build a PipelineStep record."""
-    return PipelineStep(step=step, ran=ran, ms=ms)  # type: ignore[arg-type]
+    return PipelineStep(step=step, ran=ran, ms=ms)  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
 
 
 def make_query_echo(
     query: str,
     variable_text: list[str],
     extract_skipped: bool,
+    *,
+    entry_path: EntryPath = "raw_text",
 ) -> QueryEcho:
-    """Build a QueryEcho from the raw query text and variable list."""
+    """Build a QueryEcho from the raw query text and variable list.
+
+    entry_path defaults to "raw_text". Pass "spec_resubmit" (or "parsed") when
+    assembling a response for a non-raw-text input so the echo faithfully reflects
+    which entry path was taken.
+    """
     return QueryEcho(
-        entry_path="raw_text",
+        entry_path=entry_path,
         raw_query=query,
         normalized_query=query.strip() or None,
         variable_text=variable_text,
@@ -81,12 +93,19 @@ def make_diagnostics(
     warnings: list[Warning],
     timing_by_step: dict[str, int],
     total_ms: int,
+    *,
+    llm_usage: dict[str, int] | None = None,
 ) -> Diagnostics:
-    """Build a Diagnostics envelope."""
+    """Build a Diagnostics envelope.
+
+    llm_usage is the aggregated token usage threaded up from the LLM calls
+    (extract/bind return it; core sums it). None on the no-LLM early-return paths.
+    """
     return Diagnostics(
         engine_build=engine_build,
         warnings=warnings,
         timing_ms=Timing(total=total_ms, by_step=timing_by_step or None),
+        llm_usage=llm_usage,
     )
 
 
@@ -96,6 +115,7 @@ def build_slot(
     grounded_values: list[GraphRef],
     *,
     property_ref: GraphRef | None = None,
+    set_ref: GraphRef | None = None,
 ) -> Slot:
     """Build a grounded Slot from draft components.
 
@@ -123,9 +143,13 @@ def build_slot(
 
     kind = binding_draft.kind
 
+    # Dispatch value_kind by axis: where-axis binds graph entities; what/how bind closed-enum
+    # taxonomy values. When/source never reach here (early return above).
+    vk = "entity" if slot_key_draft.axis == "where" else "enum_value"
+
     if kind == "value":
         if grounded_values:
-            sv = SlotValue(ref=grounded_values[0], value_kind="entity")
+            sv = SlotValue(ref=grounded_values[0], value_kind=vk)
         else:
             # Grounding failed — fall back to unbound
             return Slot(key=slot_key, binding=BindingUnbound())
@@ -141,8 +165,8 @@ def build_slot(
         if len(grounded_values) < 2:  # noqa: PLR2004
             # Not enough confirmed values for a set — fall back to unbound
             return Slot(key=slot_key, binding=BindingUnbound())
-        slot_values = [SlotValue(ref=gv, value_kind="entity") for gv in grounded_values]
-        return Slot(key=slot_key, binding=BindingSet(values=slot_values))
+        slot_values = [SlotValue(ref=gv, value_kind=vk) for gv in grounded_values]
+        return Slot(key=slot_key, binding=BindingSet(values=slot_values, set_ref=set_ref))
 
     if kind == "unbound":
         return Slot(key=slot_key, binding=BindingUnbound())
@@ -150,8 +174,22 @@ def build_slot(
     if kind == "absent":
         return Slot(key=slot_key, binding=BindingAbsent())
 
-    # Unknown kind — default to unbound
-    return Slot(key=slot_key, binding=BindingUnbound())
+
+def bind_when_slot(slots: list[Slot], *, window: TimeWindow | None) -> list[Slot]:
+    """Bind the when-axis slot to a time_window value when a window was extracted.
+
+    No-op when window is None. Source-slot stays BindingUnbound (no source-resolution
+    path exists; binding it would fabricate). Order-preserving.
+    """
+    if window is None:
+        return slots
+    result = []
+    for slot in slots:
+        if slot.key.axis == "when":
+            sv = SlotValue(ref=None, value_kind="time_window", time_window=window)
+            slot = slot.model_copy(update={"binding": BindingValue(value=sv)})
+        result.append(slot)
+    return result
 
 
 def build_shape_model(
@@ -198,6 +236,13 @@ def build_shape_model(
     # which callers must not allow for a fully-grounded Shape.
     assert meas_ref is not None, "measured_property is required on a grounded Shape"
 
+    # refine_supported: True for named families (non-empty stable shape_id);
+    # standard shapes use the dynamic five-tuple shape_id and are promote-only.
+    family_rule = shape_draft.family_rule
+    refine_supported = bool(
+        family_rule is not None and family_rule.shape_id
+    )
+
     return Shape(
         shape_id=shape_draft.shape_id,
         label=shape_draft.label,
@@ -208,6 +253,7 @@ def build_shape_model(
         measurement_denominator=denom_ref,
         slot_keys=slot_keys,
         member_count=member_count,
+        refine_supported=refine_supported,
     )
 
 
@@ -215,16 +261,25 @@ def build_stat_vars(
     sv_refs: list[GraphRef],
     shape_id: str,
     slots: list[Slot],
+    *,
+    facets_by_sv: "dict[str, list[Facet]] | None" = None,
+    recipient_confirmed: "set[str] | None" = None,
 ) -> list[StatVar]:
     """Build StatVar objects from confirmed GraphRefs and their slot values.
 
     Each StatVar carries the slot values from the current binding. For value
     and set bindings the slot's value(s) become StatVarSlotValue entries.
 
+    When facets_by_sv is provided, data_date_range is derived from the earliest
+    and latest confirmed dates across the SV's facets. When recipient_confirmed
+    is provided, data_confirmed_at_recipient is set on each StatVar.
+
     Args:
         sv_refs: Confirmed SV GraphRefs.
         shape_id: The shape_id back-reference.
         slots: Grounded slots with binding information.
+        facets_by_sv: Optional per-SV facet lists, keyed by sv dcid.
+        recipient_confirmed: Optional set of sv dcids confirmed directly by recipient.
 
     Returns:
         List of StatVar objects.
@@ -243,10 +298,35 @@ def build_stat_vars(
                 sv_slot_values.append(StatVarSlotValue(key=slot.key, value=sv))
             break
 
-    return [
-        StatVar(ref=sv_ref, shape_id=shape_id, slot_values=sv_slot_values)
-        for sv_ref in sv_refs
-    ]
+    stat_vars: list[StatVar] = []
+    for sv_ref in sv_refs:
+        date_range: DateRange | None = None
+        confirmed_at_recipient: bool | None = None
+
+        if facets_by_sv is not None:
+            sv_facets = facets_by_sv.get(sv_ref.dcid, [])
+            start_dates = [f.earliest_date for f in sv_facets if f.earliest_date]
+            end_dates = [f.latest_date for f in sv_facets if f.latest_date]
+            if start_dates or end_dates:
+                date_range = DateRange(
+                    start=min(start_dates) if start_dates else None,
+                    end=max(end_dates) if end_dates else None,
+                )
+
+        if recipient_confirmed is not None:
+            confirmed_at_recipient = sv_ref.dcid in recipient_confirmed
+
+        stat_vars.append(
+            StatVar(
+                ref=sv_ref,
+                shape_id=shape_id,
+                slot_values=sv_slot_values,
+                data_date_range=date_range,
+                data_confirmed_at_recipient=confirmed_at_recipient,
+            )
+        )
+
+    return stat_vars
 
 
 def build_spec(
@@ -256,10 +336,11 @@ def build_spec(
     entities: list[Entity],
     coverage: Coverage,
     pipeline_trace: list[PipelineStep],
-    timing_by_step: dict[str, int],
     *,
     variable_text: str | None = None,
     resolved_sources: list[GraphRef] | None = None,
+    n_recalled: int | None = None,
+    date_source: DateSource | None = None,
 ) -> "Spec":  # noqa: F821 — imported below
     """Assemble a Spec with a deterministic spec_id.
 
@@ -270,10 +351,13 @@ def build_spec(
         entities: Resolved Entity objects.
         coverage: Observation footprint.
         pipeline_trace: Pipeline step records.
-        timing_by_step: Step name → latency in ms.
         variable_text: The variable text this Spec answers; None for single-variable responses.
         resolved_sources: Provenance GraphRefs resolved from observation facets; defaults to []
             when not supplied (e.g. hand-built specs in tests or conjunction paths).
+        n_recalled: Count of SVs passing the relevance threshold before the confirm cap.
+        date_source: Explicit DateSource override; when None, inferred as "query" when a
+            coverage window is present, else None. Pass "coverage_clamp" or "default" when
+            the window was not user-specified.
 
     Returns:
         A fully-assembled Spec.
@@ -309,8 +393,11 @@ def build_spec(
         resolved_sources=resolved_sources or [],
         slot_filters=slot_filters,
         applied_window=coverage.window,
-        date_source="query" if coverage.window is not None else None,
+        date_source=date_source if date_source is not None else (
+            "query" if coverage.window is not None else None
+        ),
         pipeline_trace=pipeline_trace,
+        n_recalled=n_recalled,
     )
 
     return Spec(
@@ -365,6 +452,7 @@ def assemble_no_data(
     *,
     include_sentence: bool = False,
     n_measures: int = 1,
+    nearest_real: "list[Spec] | None" = None,
 ) -> ResolveResponse:
     """Build a NoDataResponse with the given reason.
 
@@ -374,13 +462,14 @@ def assemble_no_data(
         diagnostics: The diagnostics envelope.
         include_sentence: When True, render a no-data phrase.
         n_measures: Total variables in the query; affects rendered_sentence formatting.
+        nearest_real: Optional grounded Specs adjacent to the request; confirmed reads only.
     """
     rendered = no_data_phrase(reason, n_measures=n_measures) if include_sentence else None  # ty: ignore[invalid-argument-type]
     return ResolveResponse(
         root=NoDataResponse(
             query_echo=query_echo,
             diagnostics=diagnostics,
-            no_data=NoData(reason=reason),  # type: ignore[arg-type]
+            no_data=NoData(reason=reason, nearest_real=nearest_real),  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
             rendered_sentence=rendered,
         )
     )

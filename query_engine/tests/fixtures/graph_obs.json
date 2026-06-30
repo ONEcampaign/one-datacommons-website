@@ -1,5 +1,5 @@
 {
-  "_comment": "Observation facets keyed by 'sv|entity'. Sourced from \u00a70 live staging probe facts + goldens.json notes. Each value is a list of facet dicts with earliestDate, latestDate, obsCount. Used by FakeGraph.observation_facets.",
+  "_comment": "Observation facets keyed by 'sv|entity'. Sourced from §0 live staging probe facts + goldens.json notes. Each value is a list of facet dicts with earliestDate, latestDate, obsCount. Used by FakeGraph.observation_facets.",
   "ONE/CRS_DAC/Health-ODAGrants-ETH|country/USA": [
     {
       "earliestDate": "1991",
@@ -181,9 +181,29 @@
   ],
   "Amount_EconomicActivity_GrossDomesticProduction_Nominal|country/IND": [
     {
-      "earliestDate": "2000",
+      "earliestDate": "1960",
+      "latestDate": "2024",
+      "obsCount": 65
+    },
+    {
+      "earliestDate": "2015",
+      "latestDate": "2026",
+      "obsCount": 12
+    },
+    {
+      "earliestDate": "2012-03",
+      "latestDate": "2025-03",
+      "obsCount": 14
+    },
+    {
+      "earliestDate": "2012",
       "latestDate": "2022",
-      "obsCount": 20
+      "obsCount": 11
+    },
+    {
+      "earliestDate": "2005-03",
+      "latestDate": "2011-03",
+      "obsCount": 7
     }
   ],
   "Amount_EconomicActivity_GrossDomesticProduction_NAICSFinanceInsurance_RealValue|country/IND": [
@@ -195,9 +215,9 @@
   ],
   "Amount_EconomicActivity_GrossDomesticProduction_Nominal_PerCapita|country/IND": [
     {
-      "earliestDate": "2000",
-      "latestDate": "2022",
-      "obsCount": 20
+      "earliestDate": "1960",
+      "latestDate": "2024",
+      "obsCount": 65
     }
   ],
   "GrowthRate_Amount_EconomicActivity_GrossDomesticProduction|country/IND": [
@@ -230,9 +250,9 @@
   ],
   "Amount_EconomicActivity_GrossDomesticProduction_Nominal_PerCapita|country/BRA": [
     {
-      "earliestDate": "2000",
-      "latestDate": "2022",
-      "obsCount": 20
+      "earliestDate": "1960",
+      "latestDate": "2024",
+      "obsCount": 65
     }
   ],
   "Median_Income_Household|geoId/06": [
@@ -333,6 +353,29 @@
       "latestDate": "2020",
       "obsCount": 5,
       "importName": "UnknownImport"
+    }
+  ],
+  "Amount_EconomicActivity_GrossDomesticProduction_Nominal|country/ETH": [
+    {
+      "earliestDate": "1960",
+      "latestDate": "2024",
+      "obsCount": 65
+    }
+  ],
+  "Amount_EconomicActivity_GrossDomesticProduction_NAICSFinanceInsurance_RealValue|country/ETH": [],
+  "GrowthRate_Amount_EconomicActivity_GrossDomesticProduction|country/ETH": [
+    {
+      "earliestDate": "1962",
+      "latestDate": "2024",
+      "obsCount": 63
+    }
+  ],
+  "InflationAdjustedGDP|country/ETH": [],
+  "Amount_EconomicActivity_GrossDomesticProduction_Nominal_PerCapita|country/ETH": [
+    {
+      "earliestDate": "1960",
+      "latestDate": "2024",
+      "obsCount": 65
     }
   ]
 }

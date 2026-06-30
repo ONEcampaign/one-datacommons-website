@@ -30,6 +30,7 @@ from qre import (
     BindingSet,
     BindingValue,
     CoverageExact,
+    DefiniteResponse,
     Entity,
     EntityRoleDirectional,
     GraphRef,
@@ -202,7 +203,7 @@ def make_groundedness(graph: GraphClient):
             if not graph.exists(ref.dcid):
                 fabricated.append(ref.dcid)
 
-        value = 1.0 if len(fabricated) == 0 else 0.0
+        value = 1.0 if not fabricated else 0.0
         comment = (
             f"walked={walked}, fabricated={len(fabricated)}: {fabricated}"
             if fabricated
@@ -366,6 +367,7 @@ def interpretation_match(*, output, expected_output, **kwargs) -> Evaluation | l
         spurious_desc = [
             (slot.key.axis, slot.key.property.dcid, slot.binding.kind)
             for slot in spurious
+            if slot.key.property is not None
         ]
         return Evaluation(
             name="interpretation_match",
@@ -530,6 +532,13 @@ def behaviour_by_tag(*, output, expected_output, metadata, **kwargs) -> list[Eva
         spec_ids = [s.spec_id for s in specs]
         if len(spec_ids) != len(set(spec_ids)):
             return 0.0
+        # Broadest-first ordering: ranked by member_count descending, spec_id as tiebreak
+        expected_ids = [
+            s.spec_id
+            for s in sorted(specs, key=lambda s: (-s.shape.member_count, s.spec_id))
+        ]
+        if spec_ids != expected_ids:
+            return 0.0
         return 1.0
 
     def _score_no_data() -> float:
@@ -555,7 +564,139 @@ def behaviour_by_tag(*, output, expected_output, metadata, **kwargs) -> list[Eva
 
 
 # ---------------------------------------------------------------------------
-# Check 6 -- axis_classification
+# Check 6 -- entry_path_audit
+# ---------------------------------------------------------------------------
+
+
+def entry_path_audit(*, input, output, **kwargs) -> Evaluation | list[Evaluation]:
+    """Score 1.0 when entry_path is correctly honored in the response envelope.
+
+    Applies only to parsed and spec_resubmit goldens; returns [] for raw_text.
+
+    Checks:
+    - query_echo.extract_skipped is True (required on every non-raw_text path)
+    - On definite/candidates: pipeline_trace carries {step:"extract", ran:false}
+    - On no_data: only extract_skipped is checked (no interpretation to read)
+
+    Gate threshold deferred until corpus coverage grows; per-item regression
+    is still caught by the flip guard.
+    """
+    entry_path = (input or {}).get("entry_path", "raw_text")
+    if entry_path not in ("parsed", "spec_resubmit"):
+        return []
+
+    resp = _parse_response(output)
+    if resp is None:
+        return Evaluation(
+            name="entry_path_audit",
+            value=0.0,
+            comment="response failed validation",
+        )
+
+    root = resp.root
+    echo = root.query_echo
+
+    if not echo.extract_skipped:
+        return Evaluation(
+            name="entry_path_audit",
+            value=0.0,
+            comment=f"query_echo.extract_skipped is False for entry_path={entry_path!r}",
+        )
+
+    # no_data: extract_skipped alone is sufficient (no interpretation pipeline_trace)
+    if root.status == "no_data":
+        return Evaluation(name="entry_path_audit", value=1.0)
+
+    # definite / candidates: every spec's pipeline_trace must record the skipped extract step
+    for spec in _iter_specs(resp):
+        trace = spec.resolution.pipeline_trace
+        has_skip = any(s.step == "extract" and not s.ran for s in trace)
+        if not has_skip:
+            return Evaluation(
+                name="entry_path_audit",
+                value=0.0,
+                comment=(
+                    f"spec {spec.spec_id}: pipeline_trace missing "
+                    "{step:'extract', ran:false}"
+                ),
+            )
+
+    return Evaluation(name="entry_path_audit", value=1.0)
+
+
+# ---------------------------------------------------------------------------
+# Check 7 -- conjunction_honesty
+# ---------------------------------------------------------------------------
+
+
+def conjunction_honesty(
+    *, output, metadata, **kwargs
+) -> Evaluation | list[Evaluation]:
+    """Score 1.0 when a cross-shape conjunction is honestly signaled in the response.
+
+    Applies only to goldens tagged conjunction == 'cross_shape'; returns []
+    for all others.
+
+    Checks:
+    - diagnostics.warnings contains CONJUNCTION_CROSS_SHAPE
+    - additional_interpretations is a list (not None) — the field being present
+      as a list (empty [] or non-empty) confirms cross-shape handling ran
+
+    Gate threshold deferred until corpus coverage grows; per-item regression
+    is still caught by the flip guard.
+    """
+    tags = (metadata or {}).get("tags") or []
+    conj_tag = next(
+        (t["conjunction"] for t in tags if isinstance(t, dict) and "conjunction" in t),
+        None,
+    )
+    if conj_tag != "cross_shape":
+        return []
+
+    resp = _parse_response(output)
+    if resp is None:
+        return Evaluation(
+            name="conjunction_honesty",
+            value=0.0,
+            comment="response failed validation",
+        )
+
+    root = resp.root
+
+    # additional_interpretations is a DefiniteResponse-only field
+    if root.status != "definite":
+        return Evaluation(
+            name="conjunction_honesty",
+            value=0.0,
+            comment=f"cross_shape golden returned status={root.status!r}; expected definite",
+        )
+
+    has_warning = any(
+        w.code == "CONJUNCTION_CROSS_SHAPE" for w in root.diagnostics.warnings
+    )
+    if not has_warning:
+        return Evaluation(
+            name="conjunction_honesty",
+            value=0.0,
+            comment="diagnostics.warnings missing CONJUNCTION_CROSS_SHAPE",
+        )
+
+    assert isinstance(root, DefiniteResponse)  # guaranteed by status check above
+    if root.additional_interpretations is None:
+        return Evaluation(
+            name="conjunction_honesty",
+            value=0.0,
+            comment=(
+                "additional_interpretations is None; expected a list "
+                "(empty [] or non-empty) for a cross_shape conjunction"
+            ),
+        )
+
+    return Evaluation(name="conjunction_honesty", value=1.0)
+
+
+# ---------------------------------------------------------------------------
+# Check 9 -- axis_classification
 # ---------------------------------------------------------------------------
 
 
@@ -619,7 +760,9 @@ def _agg_mean(item_name: str, agg_name: str, item_results) -> Evaluation:
             if ev.name == item_name and ev.value is not None:
                 values.append(float(ev.value))
     if not values:
-        return Evaluation(name=agg_name, value=None)
+        # None is the deliberate not-applicable sentinel the gate filters; langfuse's
+        # Evaluation types value as numeric, so the type-check is suppressed here.
+        return Evaluation(name=agg_name, value=None)  # ty: ignore[invalid-argument-type]
     return Evaluation(name=agg_name, value=sum(values) / len(values))
 
 
@@ -684,9 +827,15 @@ DEFAULT_RUN_EVALUATORS = [
     agg_materialisation_correct_rate,
     agg_structural_conformance_rate,
 ]
+# entry_path_audit and conjunction_honesty are registered in make_item_evaluators
+# only — no run-level aggregates, no GATE_THRESHOLDS entries. Too thin for a stable
+# aggregate threshold. Per-item regression is still caught: the flip guard compares
+# per-item Evaluation scores against the re-frozen per_item baseline and raises on
+# any 1.0→0.0 flip. The run-level aggregate + threshold are deferred until corpus
+# coverage grows.
 
 
-def DEFAULT_ITEM_EVALUATORS(graph: GraphClient) -> list:
+def make_item_evaluators(graph: GraphClient) -> list:
     """Build the list of item-level evaluators, injecting the graph client."""
     return [
         structural_conformance,
@@ -694,5 +843,7 @@ def DEFAULT_ITEM_EVALUATORS(graph: GraphClient) -> list:
         interpretation_match,
         make_materialisation(graph),
         behaviour_by_tag,
+        entry_path_audit,
+        conjunction_honesty,
         axis_classification,
     ]

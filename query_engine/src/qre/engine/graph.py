@@ -3,8 +3,8 @@
 Defines:
 * Facet: observation facet data returned by the graph.
 * EngineGraphClient: Protocol for the engine-internal methods (node_label, node_arcs,
-  node_type, resolve_entity, detect_svs, observation_facets). Engine stages only import
-  this Protocol; they do NOT import qre.eval.
+  node_type, resolve_entity, detect_svs, observation_facets, observation_facets_batch).
+  Engine stages only import this Protocol; they do NOT import qre.eval.
 * LiveGraphClient: httpx implementation. Config-driven target (QRE_GRAPH_BASE); the
   staging-vs-prod distinction is a config value, not a class name.
 
@@ -25,12 +25,15 @@ DO NOT import qre.eval from this module (isolation invariant).
 """
 from __future__ import annotations
 
+import collections
+import threading
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 from urllib.parse import urlencode
 
 import httpx
 
+import qre.engine.config as config  # module-attribute access for runtime-resolved values
 from qre.engine.config import (
     BROWSER_UA,
     QRE_GRAPH_BASE,
@@ -141,6 +144,28 @@ class EngineGraphClient(Protocol):
         """
         ...
 
+    def observation_facets_batch(
+        self,
+        stat_vars: list[str],
+        entities: list[str],
+        needs_dates: bool = False,
+    ) -> dict[str, dict[str, list[Facet]]]:
+        """Batch-fetch orderedFacets for all (stat_var, entity) pairs in one POST.
+
+        Returns {sv_dcid: {entity_dcid: [Facet, ...]}} for all requested pairs.
+        Missing pairs map to an empty list. Raises GraphInfraError on transport error.
+        Converts the serial N×M observation loop into a single /v2/observation call.
+        """
+        ...
+
+    def child_dcids(self, parent_dcid: str) -> list[str]:
+        """Return dcids of nodes pointing to parent_dcid via <-isPartOf, [] if none.
+
+        Reads the parent's complete <-isPartOf IN-arc set (distinct from ->* OUT arcs).
+        Confirmed reads only; an absent parent returns []. Raises GraphInfraError on transport.
+        """
+        ...
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -150,6 +175,25 @@ class EngineGraphClient(Protocol):
 def _pick_label(values: list[str]) -> str:
     """Deterministic label selection: last value (fuller rollup), fallback to first."""
     return values[-1]
+
+
+def _parse_facets_raw(facets_raw: list, top_facets_map: dict) -> list[Facet]:
+    """Build Facet objects from a raw orderedFacets list and the top-level facets map."""
+    result: list[Facet] = []
+    for f in facets_raw:
+        facet_id = f.get("facetId")
+        facet_meta = top_facets_map.get(facet_id, {}) if facet_id else {}
+        result.append(
+            Facet(
+                earliest_date=f.get("earliestDate"),
+                latest_date=f.get("latestDate"),
+                obs_count=f.get("obsCount", 0),
+                dates=[o["date"] for o in f.get("observations", []) if o.get("date")],
+                provenance_id=facet_meta.get("provenanceId"),
+                import_name=facet_meta.get("importName"),
+            )
+        )
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -187,6 +231,24 @@ class LiveGraphClient:
         self._client = httpx.Client(timeout=_timeout)
         self._label_cache: dict[str, str] = {}
 
+        # Per-instance LRU caches. Sizes read via module-attribute access at
+        # construction time so the values resolve after config is fully loaded
+        # (not bound at Python import time). Cleared on process restart.
+        self._obs_cache: collections.OrderedDict[
+            tuple[str, str, bool], list[Facet]
+        ] = collections.OrderedDict()
+        self._obs_cache_maxsize: int = config.QRE_OBS_CACHE_SIZE
+
+        self._detect_cache: collections.OrderedDict[
+            tuple[str, float], tuple[list[str], list[str], list[float]]
+        ] = collections.OrderedDict()
+        self._detect_cache_maxsize: int = config.QRE_DETECT_CACHE_SIZE
+
+        # Guards all compound check-move-return and check-evict-write sequences on
+        # _obs_cache and _detect_cache against concurrent ThreadPoolExecutor workers.
+        # Network calls stay outside the lock; only the dict ops are critical sections.
+        self._cache_lock: threading.Lock = threading.Lock()
+
     def _post(self, url: str, payload: dict) -> dict:
         """POST JSON payload and return parsed JSON body.
 
@@ -198,7 +260,8 @@ class LiveGraphClient:
             raise GraphInfraError(f"Graph transport error: {exc}") from exc
         if resp.status_code != 200:
             raise GraphInfraError(
-                f"Graph returned HTTP {resp.status_code} for {url!r}"
+                f"Graph returned HTTP {resp.status_code} for {url!r}",
+                upstream_status=resp.status_code,
             )
         try:
             return resp.json()
@@ -288,7 +351,17 @@ class LiveGraphClient:
         unknown variables surface as an empty list rather than low-confidence noise.
         Entities are returned as-is. When scores are absent or mismatched (legacy
         branch), every returned SV gets score 1.0 (length-matched).
+
+        Results are cached by (query, QRE_RELEVANCE_THRESHOLD). A GraphInfraError
+        propagates before any cache write; cache is per-process and cleared on restart.
         """
+        cache_key = (query, QRE_RELEVANCE_THRESHOLD)
+        with self._cache_lock:
+            if cache_key in self._detect_cache:
+                self._detect_cache.move_to_end(cache_key)
+                return self._detect_cache[cache_key]
+
+        # Network call outside the lock; GraphInfraError propagates before any cache write.
         url = f"{self._detect_url}?{urlencode({'q': query})}"
         try:
             resp = self._client.post(
@@ -299,7 +372,10 @@ class LiveGraphClient:
         except httpx.RequestError as exc:
             raise GraphInfraError(f"Graph transport error (detect): {exc}") from exc
         if resp.status_code != 200:
-            raise GraphInfraError(f"Graph detect returned HTTP {resp.status_code}")
+            raise GraphInfraError(
+                f"Graph detect returned HTTP {resp.status_code}",
+                upstream_status=resp.status_code,
+            )
         try:
             body = resp.json()
         except Exception as exc:
@@ -324,7 +400,15 @@ class LiveGraphClient:
             sv_scores = [1.0] * len(raw_svs)
 
         entity_dcids: list[str] = body.get("entities", [])
-        return sv_dcids, entity_dcids, sv_scores
+        result = (sv_dcids, entity_dcids, sv_scores)
+
+        # Cache only on success; GraphInfraError would have propagated above.
+        with self._cache_lock:
+            self._detect_cache[cache_key] = result
+            if len(self._detect_cache) > self._detect_cache_maxsize:
+                self._detect_cache.popitem(last=False)
+
+        return result
 
     def observation_facets(
         self, *, stat_var: str, entity: str, needs_dates: bool = False
@@ -342,7 +426,17 @@ class LiveGraphClient:
         importName; these are mapped onto each returned Facet for provenance resolution.
         The entity param is the observationAbout (donor); the recipient is a constraint
         on the SV, not the entity arg.
+
+        Shares the same LRU cache as observation_facets_batch. GraphInfraError
+        propagates before any cache write.
         """
+        cache_key = (stat_var, entity, needs_dates)
+        with self._cache_lock:
+            if cache_key in self._obs_cache:
+                self._obs_cache.move_to_end(cache_key)
+                return self._obs_cache[cache_key]
+
+        # Network call outside the lock; GraphInfraError propagates before any cache write.
         url = f"{self._v2_base}/observation"
         post_body: dict = {
             "select": ["variable", "entity", "facet"],
@@ -361,20 +455,14 @@ class LiveGraphClient:
             .get(entity, {})
             .get("orderedFacets", [])
         )
-        result = []
-        for f in facets_raw:
-            facet_id = f.get("facetId")
-            facet_meta = top_facets_map.get(facet_id, {}) if facet_id else {}
-            result.append(
-                Facet(
-                    earliest_date=f.get("earliestDate"),
-                    latest_date=f.get("latestDate"),
-                    obs_count=f.get("obsCount", 0),
-                    dates=[o["date"] for o in f.get("observations", []) if o.get("date")],
-                    provenance_id=facet_meta.get("provenanceId"),
-                    import_name=facet_meta.get("importName"),
-                )
-            )
+        result = _parse_facets_raw(facets_raw, top_facets_map)
+
+        # Cache only after a successful _post; GraphInfraError would have propagated.
+        with self._cache_lock:
+            self._obs_cache[cache_key] = result
+            if len(self._obs_cache) > self._obs_cache_maxsize:
+                self._obs_cache.popitem(last=False)
+
         return result
 
     def node_labels_batch(self, dcids: list[str]) -> dict[str, str]:
@@ -383,25 +471,39 @@ class LiveGraphClient:
         Returns {dcid: label} for confirmed reads only. Missing nodes are omitted.
         Raises GraphInfraError on transport or non-2xx.
         Contrast: node_arcs_batch maps absent dcids to None instead of omitting them.
+
+        Reads _label_cache before the POST and writes found labels back after a
+        successful response. None results are not cached (absent nodes may later be
+        populated). A GraphInfraError propagates before any cache write.
         """
         if not dcids:
             return {}
-        url = f"{self._v2_base}/node"
-        body = self._post(url, {"nodes": dcids, "property": "->name"})
-        data = body.get("data", {})
-        result: dict[str, str] = {}
-        for dcid in dcids:
-            node_data = data.get(dcid)
-            if node_data is None:
-                continue
-            arcs = node_data.get("arcs", {})
-            if not arcs:
-                continue
-            name_nodes = arcs.get("name", {}).get("nodes", [])
-            values = [n["value"] for n in name_nodes if n.get("value")]
-            if values:
-                result[dcid] = _pick_label(values)
-        return result
+
+        # Identify misses; fill the cache for them first, THEN build the returned
+        # mapping by iterating the original dcids in order. This keeps the result
+        # dict in input order regardless of cache-hit/miss interleaving, so callers
+        # (e.g. _build_source_refs) get deterministic output independent of cache
+        # warm-state. None results (absent nodes) are not cached and are omitted.
+        misses = [dcid for dcid in dcids if dcid not in self._label_cache]
+        if misses:
+            # POST only the misses; GraphInfraError propagates before any cache write.
+            url = f"{self._v2_base}/node"
+            body = self._post(url, {"nodes": misses, "property": "->name"})
+            data = body.get("data", {})
+            for dcid in misses:
+                node_data = data.get(dcid)
+                if node_data is None:
+                    continue
+                arcs = node_data.get("arcs", {})
+                if not arcs:
+                    continue
+                name_nodes = arcs.get("name", {}).get("nodes", [])
+                values = [n["value"] for n in name_nodes if n.get("value")]
+                if values:
+                    self._label_cache[dcid] = _pick_label(values)
+
+        # Build the result in input order; absent (uncached) dcids are omitted.
+        return {dcid: self._label_cache[dcid] for dcid in dcids if dcid in self._label_cache}
 
     def node_arcs_batch(self, dcids: list[str]) -> dict[str, dict | None]:
         """Batch-fetch the ->* arcs dict for each dcid via a single POST /v2/node call.
@@ -424,6 +526,97 @@ class LiveGraphClient:
             arcs = node_data.get("arcs", {})
             result[dcid] = arcs if arcs else None
         return result
+
+    def observation_facets_batch(
+        self,
+        stat_vars: list[str],
+        entities: list[str],
+        needs_dates: bool = False,
+    ) -> dict[str, dict[str, list[Facet]]]:
+        """Batch-fetch orderedFacets for all (stat_var, entity) pairs in one POST.
+
+        Returns {sv_dcid: {entity_dcid: [Facet, ...]}} for all requested pairs.
+        An empty stat_vars or entities list returns an empty result immediately.
+
+        Cache behaviour (per-pair LRU, shared with observation_facets):
+          - Each (stat_var, entity, needs_dates) triple is checked before the POST.
+          - Only pairs absent from the cache are fetched; cache hits are merged in.
+          - Cache writes happen only after a successful _post; GraphInfraError
+            propagates before any write, so no stale has_data can be served.
+        """
+        if not stat_vars or not entities:
+            return {}
+
+        # Consult per-pair cache; track the actual (sv, entity) pairs that miss so
+        # miss_svs and miss_entities remain the minimal cartesian superset of true misses.
+        result: dict[str, dict[str, list[Facet]]] = {sv: {} for sv in stat_vars}
+        miss_pairs: set[tuple[str, str]] = set()
+
+        for sv in stat_vars:
+            for entity in entities:
+                cache_key = (sv, entity, needs_dates)
+                with self._cache_lock:
+                    if cache_key in self._obs_cache:
+                        self._obs_cache.move_to_end(cache_key)
+                        result[sv][entity] = self._obs_cache[cache_key]
+                        continue
+                result[sv][entity] = []  # placeholder; replaced after POST
+                miss_pairs.add((sv, entity))
+
+        if not miss_pairs:
+            return result
+
+        # Derive the minimal cartesian superset that the batch API supports.
+        miss_svs: list[str] = list(dict.fromkeys(sv for sv, _ in miss_pairs))
+        miss_entities: list[str] = list(dict.fromkeys(entity for _, entity in miss_pairs))
+
+        # POST only the miss subset; raises GraphInfraError before any cache write.
+        url = f"{self._v2_base}/observation"
+        post_body: dict = {
+            "select": ["variable", "entity", "facet"],
+            "variable": {"dcids": miss_svs},
+            "entity": {"dcids": miss_entities},
+        }
+        if needs_dates:
+            post_body["select"] = ["variable", "entity", "date", "value", "facet"]
+            post_body["date"] = ""
+        body = self._post(url, post_body)
+
+        top_facets_map: dict = body.get("facets", {})
+        by_variable = body.get("byVariable", {})
+
+        # Parse each (miss_sv, miss_entity) pair; write to cache and result.
+        for sv in miss_svs:
+            by_entity = by_variable.get(sv, {}).get("byEntity", {})
+            for entity in miss_entities:
+                cache_key = (sv, entity, needs_dates)
+                with self._cache_lock:
+                    if cache_key in self._obs_cache:
+                        # Another path already populated this pair (concurrent write).
+                        self._obs_cache.move_to_end(cache_key)
+                        result[sv][entity] = self._obs_cache[cache_key]
+                        continue
+                facets_raw = by_entity.get(entity, {}).get("orderedFacets", [])
+                facets = _parse_facets_raw(facets_raw, top_facets_map)
+                # Write to cache then evict LRU if over capacity.
+                with self._cache_lock:
+                    self._obs_cache[cache_key] = facets
+                    if len(self._obs_cache) > self._obs_cache_maxsize:
+                        self._obs_cache.popitem(last=False)
+                result[sv][entity] = facets
+
+        return result
+
+    def child_dcids(self, parent_dcid: str) -> list[str]:
+        """Return dcids of nodes whose ->isPartOf points to parent_dcid.
+
+        POSTs <-isPartOf to /v2/node; returns [] when the parent is absent or has no children.
+        Raises GraphInfraError on transport or non-2xx.
+        """
+        arcs = self._node_data(parent_dcid, "<-isPartOf")
+        if arcs is None:
+            return []
+        return [n["dcid"] for n in arcs.get("isPartOf", {}).get("nodes", []) if "dcid" in n]
 
     def close(self) -> None:
         """Close the underlying httpx client. Safe to call more than once."""

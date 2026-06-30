@@ -9,12 +9,17 @@ def golden_to_item(golden: dict) -> dict:
     """Map one goldens.json record to a Langfuse dataset item dict (pure, no network).
 
     Returns a dict with keys ``input``, ``expected_output``, and ``metadata``.
+    For spec_resubmit goldens, ``input`` also carries the required shape_id/slots
+    so the runner's spec_resubmit branch can build a ResolveRequest without KeyError.
     """
+    inp: dict = {"query": golden["query"], "entry_path": golden["entry_path"]}
+    if golden["entry_path"] == "spec_resubmit":
+        inp["shape_id"] = golden["shape_id"]
+        inp["slots"] = golden["slots"]
+        inp["stat_var_dcids"] = golden.get("stat_var_dcids")
+        inp["entity_dcids"] = golden.get("entity_dcids")
     return {
-        "input": {
-            "query": golden["query"],
-            "entry_path": golden["entry_path"],
-        },
+        "input": inp,
         "expected_output": {
             "expected_status": golden["expected_status"],
             "expected_shape": golden["expected_shape"],

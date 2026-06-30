@@ -30,6 +30,12 @@ class Materialised:
     facets: list[Facet]
     has_data: bool
     coverage: Coverage
+    # Per-SV facets: sv_dcid → list of confirmed Facets. Populated by
+    # graph_confirm_resolve; None on legacy paths that don't set it.
+    facets_by_sv: dict[str, list[Facet]] | None = None
+    # SVs confirmed directly by a recipient entity (pass 1 of batch probe).
+    # False entries were confirmed only via the donor fallback.
+    recipient_confirmed: set[str] | None = None
 
 
 @dataclass

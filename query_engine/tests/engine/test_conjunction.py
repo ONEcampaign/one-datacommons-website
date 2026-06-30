@@ -38,6 +38,7 @@ from qre.models import (
     Slot,
     SlotKey,
     SlotValue,
+    StatusLiteral,
     StatVar,
 )
 from tests.engine._harness import PINNED_DATE, make_request, offline_resolve
@@ -103,14 +104,13 @@ def _spec(shape: Shape, constraint_val: str, sv_dcid: str = "sv", variable_text:
         entities=[],
         coverage=CoverageBare(has_data=True),
         pipeline_trace=[PipelineStep(step="extract", ran=True)],
-        timing_by_step={},
         variable_text=variable_text,
     )
 
 
 def _rr(
     variable_text: str,
-    status: str,
+    status: StatusLiteral,
     spec=None,
     *,
     earliest_index: int = 0,
@@ -125,7 +125,7 @@ def _rr(
         specs = ()
     return RegionResult(
         variable_text=variable_text,
-        status=status,  # type: ignore[arg-type]
+        status=status,
         specs=specs,
         no_data_reason=no_data_reason or "variable_not_resolved",
         warnings=(),
@@ -412,7 +412,7 @@ class _DirectionalFakeLLM:
             return Extraction(
                 variables=["health ODA grants", "health ODA loans"],
                 entities=["USA", "Ethiopia"],
-            )
+            ), None
         if name == "_BindOutput":
             scheme = "ODAGrants" if "health ODA grants" in prompt else "ODALoans"
             return _BindOutput(bindings=[
@@ -422,7 +422,7 @@ class _DirectionalFakeLLM:
                     kind="value",
                     value_dcids=[scheme],
                 ),
-            ])
+            ]), None
         raise AssertionError(f"unexpected schema {name!r}")
 
 

@@ -10,8 +10,9 @@ string, so a bare 'gemini-3' check would miss them.
 """
 from __future__ import annotations
 
+import logging
 import os
-from typing import TypeVar, cast
+from typing import Protocol, TypeVar, cast
 
 from pydantic import BaseModel
 
@@ -19,6 +20,8 @@ from qre.engine.config import QRE_ENGINE_MODEL
 from qre.engine.errors import LLMInfraError
 
 _SchemaT = TypeVar("_SchemaT", bound=BaseModel)
+
+logger = logging.getLogger(__name__)
 
 # Lazy singleton — built on first call to generate_structured.
 _CLIENT = None
@@ -74,6 +77,34 @@ def _thinking_config_for_model(model: str):
     return None
 
 
+class SupportsLLM(Protocol):
+    """Structural type for the engine's LLM dependency.
+
+    Declares only the surface the engine calls: a keyword-only
+    ``generate_structured`` returning a ``(parsed, usage)`` tuple. The concrete
+    :class:`LLM` satisfies it, as do the test doubles (FakeLLM and friends),
+    so the engine can be injected with any of them without a nominal subclass.
+    """
+
+    def generate_structured(
+        self,
+        *,
+        prompt: str,
+        system: str,
+        schema: type[_SchemaT],
+    ) -> tuple[_SchemaT, dict | None]: ...
+
+
+def warm() -> None:
+    """Warm the LLM singleton at startup.
+
+    Calls _get_client() so a missing GEMINI_API_KEY surfaces before the first
+    request is served rather than under load. Raises LLMInfraError if the key
+    is absent or the google-genai package is not installed.
+    """
+    _get_client()
+
+
 class LLM:
     """Sync Gemini structured-output wrapper.
 
@@ -113,8 +144,12 @@ class LLM:
         prompt: str,
         system: str,
         schema: type[_SchemaT],
-    ) -> _SchemaT:
+    ) -> tuple[_SchemaT, dict | None]:
         """Sync structured-output call at temperature 0.
+
+        Returns a ``(parsed, usage)`` tuple where ``usage`` is a dict with
+        ``input_tokens``, ``output_tokens``, and ``cached_tokens`` keys, or
+        ``None`` when the model did not return usage metadata.
 
         Raises LLMInfraError on:
         - transport / API error
@@ -149,6 +184,30 @@ class LLM:
         except Exception as exc:
             raise LLMInfraError(f"Gemini API error: {exc}") from exc
 
+        # Capture token usage before checking parsed, so it's always recorded on success.
+        usage: dict | None = None
+        usage_meta = getattr(response, "usage_metadata", None)
+        if usage_meta is not None:
+            usage = {
+                "input_tokens": getattr(usage_meta, "prompt_token_count", 0) or 0,
+                "output_tokens": getattr(usage_meta, "candidates_token_count", 0) or 0,
+                "cached_tokens": getattr(usage_meta, "cached_content_token_count", 0) or 0,
+            }
+            total = usage["input_tokens"] + usage["output_tokens"]
+            cache_hit_pct = (
+                (usage["cached_tokens"] / usage["input_tokens"] * 100)
+                if usage["input_tokens"] > 0
+                else 0.0
+            )
+            logger.info(
+                "LLM usage: input=%d output=%d cached=%d total=%d cache_hit_pct=%.1f%%",
+                usage["input_tokens"],
+                usage["output_tokens"],
+                usage["cached_tokens"],
+                total,
+                cache_hit_pct,
+            )
+
         parsed = response.parsed
         if parsed is None:
             raise LLMInfraError(
@@ -156,4 +215,4 @@ class LLM:
                 f"(model={self._model!r}, schema={schema.__name__!r})"
             )
         # cast recovers the concrete type from the genai stub's wider BaseModel | dict | Enum.
-        return cast(schema, parsed)
+        return cast(schema, parsed), usage

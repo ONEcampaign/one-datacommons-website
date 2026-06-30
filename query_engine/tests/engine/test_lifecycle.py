@@ -4,14 +4,23 @@ Covers:
 - LiveGraphClient.close() exists and closes the underlying httpx client
 - resolve_async closes a self-built client after the call completes
 - resolve_async does not close an injected client
+- Lifespan configures the qre logger (idempotent)
+- Lifespan calls llm.warm() when no LLM is injected
+- Boot fails when warm() raises LLMInfraError
 """
 from __future__ import annotations
 
 import asyncio
+import logging
 from datetime import date
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+import pytest
+from fastapi.testclient import TestClient
+
+from qre.engine.app import create_app
 from qre.engine.core import resolve, resolve_async
+from qre.engine.errors import LLMInfraError
 from qre.engine.graph import LiveGraphClient
 from qre.models import RawTextInput, ResolveRequest
 from tests.fixtures import FakeGraph, FakeLLM
@@ -86,6 +95,64 @@ class TestResolveAsyncLifecycle:
 
 
 # resolve() sync-wrapper loop safety
+
+
+class TestLifespanLogger:
+    """Lifespan attaches a StreamHandler to the qre logger; the guard is idempotent."""
+
+    def test_logger_handler_attached_on_startup(self):
+        # Clear any handlers that earlier tests may have attached.
+        qre_log = logging.getLogger("qre")
+        qre_log.handlers.clear()
+
+        app = create_app(graph=FakeGraph(), llm=FakeLLM())
+        with TestClient(app):
+            # Inside the lifespan the handler must be attached.
+            assert any(
+                isinstance(h, logging.StreamHandler) for h in qre_log.handlers
+            )
+
+    def test_logger_handler_idempotent(self):
+        # Running the lifespan twice must not double-add handlers.
+        qre_log = logging.getLogger("qre")
+        qre_log.handlers.clear()
+
+        app = create_app(graph=FakeGraph(), llm=FakeLLM())
+        # First lifespan run
+        with TestClient(app):
+            pass
+        count_after_first = len(qre_log.handlers)
+
+        app2 = create_app(graph=FakeGraph(), llm=FakeLLM())
+        # Second lifespan run — should not add another handler.
+        with TestClient(app2):
+            assert len(qre_log.handlers) == count_after_first
+
+
+class TestLifespanWarm:
+    """Lifespan calls llm.warm() when no LLM is injected; re-raises on failure."""
+
+    def test_warm_called_when_no_llm_injected(self):
+        app = create_app(graph=FakeGraph())  # llm=None triggers warm
+        with patch("qre.engine.llm.warm") as mock_warm:
+            with TestClient(app):
+                mock_warm.assert_called_once()
+
+    def test_warm_not_called_when_llm_injected(self):
+        app = create_app(graph=FakeGraph(), llm=FakeLLM())
+        with patch("qre.engine.llm.warm") as mock_warm:
+            with TestClient(app):
+                mock_warm.assert_not_called()
+
+    def test_boot_fails_on_missing_gemini_key(self):
+        app = create_app(graph=FakeGraph())  # llm=None triggers warm
+        with patch(
+            "qre.engine.llm.warm",
+            side_effect=LLMInfraError("GEMINI_API_KEY is required"),
+        ):
+            with pytest.raises(LLMInfraError):
+                with TestClient(app, raise_server_exceptions=True):
+                    pass  # Startup should raise before reaching here
 
 
 class TestResolveLoopSafe:

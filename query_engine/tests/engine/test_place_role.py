@@ -4,6 +4,8 @@ Verifies role assignment, seam ON/OFF behavior, invariants, and warning flags.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from qre.engine.place_role import (
     DirectionalRole,
     EntityRoleDraft,
@@ -22,7 +24,7 @@ DONOR_ROLE_DCID = "observationAbout"
 
 def _roles(
     query: str,
-    entities: list[tuple[str, str | None]],
+    entities: Sequence[tuple[str, str | None]],
     *,
     seam_on: bool = True,
 ) -> dict[str, EntityRoleDraft]:
@@ -38,7 +40,7 @@ def _roles(
 
 def _roles_with_flags(
     query: str,
-    entities: list[tuple[str, str | None]],
+    entities: Sequence[tuple[str, str | None]],
     *,
     seam_on: bool = True,
 ) -> tuple[dict[str, EntityRoleDraft], bool, bool]:
@@ -157,7 +159,9 @@ def test_to_only_returns_correct_role_dcid() -> None:
         [("country/KEN", "Kenya")],
         seam_on=True,
     )
-    assert result["country/KEN"].role.role_dcid == RECIPIENT_ROLE_DCID  # type: ignore[union-attr]
+    role = result["country/KEN"].role
+    assert isinstance(role, DirectionalRole)
+    assert role.role_dcid == RECIPIENT_ROLE_DCID
 
 
 
@@ -304,3 +308,65 @@ def test_empty_entities_seam_off_no_warnings() -> None:
     assert seam_off is True
     # No direction can be detected if no entities → directional_detected False
     assert directional_detected is False
+
+
+# ---------------------------------------------------------------------------
+# F21: canonical name anchor (third anchor beyond surface text and DCID slug)
+# ---------------------------------------------------------------------------
+
+
+def test_canonical_name_resolves_two_simultaneously_undetected() -> None:
+    """F21: when surface text and DCID slug both miss, canonical name anchors direction.
+
+    Both entities have opaque DCID slugs that don't appear in the query, and no
+    surface text. The positional fallback cannot fire (needs exactly one undetected
+    entity). With canonical_names, both directions resolve via the graph labels.
+    """
+    entities = [
+        ("dcid_donor/x001", None),    # DCID slug "x001" not in query
+        ("dcid_recip/y002", None),    # DCID slug "y002" not in query
+    ]
+    query = "health aid from United States to United Kingdom"
+    canonical = {
+        "dcid_donor/x001": "United States",
+        "dcid_recip/y002": "United Kingdom",
+    }
+    roles, _, _ = directional_roles(
+        query,
+        entities,
+        place_as_constraint=True,
+        recipient_role_dcid=RECIPIENT_ROLE_DCID,
+        donor_role_dcid=DONOR_ROLE_DCID,
+        canonical_names=canonical,
+    )
+    donor_role = roles["dcid_donor/x001"].role
+    recip_role = roles["dcid_recip/y002"].role
+    assert isinstance(donor_role, DirectionalRole)
+    assert donor_role.direction == "from"
+    assert isinstance(recip_role, DirectionalRole)
+    assert recip_role.direction == "to"
+
+
+def test_canonical_name_fallback_not_needed_when_surface_matches() -> None:
+    """F21: when surface text already anchors direction, canonical_names is irrelevant."""
+    entities = [
+        ("country/USA", "USA"),
+        ("country/ETH", "Ethiopia"),
+    ]
+    query = "ODA from USA to Ethiopia"
+    canonical = {
+        "country/USA": "United States",  # different canonical, but surface matches
+        "country/ETH": "Federal Democratic Republic of Ethiopia",
+    }
+    roles, _, _ = directional_roles(
+        query,
+        entities,
+        place_as_constraint=True,
+        recipient_role_dcid=RECIPIENT_ROLE_DCID,
+        donor_role_dcid=DONOR_ROLE_DCID,
+        canonical_names=canonical,
+    )
+    assert isinstance(roles["country/USA"].role, DirectionalRole)
+    assert roles["country/USA"].role.direction == "from"
+    assert isinstance(roles["country/ETH"].role, DirectionalRole)
+    assert roles["country/ETH"].role.direction == "to"

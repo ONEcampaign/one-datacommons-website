@@ -118,11 +118,16 @@ class _StandardResolver:
         coverage = coverage_from_facets(facets, date_request=date_request)
         # Emit the representative SV as the single confirmed SV for the spec.
         # The candidates path fans out across all member SVs when triggered.
+        # Thread the observation facets so StatVar.data_date_range is derived, and
+        # mark the SV recipient-confirmed: the probe entity IS the subject entity
+        # (read directly), so data_confirmed_at_recipient is True for standard.
         return Materialised(
             sv_dcids=[representative_sv],
             facets=facets,
             has_data=True,
             coverage=coverage,
+            facets_by_sv={representative_sv: facets},
+            recipient_confirmed={representative_sv},
         )
 
 
@@ -152,6 +157,25 @@ REGISTRY: tuple[FamilyRule, ...] = (
     DEV_FINANCE_RULE,
     STANDARD_RULE,   # catch-all: must be last
 )
+
+
+def rule_for_shape_id(*, shape_id: str) -> FamilyRule | None:
+    """Return the registered FamilyRule whose stable shape_id matches exactly, or None.
+
+    Exact match over REGISTRY. STANDARD_RULE.shape_id is "" so a standard dynamic
+    five-tuple shape_id returns None (Path C then routes it to the standard-promote path).
+
+    Args:
+        shape_id: The stable shape_id string from a SpecResubmitInput.
+
+    Returns:
+        The matching FamilyRule, or None when no named family claims this shape_id
+        (caller routes to standard promote or raises EngineInputError as appropriate).
+    """
+    for rule in REGISTRY:
+        if rule.shape_id and rule.shape_id == shape_id:
+            return rule
+    return None
 
 
 def rule_for(*, candidate_svs: list[str]) -> FamilyRule | None:

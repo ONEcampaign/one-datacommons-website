@@ -17,6 +17,7 @@ from qre.engine.bind import SlotBindingDraft, _BindOutput
 from qre.engine.core import resolve_async
 from qre.engine.extract import Extraction
 from qre.models import RawTextInput, ResolveRequest
+from tests.engine._harness import slot_value_dcid
 from tests.fixtures import FakeGraph
 
 
@@ -33,7 +34,7 @@ class _FakeBindLLM:
     def generate_structured(self, *, prompt, system, schema):
         name = schema.__name__
         if name == "Extraction":
-            return Extraction(variables=["health ODA grants"], entities=["Ethiopia"])
+            return Extraction(variables=["health ODA grants"], entities=["Ethiopia"]), None
         if name == "_BindOutput":
             rows = [
                 SlotBindingDraft(
@@ -52,7 +53,7 @@ class _FakeBindLLM:
                         kind="unbound", value_dcids=[],
                     )
                 )
-            return _BindOutput(bindings=rows)
+            return _BindOutput(bindings=rows), None
         raise AssertionError(f"unexpected schema {name}")
 
 
@@ -64,4 +65,4 @@ def test_recipient_bound_regardless_of_llm(where_mode):
     assert resp.root.status == "definite", resp.root
     where = next(s for s in resp.root.interpretation.slots if s.key.axis == "where")
     assert where.binding.kind == "value"
-    assert where.binding.value.ref.dcid == "country/ETH"
+    assert slot_value_dcid(where) == "country/ETH"

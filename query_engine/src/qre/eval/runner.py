@@ -8,7 +8,7 @@ from typing import Callable
 
 from qre import ResolveRequest, ResolveResponse
 from qre.eval.dataset import _client
-from qre.eval.evaluators import DEFAULT_ITEM_EVALUATORS, DEFAULT_RUN_EVALUATORS
+from qre.eval.evaluators import DEFAULT_RUN_EVALUATORS, make_item_evaluators
 from qre.eval.graph import GraphClient
 
 
@@ -25,9 +25,22 @@ def build_task(task: Callable[[ResolveRequest], ResolveResponse]):
             req = ResolveRequest.model_validate(
                 {"input": {"kind": "raw_text", "query": item.input["query"]}}
             )
+        elif entry_path == "spec_resubmit":
+            req = ResolveRequest.model_validate(
+                {
+                    "input": {
+                        "kind": "spec_resubmit",
+                        "shape_id": item.input["shape_id"],
+                        "slots": item.input["slots"],
+                        "stat_var_dcids": item.input.get("stat_var_dcids"),
+                        "entity_dcids": item.input.get("entity_dcids"),
+                    }
+                }
+            )
         else:
             raise ValueError(
-                f"Unsupported entry_path {entry_path!r}. Only 'raw_text' is supported in v1."
+                f"Unsupported entry_path {entry_path!r}. "
+                "Supported: 'raw_text', 'spec_resubmit'."
             )
         resp = task(req)
         return resp.model_dump(mode="json")
@@ -62,7 +75,7 @@ def run_eval(
     dataset = client.get_dataset(dataset_name)
 
     lf_task = build_task(task)
-    item_evaluators = DEFAULT_ITEM_EVALUATORS(graph)
+    item_evaluators = make_item_evaluators(graph)
     run_evaluators = DEFAULT_RUN_EVALUATORS
 
     result = dataset.run_experiment(

@@ -1501,6 +1501,295 @@ These are expected engine outputs for the QRE Phase 0 evaluation harness. All go
     via observationAbout. Both recipients are directional to via
     DevelopmentFinanceRecipient. No MULTI_RECIPIENT_TRUNCATED warning fires because
     the set binding carries both recipients rather than truncating to one.
+
+- id: "spec-df-01"
+  query: "spec_resubmit: health ODA grants to Ethiopia"
+  entry_path: "spec_resubmit"
+  shape_id: "dev_finance_crs_dac"
+  slots:
+    - key:
+        axis: "what"
+        property:
+          dcid: "DevelopmentFinanceScheme"
+          label: "Scheme"
+        label: "scheme"
+      binding:
+        kind: "value"
+        value:
+          ref:
+            dcid: "ODAGrants"
+            label: "ODA Grants"
+          value_kind: "enum_value"
+          time_window: null
+          literal: null
+    - key:
+        axis: "how"
+        property:
+          dcid: "DevelopmentFinancePurpose"
+          label: "Purpose"
+        label: "purpose"
+      binding:
+        kind: "value"
+        value:
+          ref:
+            dcid: "DAC/Health"
+            label: "Health"
+          value_kind: "enum_value"
+          time_window: null
+          literal: null
+    - key:
+        axis: "where"
+        property:
+          dcid: "DevelopmentFinanceRecipient"
+          label: "Recipient"
+        label: "recipient"
+      binding:
+        kind: "value"
+        value:
+          ref:
+            dcid: "country/ETH"
+            label: "Ethiopia"
+          value_kind: "entity"
+          time_window: null
+          literal: null
+  tags:
+    - behaviour: definite
+    - domain: development_finance
+    - seam: "on"
+    - conjunction: none
+  expected_status: "definite"
+  expected_shape:
+    population_type_dcid: "DevelopmentFinance"
+    measured_property_dcid: "DevelopmentFinanceFlow"
+    stat_type_dcid: "measuredValue"
+    measurement_qualifier_dcid: null
+    measurement_denominator_dcid: null
+  expected_slots:
+    - axis: "what"
+      property_dcid: "DevelopmentFinanceScheme"
+      binding_kind: "value"
+      value_dcid: "ODAGrants"
+    - axis: "how"
+      property_dcid: "DevelopmentFinancePurpose"
+      binding_kind: "value"
+      value_dcid: "DAC/Health"
+    - axis: "where"
+      property_dcid: "DevelopmentFinanceRecipient"
+      binding_kind: "value"
+      value_dcid: "country/ETH"
+  expected_stat_vars:
+    - "ONE/CRS_DAC/Health-ODAGrants-ETH"
+  expected_entities:
+    - dcid: "country/ETH"
+      role_kind: "directional"
+      direction: "to"
+      role_dcid: "DevelopmentFinanceRecipient"
+  expected_no_data_reason: null
+  candidate_count: null
+  status: VERIFIED_AGAINST_GRAPH
+  notes: >
+    Spec_resubmit dev_finance golden: exercises entry_path_audit (extract_skipped=True,
+    pipeline trace carries {step: extract, ran: false}). Slots carry the same bindings
+    as df-01's definite interpretation -- scheme=ODAGrants, purpose=DAC/Health,
+    recipient=country/ETH. No donor entity is posted; expected_entities carries only
+    the recipient (directional to). seam=on because place-as-constraint is active by
+    default and country/ETH is a DevelopmentFinanceRecipient constraint value.
+    Coordinator must verify in H1: (1) shape_id "dev_finance_crs_dac" routes to
+    DEV_FINANCE_RULE; (2) slot value DCIDs confirmed live: ODAGrants (scheme),
+    DAC/Health (purpose), country/ETH (recipient); (3) stat_var
+    ONE/CRS_DAC/Health-ODAGrants-ETH resolves; (4) engine echo has
+    entry_path="spec_resubmit" and extract_skipped=True; (5) if the engine also
+    reads a donor entity from the slots, update expected_entities. All slot DCIDs
+    sourced from df-01 (VERIFIED_AGAINST_GRAPH). Labels in slots are placeholders
+    (engine re-reads labels via node_labels_batch per A2 F4 re-read).
+
+- id: "spec-std-01"
+  query: "spec_resubmit: nominal GDP India (standard promote)"
+  entry_path: "spec_resubmit"
+  shape_id: "economicactivity_amount_measuredvalue_nominal"
+  slots:
+    - key:
+        axis: "where"
+        property: null
+        label: "place"
+      binding:
+        kind: "value"
+        value:
+          ref:
+            dcid: "country/IND"
+            label: "India"
+          value_kind: "entity"
+          time_window: null
+          literal: null
+  stat_var_dcids:
+    - "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+  entity_dcids:
+    - "country/IND"
+  tags:
+    - behaviour: definite
+    - domain: standard
+    - seam: na
+    - conjunction: none
+  expected_status: "definite"
+  expected_shape:
+    population_type_dcid: "EconomicActivity"
+    measured_property_dcid: "amount"
+    stat_type_dcid: "measuredValue"
+    measurement_qualifier_dcid: "Nominal"
+    measurement_denominator_dcid: null
+  expected_slots:
+    - axis: "how"
+      property_dcid: "activitySource"
+      binding_kind: "value"
+      value_dcid: "GrossDomesticProduction"
+  expected_stat_vars:
+    - "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+  expected_entities:
+    - dcid: "country/IND"
+      role_kind: "subject"
+      direction: null
+      role_dcid: null
+  expected_no_data_reason: null
+  candidate_count: null
+  status: VERIFIED_AGAINST_GRAPH
+  notes: >
+    Standard promote golden: exercises A2 standard-promote path (spec_resubmit with
+    stat_var_dcids + entity_dcids for a catch-all shape_id). Promotes the
+    Amount_EconomicActivity_GrossDomesticProduction_Nominal candidate from std-02 to
+    definite. shape_id "economicactivity_amount_measuredvalue_nominal" is the
+    discover.py five-tuple form (pop_EconomicActivity_amount_measuredValue_Nominal
+    lowercased). The where-slot posts country/IND as the subject entity; entity_dcids
+    also carries it (A2.4 entity_dcids[0] precedence). Standard promote is
+    promote-only -- refine rejected with 400 (no slot edits here). seam=na: standard
+    GDP SV has no directional entity. Verified against staging: engine returns definite
+    with entry_path="spec_resubmit" and extract_skipped=True; activitySource binds
+    GrossDomesticProduction on the "how" axis as an enum_value (not a constraintProperties
+    arc); 109 obs at country/IND. stat_var_dcid and entity_dcid sourced from std-02.
+
+- id: "cand-r3"
+  query: "GDP of Ethiopia"
+  entry_path: "raw_text"
+  tags:
+    - behaviour: candidates
+    - domain: standard
+    - seam: na
+    - conjunction: none
+  expected_status: "candidates"
+  expected_shape: null
+  expected_slots:
+    - axis: "where"
+      property_dcid: null
+      binding_kind: "value"
+      value_dcid: "country/ETH"
+  expected_stat_vars:
+    - "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+    - "GrowthRate_Amount_EconomicActivity_GrossDomesticProduction"
+    - "Amount_EconomicActivity_GrossDomesticProduction_Nominal_PerCapita"
+    - "ONE/who_gge-gdp"
+  expected_entities:
+    - dcid: "country/ETH"
+      role_kind: "subject"
+      direction: null
+      role_dcid: null
+  expected_no_data_reason: null
+  candidate_count: 3
+  status: VERIFIED_AGAINST_GRAPH
+  notes: >
+    Candidates floor golden (F13): lifts main-slice verified candidates count from
+    9 to 10. Modelled on cand-r1 ("GDP of Brazil") -- same four GDP shapes, different
+    entity. "GDP of Ethiopia" is ambiguous across nominal level, growth rate, per-capita,
+    and government-expenditure-ratio shapes, mirroring cand-r1's four-SV pattern.
+    candidate_count=3 mirrors cand-r1 (three distinct five-tuples from the four SVs;
+    ONE/who_gge-gdp uses GDP as its denominator, not the measured quantity, giving a
+    structurally distinct shape). seam=na: Ethiopia is a standard subject entity, not
+    a development-finance recipient. Coordinator must verify in H1: (1) all four SVs
+    exist with live observations at country/ETH; (2) actual candidate_count (engine
+    output may differ if ONE/who_gge-gdp scores below the dominance threshold or
+    if a RealValue GDP SV also exists for Ethiopia, as it does for India in std-02);
+    (3) country/ETH resolves correctly as subject. country/ETH confirmed
+    VERIFIED_AGAINST_GRAPH across df-01, df-04, df-06, df-08 and many others. All
+    four stat_var DCIDs sourced from cand-r1 (VERIFIED_AGAINST_GRAPH for country/BRA).
+
+- id: "std-denom-01"
+  query: "GDP per capita India"
+  entry_path: "raw_text"
+  tags:
+    - behaviour: definite
+    - domain: standard
+    - seam: na
+    - conjunction: none
+  expected_status: "definite"
+  expected_shape:
+    population_type_dcid: "EconomicActivity"
+    measured_property_dcid: "amount"
+    stat_type_dcid: "measuredValue"
+    measurement_qualifier_dcid: "Nominal"
+    measurement_denominator_dcid: null
+  expected_slots:
+    - axis: "how"
+      property_dcid: "activitySource"
+      binding_kind: "value"
+      value_dcid: "GrossDomesticProduction"
+  expected_stat_vars:
+    - "Amount_EconomicActivity_GrossDomesticProduction_Nominal_PerCapita"
+  expected_entities:
+    - dcid: "country/IND"
+      role_kind: "subject"
+      direction: null
+      role_dcid: null
+  expected_no_data_reason: null
+  candidate_count: null
+  status: VERIFIED_AGAINST_GRAPH
+  notes: >
+    Standard per-capita golden (F13): "GDP per capita" selects the PerCapita variant of
+    the Nominal GDP shape. Verified against staging: the engine models per-capita as a
+    distinct shape family (shape_id economicactivity_amount_measuredvalue_nominal_per_percapita)
+    and leaves measurement_denominator null rather than binding a PerCapita denominator;
+    it resolves definite to Amount_EconomicActivity_GrossDomesticProduction_Nominal_PerCapita
+    (65 obs 1960-2024 at country/IND). activitySource binds GrossDomesticProduction on the
+    "how" axis. seam=na: India is a standard subject entity. SV and entity sourced from
+    std-02. Note: no corpus golden now pins a non-null measurement_denominator, since the
+    engine encodes per-capita in the shape family instead.
+
+- id: "std-denom-02"
+  query: "GDP per capita Brazil"
+  entry_path: "raw_text"
+  tags:
+    - behaviour: definite
+    - domain: standard
+    - seam: na
+    - conjunction: none
+  expected_status: "definite"
+  expected_shape:
+    population_type_dcid: "EconomicActivity"
+    measured_property_dcid: "amount"
+    stat_type_dcid: "measuredValue"
+    measurement_qualifier_dcid: "Nominal"
+    measurement_denominator_dcid: null
+  expected_slots:
+    - axis: "how"
+      property_dcid: "activitySource"
+      binding_kind: "value"
+      value_dcid: "GrossDomesticProduction"
+  expected_stat_vars:
+    - "Amount_EconomicActivity_GrossDomesticProduction_Nominal_PerCapita"
+  expected_entities:
+    - dcid: "country/BRA"
+      role_kind: "subject"
+      direction: null
+      role_dcid: null
+  expected_no_data_reason: null
+  candidate_count: null
+  status: VERIFIED_AGAINST_GRAPH
+  notes: >
+    Standard per-capita golden (F13): second per-capita entry, different entity (Brazil).
+    Mirrors std-denom-01 using country/BRA (65 obs for
+    Amount_EconomicActivity_GrossDomesticProduction_Nominal_PerCapita at country/BRA,
+    1960-2024, from cand-r1). Verified against staging: engine resolves definite to the
+    per-capita SV via the shape family economicactivity_amount_measuredvalue_nominal_per_percapita
+    with measurement_denominator null; activitySource binds GrossDomesticProduction on the
+    "how" axis. seam=na: Brazil is a standard subject entity. SV and entity sourced from
+    cand-r1.
 ```
 
 ## Holdout slice

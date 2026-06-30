@@ -28,6 +28,7 @@ async def recall(
     *,
     graph: EngineGraphClient,
     raw_query: str | None = None,
+    pre_resolved: dict[str, str] | None = None,
 ) -> Recall:
     """Run the recall stage: detect candidate SVs and resolve entity names.
 
@@ -38,6 +39,10 @@ async def recall(
         raw_query: The original user query, used for detect_svs when provided.
             Falls back to variable when None. The detect endpoint benefits from
             the full query context (entities + variable together).
+        pre_resolved: Optional map of already-resolved entity names to dcids.
+            Names present here skip the resolve_entity graph call. Names
+            absent here are resolved normally. Shared across variables to reduce
+            redundant entity resolution calls.
 
     Returns:
         A Recall with candidate_svs and resolved_entity_names.
@@ -48,16 +53,19 @@ async def recall(
         via node reads in the materialise stage.
     """
     detect_query = raw_query or variable
+    _pre = pre_resolved or {}
+    cache_hits = {name: _pre[name] for name in entities if name in _pre}
+    misses = [name for name in entities if name not in _pre]
+
     all_coros = [asyncio.to_thread(graph.detect_svs, detect_query)] + [
-        asyncio.to_thread(graph.resolve_entity, name) for name in entities
+        asyncio.to_thread(graph.resolve_entity, name) for name in misses
     ]
     all_results = await asyncio.gather(*all_coros)  # plain; NOT return_exceptions=True
     svs, _entity_dcids, scores = all_results[0]  # ty: ignore[not-iterable]  # asyncio.gather heterogeneous
-    resolved: dict[str, str] = {  # ty: ignore[invalid-assignment]  # asyncio.gather heterogeneous
-        name: dcid
-        for name, dcid in zip(entities, all_results[1:], strict=True)
-        if dcid is not None
-    }
+    resolved: dict[str, str] = dict(cache_hits)
+    for name, dcid in zip(misses, all_results[1:], strict=True):
+        if dcid is not None:
+            resolved[name] = dcid  # ty: ignore[invalid-assignment]  # asyncio.gather heterogeneous
 
     return Recall(
         candidate_svs=svs,  # ty: ignore[invalid-argument-type]  # asyncio.gather heterogeneous

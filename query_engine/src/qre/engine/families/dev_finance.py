@@ -385,6 +385,7 @@ def _construct_resolve(
     # Construct and confirm each recipient × (scheme × purpose) combination.
     confirmed_svs: list[str] = []
     all_facets: list[Facet] = []
+    facets_by_sv: dict[str, list[Facet]] = {}
     for r in recipient_dcids_local:
         for scheme in scheme_dcids:
             for purpose in purpose_dcids:
@@ -397,6 +398,7 @@ def _construct_resolve(
                     needs_dates=(date_request is not None),
                 )
                 all_facets.extend(facets)
+                facets_by_sv[sv_dcid] = list(facets)
 
     if not confirmed_svs:
         return NoDataDraft(reason="no_observations")
@@ -408,11 +410,17 @@ def _construct_resolve(
     coverage = coverage_from_facets(
         all_facets, date_request=date_request, facet_label="donors", obs_label="years"
     )
+    # Thread per-SV facets so StatVar.data_date_range is derived for the construct
+    # path too. The construct probe reads the donor's reported figures, so no SV is
+    # confirmed by probing the recipient entity directly: recipient_confirmed is the
+    # empty set, yielding data_confirmed_at_recipient=False (set, not None).
     return Materialised(
         sv_dcids=confirmed_svs,
         facets=all_facets,
         has_data=has_data,
         coverage=coverage,
+        facets_by_sv=facets_by_sv,
+        recipient_confirmed=set(),
     )
 
 

@@ -15,7 +15,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from qre.engine.llm import LLM
+from qre.engine.llm import SupportsLLM
 from qre.models import TimeWindow
 
 # ---------------------------------------------------------------------------
@@ -70,7 +70,8 @@ class Extraction(BaseModel):
         default_factory=list,
         description=(
             "Place names or named regions, rendered in ENGLISH. If the query is in "
-            "another language, translate each place name to its common English name. "
+            "another language, translate each place name to its common English name "
+            '(e.g. "España" → "Spain", "Deutschland" → "Germany", "Kenia" → "Kenya"). '
             "Empty list when the query names no place."
         ),
     )
@@ -197,6 +198,9 @@ Example — "official development assistance from Germany to Ethiopia":
 Example — "GDP per capita in Kenya and Uganda since 2010":
 {"variables": ["GDP per capita"], "entities": ["Kenya", "Uganda"],
  "dates": [{"kind": "range", "start": "2010", "end": null}]}
+
+Example — "esperanza de vida en España":
+{"variables": ["life expectancy"], "entities": ["Spain"], "dates": []}
 """
 
 
@@ -213,8 +217,8 @@ def _system_instruction() -> str:
 async def extract(
     query: str,
     *,
-    llm: LLM,
-) -> Extraction:
+    llm: SupportsLLM,
+) -> tuple[Extraction, dict | None]:
     """Extract structured fields from a natural-language query.
 
     Args:
@@ -223,11 +227,12 @@ async def extract(
             lives on the LLM instance, not the call.
 
     Returns:
-        An Extraction instance.
+        An ``(Extraction, usage)`` tuple. ``usage`` is the LLM token-usage dict
+        or None when unavailable.
     """
     system = _system_instruction()
     # Run the sync LLM call off the event loop.
-    result: Extraction = await asyncio.to_thread(  # ty: ignore[invalid-assignment]  # asyncio.to_thread TypeVar
+    result: tuple[Extraction, dict | None] = await asyncio.to_thread(  # ty: ignore[invalid-assignment]  # asyncio.to_thread TypeVar
         llm.generate_structured,
         prompt=query,
         system=system,

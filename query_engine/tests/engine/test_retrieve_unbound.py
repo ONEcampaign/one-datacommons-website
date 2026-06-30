@@ -11,11 +11,13 @@ from qre.engine.bind import SlotBindingDraft
 from qre.engine.families import DEV_FINANCE_FAMILY
 from qre.engine.retrieve import Materialised, NoDataDraft, materialise
 from qre.engine.shape import build_shape
+from qre.models import Axis, BindingKind
+from tests.engine._harness import dimensions_of
 from tests.fixtures import FakeGraph
 
 
 def _binding(
-    axis: str, prop: str, kind: str, value_dcids: list[str] | None = None
+    axis: Axis, prop: str, kind: BindingKind, value_dcids: list[str] | None = None
 ) -> SlotBindingDraft:
     return SlotBindingDraft(
         axis=axis,
@@ -150,8 +152,9 @@ class TestUnboundSchemeSuccessHasRealFacets:
         assert isinstance(result, Materialised)
         coverage = result.coverage
         assert coverage.has_data is True
-        non_zero_dims = [d for d in coverage.dimensions if d.count > 0]
-        assert len(non_zero_dims) > 0, f"expected non-zero coverage dims, got {coverage.dimensions}"
+        dims = dimensions_of(coverage)
+        non_zero_dims = [d for d in dims if d.count > 0]
+        assert len(non_zero_dims) > 0, f"expected non-zero coverage dims, got {dims}"
 
     def test_success_coverage_is_breadth_not_exact(self):
         """The unbound-scheme path probes one scheme as a has-data sentinel; it must

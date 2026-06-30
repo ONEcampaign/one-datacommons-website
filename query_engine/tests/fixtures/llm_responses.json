@@ -1,6 +1,6 @@
 {
   "_comment": "LLM response fixtures. Key = '{schema_name}:{sha1(system + chr(1) + prompt)}'. Value = the JSON the schema would parse. Used by FakeLLM.generate_structured. Authored for 2026-06-23 system prompts (extraction system prompt includes today's date). To refresh after a prompt or date change, re-run tests/fixtures/record.py with live credentials.",
-  "Extraction:8195716e54223f8845e2315632bd0aac9aef6527": {
+  "Extraction:490e2d59b030d952f1e826b0b325277052db54ce": {
     "variables": [
       "health ODA grants"
     ],
@@ -10,7 +10,7 @@
     ],
     "dates": []
   },
-  "Extraction:2920f33ec40f9cf2e07c4105e80de007785a9fd4": {
+  "Extraction:6595afa94d0cc7c52c3688e888a0d1b9775b2d39": {
     "variables": [
       "health ODA grants"
     ],
@@ -30,7 +30,7 @@
     ],
     "dates": []
   },
-  "Extraction:13d16e00a7d5546a352a04fea7fd1738245a640e": {
+  "Extraction:5d610050a029782b04e465783157f5b0ae3890c5": {
     "variables": [
       "HIV/AIDS ODA grants"
     ],
@@ -40,7 +40,7 @@
     ],
     "dates": []
   },
-  "Extraction:0b89305b338ab271d067c6e59999943dd8009e8e": {
+  "Extraction:d23005562316471291f3e508fd4a84397eb476b9": {
     "variables": [
       "basic health ODA grants"
     ],
@@ -50,7 +50,7 @@
     ],
     "dates": []
   },
-  "Extraction:ac682d8f758ba64fb8546248ca4dbbac93adba7c": {
+  "Extraction:ad7fb0f81b3298eaad86d72af17211eb5e420e50": {
     "variables": [
       "health ODA grants"
     ],
@@ -59,7 +59,7 @@
     ],
     "dates": []
   },
-  "Extraction:23eb641f29e84e212d5ab5aa6754b470c0f163f8": {
+  "Extraction:8d1ad88401e195424390d0e3e378f2b478ddb2b6": {
     "variables": [
       "basic health ODA grants"
     ],
@@ -68,7 +68,7 @@
     ],
     "dates": []
   },
-  "Extraction:0165ee99c7746442b84c4a5db1515bb9672280f3": {
+  "Extraction:843616524a326e0c7e82d1e2177a72a0b9c1e401": {
     "variables": [
       "reproductive health ODA grants"
     ],
@@ -77,7 +77,7 @@
     ],
     "dates": []
   },
-  "Extraction:f36426ef5a25afcdfe760ca43afedb7d23e2269c": {
+  "Extraction:fc23cbbbc592800eec3e1867008459d1ccb68f84": {
     "variables": [
       "health aid"
     ],
@@ -86,7 +86,7 @@
     ],
     "dates": []
   },
-  "Extraction:4bb7d5cce3fe4bf6d0c6f2b0001170c64261d490": {
+  "Extraction:977ce5d736af56266a7512521d5b6c03a6eefa78": {
     "variables": [
       "education ODA"
     ],
@@ -95,7 +95,7 @@
     ],
     "dates": []
   },
-  "Extraction:1fb2c6ecc8d98ecad7a2d781000b85b4f542a0be": {
+  "Extraction:a55b8ee5a6deaad6da107167d1ddf81a1e76222b": {
     "variables": [
       "health ODA per capita"
     ],
@@ -104,7 +104,7 @@
     ],
     "dates": []
   },
-  "Extraction:e75af2fbe654a9ac34e8b24985aed796eadc9bae": {
+  "Extraction:4343cb75ff596b959874654a5265343318459c38": {
     "variables": [
       "health ODA grants"
     ],
@@ -114,7 +114,7 @@
     ],
     "dates": []
   },
-  "Extraction:67cc93010eb11d5fd81e585fa01adff894b9fca7": {
+  "Extraction:64c5cfb84266ae14c3afa6742032a3035cb2136c": {
     "variables": [
       "official development assistance"
     ],
@@ -123,7 +123,7 @@
     ],
     "dates": []
   },
-  "Extraction:e7c7c72952ecc5d439b2f2125f7ad132491c2bbe": {
+  "Extraction:588088e3fc083b8793d56a1b2d1f4770c97d5e2b": {
     "variables": [
       "GDP per capita"
     ],
@@ -138,7 +138,7 @@
       }
     ]
   },
-  "Extraction:28e55830b942615f4e36268719d8e8c0ab776084": {
+  "Extraction:0fa6a68c6ff2ae5078ae38cf2e1b34a47a71cbfc": {
     "variables": [
       "malaria control ODA grants"
     ],
@@ -149,7 +149,7 @@
     "dates": []
   },
   "_comment_bind_pipeline": "Keys below are for the pipeline bind calls (1-recipient where slot). After the families.py DAC/Malariacontrol typo fix (2026-06-23) all pipeline bind keys changed because the taxonomy appears in the prompt.",
-  "_BindOutput:94a44a326e01c3001944862b3f54680d5979b843": {
+  "_BindOutput:ae3d5cc2027aeb3980552bca9c5633d0e8f096fb": {
     "bindings": [
       {
         "axis": "what",
@@ -177,7 +177,7 @@
       }
     ]
   },
-  "_BindOutput:d5a6672ca14f672a1552fbb1dc20e98b31701026": {
+  "_BindOutput:d5102889ec1397a374b4c242482dca6d3706ded1": {
     "bindings": [
       {
         "axis": "what",
@@ -205,7 +205,7 @@
       }
     ]
   },
-  "_BindOutput:328679a04a03c058653515633bcd2b302c4e1a01": {
+  "_BindOutput:d3838bb6ffe342e0510175342e269efbe9f05f7d": {
     "bindings": [
       {
         "axis": "what",
@@ -261,7 +261,7 @@
       }
     ]
   },
-  "_BindOutput:e1995b17d7cfe450c1e6333af89e7bf202e6849d": {
+  "_BindOutput:6d1613a7ca7947f450a54f1883d8aabb453a0f08": {
     "bindings": [
       {
         "axis": "what",
@@ -289,7 +289,7 @@
       }
     ]
   },
-  "_BindOutput:cc234c92e7945b8895938cdf41abd946ad0ca380": {
+  "_BindOutput:c0183d29b5baf2f1ba5898605d16fb8e002bd5fd": {
     "bindings": [
       {
         "axis": "what",
@@ -317,7 +317,7 @@
       }
     ]
   },
-  "_BindOutput:f24403796363315389e0efbaed8dd30d081e8eab": {
+  "_BindOutput:06e03261211b2334681adba290c377218b551ea4": {
     "bindings": [
       {
         "axis": "what",
@@ -343,7 +343,7 @@
       }
     ]
   },
-  "_BindOutput:a1f20bfd611e6db633d9306fca3ccdb9e1ae45f7": {
+  "_BindOutput:92e3018206070296bd75dc66fe2a8a901a5344f8": {
     "bindings": [
       {
         "axis": "what",
@@ -372,7 +372,7 @@
       }
     ]
   },
-  "_BindOutput:de7d4c9d2d08fe5c9f72993a084dbdf7aeadbf26": {
+  "_BindOutput:4aacd1d409e197c8bf09807af34de118c0e9dc75": {
     "bindings": [
       {
         "axis": "what",
@@ -400,7 +400,7 @@
       }
     ]
   },
-  "_BindOutput:86450410e1dabba3217f72bc00219fa4600895e7": {
+  "_BindOutput:9468092283d794a63797a73a64b6e858226b47b7": {
     "bindings": [
       {
         "axis": "what",
@@ -428,7 +428,7 @@
       }
     ]
   },
-  "_BindOutput:fcd917f6220604bb47e588f73cb52f86c66425a6": {
+  "_BindOutput:0406d77879297a25440a070973bf718dd2337f89": {
     "bindings": [
       {
         "axis": "what",
@@ -457,7 +457,7 @@
     ]
   },
   "_comment_test_bind_fixtures": "Keys below are for test_bind.py which uses a hand-crafted multi-recipient taxonomy (vs. pipeline's 1-recipient taxonomy). Same logical responses, different key because taxonomy differs. These keys are stable across the PURPOSES typo fix because test_bind.py uses its own taxonomy.",
-  "_BindOutput:07de419f110415c846428230ee7cfe619694ff4d": {
+  "_BindOutput:b5c2340b77ed6e019308fb2fb35465f0daea7157": {
     "bindings": [
       {
         "axis": "what",
@@ -485,7 +485,7 @@
       }
     ]
   },
-  "_BindOutput:0908aba64d4c1e0f8653cf25a347a02e747859ca": {
+  "_BindOutput:98a2d07f891d6320309d3230847ddf624fec2581": {
     "bindings": [
       {
         "axis": "what",
@@ -513,7 +513,7 @@
       }
     ]
   },
-  "_BindOutput:8db5be6ca3ff285cc8b0d13bbab724b4910ac0f8": {
+  "_BindOutput:728cba03fc2b56cab1faa6b1917aa114d13d573e": {
     "bindings": [
       {
         "axis": "what",
@@ -542,7 +542,7 @@
       }
     ]
   },
-  "_BindOutput:bf4711bc864dc1e64075941bd4ed87111b4a6208": {
+  "_BindOutput:5f5955e25982a7ba51a6415153f3e66b519174be": {
     "bindings": [
       {
         "axis": "what",
@@ -568,7 +568,7 @@
       }
     ]
   },
-  "_BindOutput:f7ab449f86ec3515d77290622f76ccf18dac91d6": {
+  "_BindOutput:eca0c19d75eb0118838631fb8f089e03762a192c": {
     "bindings": [
       {
         "axis": "how",
@@ -578,7 +578,7 @@
       }
     ]
   },
-  "Extraction:6a283010b5583fd72ec08cb4dd65b4f96aba8c66": {
+  "Extraction:93fa711792741c4109b69079b94ad8bd29fbfd46": {
     "variables": [
       "health ODA grants"
     ],
@@ -588,7 +588,7 @@
     ],
     "dates": []
   },
-  "Extraction:a62e759de28bfd8f0c43538c6466031492cea561": {
+  "Extraction:2e9a37407b0c4d6a062cdcd391c20bfbb12eb5a7": {
     "variables": [
       "health ODA"
     ],
@@ -598,7 +598,7 @@
     ],
     "dates": []
   },
-  "Extraction:0ee7e2fc6a3c6ee092f72d7c2a29eda86df9e398": {
+  "Extraction:1f9ee8cf4060e2b4ac024a930dec97f974c40f40": {
     "variables": [
       "health ODA grants"
     ],
@@ -607,7 +607,7 @@
     ],
     "dates": []
   },
-  "Extraction:b5a28b780e735d0a8dae9814235afb3f33754e2f": {
+  "Extraction:036f61757ec97c1725ae191239167007c6b291c6": {
     "variables": [
       "health ODA grants"
     ],
@@ -616,7 +616,7 @@
     ],
     "dates": []
   },
-  "_BindOutput:221ff53bd7086305a0f6e6b17a1a5e38813e2bdd": {
+  "_BindOutput:aeb7fff738d70702b820e3f9bbb6d858a7d6ffa2": {
     "bindings": [
       {
         "axis": "what",
@@ -642,7 +642,7 @@
       }
     ]
   },
-  "Extraction:c10fffe4cea012dae06dcbc79ded74f974d17230": {
+  "Extraction:f59af87bf1fa7fa5c89a77cc882bfe761985a277": {
     "variables": [
       "health official development assistance"
     ],
@@ -652,7 +652,7 @@
     ],
     "dates": []
   },
-  "_BindOutput:3791bc3c4a2531c6e4cb1b0c392b42f2dc2e882f": {
+  "_BindOutput:bd9ce00b37a1fefd45a0e235a26a569fb4ed403f": {
     "bindings": [
       {
         "axis": "what",
@@ -678,7 +678,7 @@
       }
     ]
   },
-  "Extraction:4fcb9e8fa084c09244e2d589124e12a6599dd3dd": {
+  "Extraction:6f79e8735fd874fd6c5d56495ea1081503c4fb48": {
     "variables": [
       "government education spending"
     ],
@@ -719,7 +719,7 @@
       }
     ]
   },
-  "Extraction:e9a6d21a9d36b85a19b510a0a547ef4445ba92bd": {
+  "Extraction:fcc68bf393af12dfab0a6a66fa1410efffc8495c": {
     "variables": [
       "total population"
     ],
@@ -728,7 +728,7 @@
     ],
     "dates": []
   },
-  "Extraction:84c616db47b1262a17b54d7dcc9298199b8092fa": {
+  "Extraction:e7deec3e165fc0771a7026e54945c7e7b57a4c07": {
     "variables": [
       "GDP"
     ],
@@ -737,7 +737,7 @@
     ],
     "dates": []
   },
-  "Extraction:e8c2d0c6ce0dfef7d052c35e03ca4e733d0a23a7": {
+  "Extraction:7cf2f72d1f88e0ff6409a0d73b237a04b27da19f": {
     "variables": [
       "birth rate"
     ],
@@ -746,14 +746,14 @@
     ],
     "dates": []
   },
-  "Extraction:03bf77d3b8ad3e9445bd0080b72f01635da931b6": {
+  "Extraction:0e4481318d8063de029bfee930363032722ae46e": {
     "variables": [
       "under-5 child mortality rate"
     ],
     "entities": [],
     "dates": []
   },
-  "Extraction:e41671c0e11c63d0f7fe5514ddee21453d68863e": {
+  "Extraction:422bbc861da0e66322fbed8c077074fc13e28c6c": {
     "variables": [
       "number of births"
     ],
@@ -792,7 +792,7 @@
       }
     ]
   },
-  "Extraction:947958f6e9997f313d1b96436ed2844ed227ba5e": {
+  "Extraction:e2cb9fe224bc4d8f121bdcd0033d9af7aa35a870": {
     "variables": [
       "fertility rate"
     ],
@@ -819,7 +819,7 @@
       }
     ]
   },
-  "Extraction:0031f1e7a63057e6082917b2ce79afa489979a0e": {
+  "Extraction:f58410a400765e339e6b62430752ca92fede4bec": {
     "variables": [
       "teacher count"
     ],
@@ -849,7 +849,7 @@
       }
     ]
   },
-  "Extraction:722e8ea7d5b48211032115b184c114babc9fd72f": {
+  "Extraction:34e70112d940e8dcefae778112251bcf0495dba3": {
     "variables": [
       "left-handedness rate"
     ],
@@ -858,7 +858,7 @@
     ],
     "dates": []
   },
-  "Extraction:94a530df34ced24ae6f4d1c4d2d2a7dec5f96d65": {
+  "Extraction:6cb3719b4e75047ee2387a95d08406c51d8a05bf": {
     "variables": [
       "GDP"
     ],
@@ -867,7 +867,7 @@
     ],
     "dates": []
   },
-  "Extraction:2a3da619795d46b36235e3ced338d18d90683ad2": {
+  "Extraction:0a9013cd66d5b7af32c8f8fd4f3b10f1e220378b": {
     "variables": [
       "income"
     ],
@@ -876,7 +876,7 @@
     ],
     "dates": []
   },
-  "Extraction:8c794e19ece2ccf69a1ed914853c207e20b24347": {
+  "Extraction:722ed875d389d1cbbfb917eece036c4d81637973": {
     "variables": [
       "infant mortality rate"
     ],
@@ -1075,7 +1075,7 @@
     ],
     "dates": []
   },
-  "Extraction:00bd3c33938ac585aaf54e606e67f26446f9ad77": {
+  "Extraction:db2ba715c9a32f85b8680025be25da95b601d820": {
     "variables": [
       "population",
       "GDP"
@@ -1085,7 +1085,7 @@
     ],
     "dates": []
   },
-  "Extraction:326618c1a9688cabe6d25b2012c841315d4eb9ae": {
+  "Extraction:ab1ba33a98b104e609a1020f42608062a1ca555a": {
     "variables": [
       "health ODA grants"
     ],
@@ -1093,6 +1093,56 @@
       "USA",
       "Kenya",
       "Ethiopia"
+    ],
+    "dates": []
+  },
+  "_BindOutput:6d72c9ba5a752e921d66ef39c834c0f6897802a4": {
+    "ask": "Variable 'climate data in Germany' does not correspond to any development finance taxonomy member.",
+    "bindings": [
+      {
+        "axis": "what",
+        "property_dcid": "DevelopmentFinanceScheme",
+        "kind": "unbound",
+        "value_dcids": []
+      },
+      {
+        "axis": "how",
+        "property_dcid": "DevelopmentFinancePurpose",
+        "kind": "unbound",
+        "value_dcids": []
+      },
+      {
+        "axis": "where",
+        "property_dcid": "DevelopmentFinanceRecipient",
+        "kind": "unbound",
+        "value_dcids": []
+      }
+    ]
+  },
+  "Extraction:ae34be0f30be303ba10b90da23e73e7a730edef2": {
+    "variables": [
+      "GDP"
+    ],
+    "entities": [
+      "Ethiopia"
+    ],
+    "dates": []
+  },
+  "Extraction:aa39f3e49995507ffb94e3797a730d269a01c2b4": {
+    "variables": [
+      "GDP per capita"
+    ],
+    "entities": [
+      "India"
+    ],
+    "dates": []
+  },
+  "Extraction:31dd252dc678e97ad115f4e8e3f399829212addf": {
+    "variables": [
+      "GDP per capita"
+    ],
+    "entities": [
+      "Brazil"
     ],
     "dates": []
   }

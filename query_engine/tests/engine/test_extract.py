@@ -6,7 +6,13 @@ from __future__ import annotations
 
 import asyncio
 
-from qre.engine.extract import ExtractedDate, Extraction, extract
+from qre.engine.extract import (
+    Extraction,
+    ExtractedDate,
+    _EXTRACTION_SYSTEM_PROMPT,
+    _system_instruction,
+    extract,
+)
 from tests.fixtures import FakeLLM
 
 # ---------------------------------------------------------------------------
@@ -22,7 +28,7 @@ def _run(coro):
 
 def test_extract_health_oda_grants_usa_eth():
     """df-01: health ODA grants from USA to Ethiopia → variables + entities."""
-    result = _run(extract(
+    result, _ = _run(extract(
         "health ODA grants from USA to Ethiopia",
         llm=FakeLLM(),
     ))
@@ -35,7 +41,7 @@ def test_extract_health_oda_grants_usa_eth():
 
 def test_extract_hiv_aids_oda_grants_usa_ken():
     """df-05: HIV/AIDS ODA grants from USA to Kenya → variables + entities."""
-    result = _run(extract(
+    result, _ = _run(extract(
         "HIV/AIDS ODA grants from USA to Kenya",
         llm=FakeLLM(),
     ))
@@ -46,7 +52,7 @@ def test_extract_hiv_aids_oda_grants_usa_ken():
 
 def test_extract_oda_germany_eth():
     """df-04: health official development assistance from Germany to Ethiopia."""
-    result = _run(extract(
+    result, _ = _run(extract(
         "health official development assistance from Germany to Ethiopia",
         llm=FakeLLM(),
     ))
@@ -58,7 +64,7 @@ def test_extract_oda_germany_eth():
 
 def test_extract_health_aid_kenya():
     """df-09: health aid to Kenya — no scheme named (scheme becomes unbound)."""
-    result = _run(extract(
+    result, _ = _run(extract(
         "health aid to Kenya",
         llm=FakeLLM(),
     ))
@@ -69,7 +75,7 @@ def test_extract_health_aid_kenya():
 
 def test_extract_education_oda_india():
     """df-10: education ODA to India — set-binding case."""
-    result = _run(extract(
+    result, _ = _run(extract(
         "education ODA to India",
         llm=FakeLLM(),
     ))
@@ -80,7 +86,7 @@ def test_extract_education_oda_india():
 
 def test_extract_health_oda_to_ethiopia():
     """df-06: health ODA grants to Ethiopia — no donor named."""
-    result = _run(extract(
+    result, _ = _run(extract(
         "health ODA grants to Ethiopia",
         llm=FakeLLM(),
     ))
@@ -93,7 +99,7 @@ def test_extract_health_oda_to_ethiopia():
 
 def test_extract_with_year_range():
     """GDP since 2010 → range date with start=2010."""
-    result = _run(extract(
+    result, _ = _run(extract(
         "GDP per capita in Kenya since 2010",
         llm=FakeLLM(),
     ))
@@ -134,3 +140,28 @@ def test_extraction_empty_entities_is_valid():
     data = {"variables": ["life expectancy"], "entities": [], "dates": []}
     obj = Extraction.model_validate(data)
     assert obj.entities == []
+
+
+def test_system_prompt_contains_spanish_few_shot():
+    """The system prompt body includes the Spanish worked example (F24)."""
+    prompt = _system_instruction()
+    assert "esperanza de vida en España" in prompt, (
+        "Spanish few-shot example not found in rendered system prompt"
+    )
+    assert '"life expectancy"' in prompt, (
+        "Spanish example translation 'life expectancy' missing from system prompt"
+    )
+    assert '"Spain"' in prompt, (
+        "Spanish example entity 'Spain' missing from system prompt"
+    )
+
+
+def test_entities_description_contains_translation_examples():
+    """The entities field description includes concrete translation examples (F24)."""
+    desc = Extraction.model_fields["entities"].description or ""
+    assert "España" in desc, "Translation example 'España' missing from entities description"
+    assert "Spain" in desc, "Translation example 'Spain' missing from entities description"
+    assert "Deutschland" in desc, "Translation example 'Deutschland' missing from entities description"
+    assert "Germany" in desc, "Translation example 'Germany' missing from entities description"
+    assert "Kenia" in desc, "Translation example 'Kenia' missing from entities description"
+    assert "Kenya" in desc, "Translation example 'Kenya' missing from entities description"

@@ -36,7 +36,7 @@ from qre.engine.families.dev_finance import (
 
 # --- Stable public surface ---
 from qre.engine.families.protocol import FamilyResolver, FamilyRule
-from qre.engine.families.registry import REGISTRY, rule_for
+from qre.engine.families.registry import REGISTRY, rule_for, rule_for_shape_id
 
 __all__ = [
     # Stable
@@ -44,6 +44,7 @@ __all__ = [
     "FamilyRule",
     "REGISTRY",
     "rule_for",
+    "rule_for_shape_id",
     # Dev-finance transitional (consumed by shape.py, core.py, tests/)
     "DEV_FINANCE_FAMILY",
     "Family",

@@ -208,6 +208,13 @@ class Shape(BaseModel):
     member_count: int = Field(
         description="how many candidate StatVars fell into this family"
     )
+    refine_supported: bool = Field(
+        default=False,
+        description=(
+            "true for named families (e.g. dev_finance_crs_dac) that support refine "
+            "via construct_sv_dcid; false for standard shapes, which are promote-only"
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -222,6 +229,17 @@ class StatVarSlotValue(BaseModel):
     value: SlotValue = Field(description="the slot member value this StatVar carries")
 
 
+class DateRange(BaseModel):
+    """Earliest and latest confirmed dates across observed facets for a StatVar."""
+
+    start: str | None = Field(
+        default=None, description="earliest confirmed date, e.g. '2012'"
+    )
+    end: str | None = Field(
+        default=None, description="latest confirmed date, e.g. '2022'"
+    )
+
+
 class StatVar(BaseModel):
     """A resolved StatVar inside the region."""
 
@@ -231,6 +249,18 @@ class StatVar(BaseModel):
     shape_id: str = Field(description="back-reference to its Shape family")
     slot_values: list[StatVarSlotValue] = Field(
         description="the slot members this StatVar realises, one per bound slot"
+    )
+    data_date_range: DateRange | None = Field(
+        default=None,
+        description="earliest and latest confirmed dates across observed facets",
+    )
+    data_confirmed_at_recipient: bool | None = Field(
+        default=None,
+        description=(
+            "True=recipient confirmed directly, "
+            "False=confirmed via donor entity only, "
+            "None=not checked"
+        ),
     )
 
 
@@ -395,6 +425,12 @@ class ResolutionTrace(BaseModel):
     pipeline_trace: list[PipelineStep] = Field(
         description="the pipeline steps, in order, with skip and timing"
     )
+    n_recalled: int | None = Field(
+        default=None,
+        description=(
+            "count of SVs passing the relevance threshold before the grounding/confirm cap"
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -526,6 +562,10 @@ class Diagnostics(BaseModel):
         description="degraded-mode, applied-signal, partial-graph signals"
     )
     timing_ms: Timing | None = Field(default=None, description="latency breakdown")
+    llm_usage: dict[str, int] | None = Field(
+        default=None,
+        description="per-request LLM token counts {input_tokens, output_tokens, cached_tokens}",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -672,6 +712,24 @@ class SpecResubmitInput(BaseModel):
     slots: list[Slot] = Field(
         description="the slot bindings to apply; the client may edit any binding"
     )
+    stat_var_dcids: list[str] | None = Field(
+        default=None,
+        max_length=100,
+        description=(
+            "resolved StatVar dcids of the candidate being promoted; required for "
+            "standard (catch-all) shape_ids, ignored for named families"
+        ),
+    )
+    entity_dcids: list[str] | None = Field(
+        default=None,
+        max_length=50,
+        description=(
+            "resolved entity dcids the data is about; used by standard promote when the "
+            "where-slot carries no entity (subject-only queries); omitting it on a "
+            "subject-only standard promote degrades to no_data, not a 400; "
+            "ignored for named families"
+        ),
+    )
 
 
 ResolveInput = Annotated[
@@ -684,7 +742,9 @@ class ResolveOptions(BaseModel):
     """Optional resolution parameters the caller may supply."""
 
     max_candidates: int | None = Field(
-        default=None, description="requested maximum candidates; clamped to the server ceiling"
+        default=None,
+        ge=2,
+        description="requested maximum candidates; clamped to the server ceiling",
     )
     coverage: CoverageOption | None = Field(
         default=None,

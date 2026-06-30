@@ -9,11 +9,22 @@ This test proves the assembly path is reachable and correct.
 """
 from __future__ import annotations
 
-from qre.engine.assemble import assemble_candidates, build_shape_model, build_slot, build_spec
+from qre.engine.assemble import (
+    assemble_candidates,
+    bind_when_slot,
+    build_shape_model,
+    build_slot,
+    build_spec,
+)
 from qre.engine.bind import SlotBindingDraft
 from qre.engine.families import DEV_FINANCE_FAMILY  # noqa: E402
-from qre.engine.shape import build_shape
+from qre.engine.shape import SlotKeyDraft, build_shape
 from qre.models import (
+    Axis,
+    BindingKind,
+    BindingSet,
+    BindingUnbound,
+    BindingValue,
     BreadthDim,
     CandidatesResponse,
     CoverageBare,
@@ -25,6 +36,8 @@ from qre.models import (
     PipelineStep,
     QueryEcho,
     ResolveResponse,
+    Slot,
+    SlotKey,
     StatVar,
     TimeWindow,
     Timing,
@@ -119,9 +132,9 @@ def _make_spec(sv_dcid: str, purpose_dcid: str, recipient_dcid: str):
         (shape_draft.slot_keys[1], purpose_draft, [purpose_ref]),
         (shape_draft.slot_keys[2], recipient_draft, [recipient_ref]),
     ]:
-        prop_ref = GraphRef(
-            dcid=slot_draft_key.property_dcid, label=slot_draft_key.property_dcid
-        )
+        prop_dcid = slot_draft_key.property_dcid
+        assert prop_dcid is not None
+        prop_ref = GraphRef(dcid=prop_dcid, label=prop_dcid)
         slot = build_slot(slot_draft_key, binding_draft, grounded, property_ref=prop_ref)
         slots.append(slot)
         slot_key_models.append(slot.key)
@@ -143,7 +156,6 @@ def _make_spec(sv_dcid: str, purpose_dcid: str, recipient_dcid: str):
         entities=[_make_entity("country/ETH", "Ethiopia")],
         coverage=_make_coverage(),
         pipeline_trace=_make_pipeline_steps(),
-        timing_by_step={},
     )
 
 
@@ -291,7 +303,9 @@ def test_build_spec_applied_window_and_date_source_when_window_present():
             [GraphRef(dcid="country/ETH", label="Ethiopia")],
         ),
     ]:
-        prop_ref = GraphRef(dcid=slot_draft_key.property_dcid, label=slot_draft_key.property_dcid)
+        prop_dcid = slot_draft_key.property_dcid
+        assert prop_dcid is not None
+        prop_ref = GraphRef(dcid=prop_dcid, label=prop_dcid)
         slot = build_slot(slot_draft_key, binding_draft, grounded, property_ref=prop_ref)
         slots.append(slot)
         slot_key_models.append(slot.key)
@@ -307,7 +321,7 @@ def test_build_spec_applied_window_and_date_source_when_window_present():
         entities=[_make_entity("country/ETH", "Ethiopia")],
         coverage=_make_exact_coverage(window),
         pipeline_trace=_make_pipeline_steps(),
-        timing_by_step={},
+        date_source="query",
     )
 
     assert result_spec.resolution.applied_window == window
@@ -379,3 +393,188 @@ def test_assemble_candidates_include_sentence_default_is_none():
     inner = result.root
     assert isinstance(inner, CandidatesResponse)
     assert inner.rendered_sentence is None
+
+
+# ---------------------------------------------------------------------------
+# bind_when_slot
+# ---------------------------------------------------------------------------
+
+
+def _bare_slot(axis: Axis) -> Slot:
+    """Build a minimal BindingUnbound Slot for bind_when_slot tests."""
+    return Slot(
+        key=SlotKey(axis=axis, property=None, label=axis),
+        binding=BindingUnbound(),
+    )
+
+
+def test_bind_when_slot_no_op_when_window_none():
+    """bind_when_slot with window=None returns the original list unchanged."""
+    slots = [_bare_slot("what"), _bare_slot("when"), _bare_slot("source")]
+    result = bind_when_slot(slots, window=None)
+    assert result is slots
+
+
+def test_bind_when_slot_replaces_when_slot_with_time_window():
+    """bind_when_slot with a window binds the when-slot to value_kind='time_window'."""
+    window = TimeWindow(start_year=2015, end_year=2020)
+    slots = [_bare_slot("what"), _bare_slot("when"), _bare_slot("source")]
+    result = bind_when_slot(slots, window=window)
+
+    when_slot = next(s for s in result if s.key.axis == "when")
+    assert isinstance(when_slot.binding, BindingValue)
+    assert when_slot.binding.value.value_kind == "time_window"
+    assert when_slot.binding.value.time_window == window
+    assert when_slot.binding.value.ref is None
+
+
+def test_bind_when_slot_source_stays_unbound():
+    """bind_when_slot with a window does not touch the source slot."""
+    window = TimeWindow(start_year=2015)
+    slots = [_bare_slot("when"), _bare_slot("source")]
+    result = bind_when_slot(slots, window=window)
+
+    source_slot = next(s for s in result if s.key.axis == "source")
+    assert isinstance(source_slot.binding, BindingUnbound)
+
+
+def test_bind_when_slot_preserves_order_and_other_bindings():
+    """bind_when_slot preserves slot order; non-when slots are untouched."""
+    window = TimeWindow(start_year=2020)
+    slots = [
+        _bare_slot("what"),
+        _bare_slot("how"),
+        _bare_slot("where"),
+        _bare_slot("when"),
+        _bare_slot("source"),
+    ]
+    result = bind_when_slot(slots, window=window)
+
+    assert [s.key.axis for s in result] == ["what", "how", "where", "when", "source"]
+    for s in result:
+        if s.key.axis != "when":
+            assert isinstance(s.binding, BindingUnbound)
+
+
+# ---------------------------------------------------------------------------
+# build_slot value_kind dispatch by axis
+# ---------------------------------------------------------------------------
+
+
+def _sdk(axis: Axis, prop: str) -> SlotKeyDraft:
+    return SlotKeyDraft(axis=axis, property_dcid=prop, label=prop)
+
+
+def _bd(kind: BindingKind, dcids: list[str]) -> SlotBindingDraft:
+    return SlotBindingDraft(axis="what", property_dcid="prop", kind=kind, value_dcids=dcids)
+
+
+def _gr(dcid: str) -> GraphRef:
+    return GraphRef(dcid=dcid, label=dcid)
+
+
+def test_build_slot_value_kind_where_axis_is_entity():
+    """where-axis value slot → value_kind 'entity'."""
+    slot = build_slot(
+        _sdk("where", "DevelopmentFinanceRecipient"),
+        _bd("value", ["country/ETH"]),
+        [_gr("country/ETH")],
+        property_ref=_gr("DevelopmentFinanceRecipient"),
+    )
+    assert isinstance(slot.binding, BindingValue)
+    assert slot.binding.value.value_kind == "entity"
+
+
+def test_build_slot_value_kind_what_axis_is_enum_value():
+    """what-axis value slot → value_kind 'enum_value'."""
+    slot = build_slot(
+        _sdk("what", "DevelopmentFinanceScheme"),
+        _bd("value", ["ODAGrants"]),
+        [_gr("ODAGrants")],
+        property_ref=_gr("DevelopmentFinanceScheme"),
+    )
+    assert isinstance(slot.binding, BindingValue)
+    assert slot.binding.value.value_kind == "enum_value"
+
+
+def test_build_slot_value_kind_how_axis_is_enum_value():
+    """how-axis value slot → value_kind 'enum_value'."""
+    slot = build_slot(
+        _sdk("how", "DevelopmentFinancePurpose"),
+        _bd("value", ["DAC/Health"]),
+        [_gr("DAC/Health")],
+        property_ref=_gr("DevelopmentFinancePurpose"),
+    )
+    assert isinstance(slot.binding, BindingValue)
+    assert slot.binding.value.value_kind == "enum_value"
+
+
+def test_build_slot_set_what_axis_value_kind_is_enum_value():
+    """what-axis set slot → all SlotValues carry value_kind 'enum_value'."""
+    slot = build_slot(
+        _sdk("what", "DevelopmentFinanceScheme"),
+        _bd("set", ["ODAGrants", "ODALoans"]),
+        [_gr("ODAGrants"), _gr("ODALoans")],
+        property_ref=_gr("DevelopmentFinanceScheme"),
+    )
+    assert isinstance(slot.binding, BindingSet)
+    for sv in slot.binding.values:
+        assert sv.value_kind == "enum_value"
+
+
+def test_build_slot_where_partial_set_one_value_is_entity():
+    """where-axis set with one grounded value → BindingValue with value_kind 'entity'."""
+    slot = build_slot(
+        _sdk("where", "DevelopmentFinanceRecipient"),
+        _bd("set", ["country/ETH", "country/KEN"]),
+        [_gr("country/ETH")],  # only one grounded
+        property_ref=_gr("DevelopmentFinanceRecipient"),
+    )
+    assert isinstance(slot.binding, BindingValue)
+    assert slot.binding.value.value_kind == "entity"
+
+
+# ---------------------------------------------------------------------------
+# build_spec date_source explicit override
+# ---------------------------------------------------------------------------
+
+
+def test_build_spec_date_source_explicit_coverage_clamp():
+    """build_spec with date_source='coverage_clamp' surfaces it even when window is present."""
+    window = TimeWindow(start_year=2015, end_year=2020)
+    spec = _make_spec(
+        sv_dcid="ONE/CRS_DAC/Health-ODAGrants-ETH",
+        purpose_dcid="DAC/Health",
+        recipient_dcid="country/ETH",
+    )
+    sv_ref = GraphRef(dcid="ONE/CRS_DAC/Health-ODAGrants-ETH", label="Health ODA")
+    result = build_spec(
+        shape=spec.shape,
+        slots=[],
+        stat_vars=[StatVar(ref=sv_ref, shape_id=spec.shape.shape_id, slot_values=[])],
+        entities=[],
+        coverage=_make_exact_coverage(window),
+        pipeline_trace=[],
+        date_source="coverage_clamp",
+    )
+    assert result.resolution.date_source == "coverage_clamp"
+    assert result.resolution.applied_window == window
+
+
+def test_build_spec_date_source_default_infers_query_when_window():
+    """build_spec without date_source and with a window infers 'query'."""
+    window = TimeWindow(start_year=2018)
+    spec = _make_spec(
+        sv_dcid="ONE/CRS_DAC/Health-ODAGrants-ETH",
+        purpose_dcid="DAC/Health",
+        recipient_dcid="country/ETH",
+    )
+    result = build_spec(
+        shape=spec.shape,
+        slots=[],
+        stat_vars=[],
+        entities=[],
+        coverage=_make_exact_coverage(window),
+        pipeline_trace=[],
+    )
+    assert result.resolution.date_source == "query"

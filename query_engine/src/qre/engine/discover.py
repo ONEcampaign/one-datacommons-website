@@ -531,33 +531,50 @@ def graph_confirm_resolve(
     if not surviving_svs:
         return NoDataDraft(reason="variable_not_resolved")
 
-    # Probe observations for each surviving SV across all recipients.
-    # The recipient set is derived from the where-axis binding (supports BindingSet for
-    # multi-recipient dev-finance queries) with a scalar fallback for single-recipient paths.
-    # The probe_donor fallback fires ONCE PER SV (after the recipient loop), not once per
-    # recipient. Dev-finance observations are keyed by donor, so per-recipient probes return
-    # empty; firing the fallback inside the recipient loop would inflate all_facets N-fold.
+    # Sort surviving SVs ascending by count of constraint props not covered by
+    # bound_values: fewest uncovered = most specific match first. No new
+    # graph reads; all data is in sv_arc_facts already on the ShapeDraft.
+    surviving_svs.sort(
+        key=lambda dcid: sum(
+            1 for prop in read_constraints(sv_arc_facts[dcid]) if prop not in bound_values
+        )
+    )
+
+    # Probe observations via two batch passes to handle recipient fallback:
+    # Pass 1: check all (sv, recipient) pairs in one POST.
+    # Pass 2: check only SVs with zero confirmed recipients against the probe donor.
+    # The donor probe fires ONLY for SVs with no confirmed recipient in pass 1 —
+    # never double-counted. all_facets collects every confirmed-recipient facet set.
     confirmed_svs: list[str] = []
     all_facets: list[Facet] = []
+    facets_by_sv: dict[str, list[Facet]] = {}
     needs_dates = date_request is not None
+
+    batch1 = graph.observation_facets_batch(surviving_svs, recipient_dcids, needs_dates)
+
+    recipient_confirmed: set[str] = set()
     for sv_dcid in surviving_svs:
-        sv_confirmed = False
+        sv_facets_from_recipients: list[Facet] = []
         for r_dcid in recipient_dcids:
-            facets = graph.observation_facets(
-                stat_var=sv_dcid, entity=r_dcid, needs_dates=needs_dates
-            )
+            facets = batch1.get(sv_dcid, {}).get(r_dcid, [])
             if facets and any(f.obs_count > 0 for f in facets):
-                sv_confirmed = True
-                all_facets.extend(facets)
-        if not sv_confirmed:
-            fallback_facets = graph.observation_facets(
-                stat_var=sv_dcid, entity=probe_donor, needs_dates=needs_dates
-            )
-            if fallback_facets and any(f.obs_count > 0 for f in fallback_facets):
-                sv_confirmed = True
-                all_facets.extend(fallback_facets)
-        if sv_confirmed:
+                recipient_confirmed.add(sv_dcid)
+                sv_facets_from_recipients.extend(facets)
+        if sv_dcid in recipient_confirmed:
             confirmed_svs.append(sv_dcid)
+            all_facets.extend(sv_facets_from_recipients)
+            facets_by_sv[sv_dcid] = sv_facets_from_recipients
+
+    # Pass 2: donor fallback for SVs with zero confirmed recipients in pass 1.
+    unconfirmed_svs = [sv for sv in surviving_svs if sv not in recipient_confirmed]
+    if unconfirmed_svs:
+        batch2 = graph.observation_facets_batch(unconfirmed_svs, [probe_donor], needs_dates)
+        for sv_dcid in unconfirmed_svs:
+            facets = batch2.get(sv_dcid, {}).get(probe_donor, [])
+            if facets and any(f.obs_count > 0 for f in facets):
+                confirmed_svs.append(sv_dcid)
+                all_facets.extend(facets)
+                facets_by_sv[sv_dcid] = list(facets)
 
     if not confirmed_svs:
         return NoDataDraft(reason="no_observations")
@@ -570,4 +587,6 @@ def graph_confirm_resolve(
         facets=all_facets,
         has_data=True,
         coverage=coverage,
+        facets_by_sv=facets_by_sv,
+        recipient_confirmed=recipient_confirmed,
     )

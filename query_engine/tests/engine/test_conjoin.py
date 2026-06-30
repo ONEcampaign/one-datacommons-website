@@ -3,34 +3,41 @@
 No graph or LLM calls — operates only on hand-built RegionResult/Spec objects.
 Covers: five_tuple_key, collapse_same_shape (single-slot merge, set ordering/dedupe,
 spec_id recompute, multislot residual), select_primary, cross_shape_present,
-build_conjunction_warnings (all four warning codes).
+build_conjunction_warnings (all four warning codes), assemble_region and
+combine_regions echo kwarg passthrough.
 """
 from __future__ import annotations
 
-from qre.engine.assemble import build_spec
+from qre.engine.assemble import build_spec, now_ms
 from qre.engine.conjoin import (
     CONJUNCTION_CROSS_SHAPE,
     CONJUNCTION_PART_AMBIGUOUS,
     CONJUNCTION_PART_NO_DATA,
+    assemble_region,
     build_conjunction_warnings,
     collapse_same_shape,
+    combine_regions,
     cross_shape_present,
     five_tuple_key,
     select_primary,
 )
 from qre.engine.regions import RegionResult
 from qre.models import (
+    BindingSet,
     BindingValue,
     CoverageBare,
     CoverageExact,
     GraphRef,
     PipelineStep,
+    QueryEcho,
     Shape,
     Slot,
     SlotKey,
     SlotValue,
+    StatusLiteral,
     StatVar,
 )
+from tests.engine._harness import ref_dcid
 
 # ---------------------------------------------------------------------------
 # Minimal builders
@@ -77,7 +84,6 @@ def _spec(
         entities=[],
         coverage=CoverageBare(has_data=True),
         pipeline_trace=[PipelineStep(step="extract", ran=True)],
-        timing_by_step={},
         variable_text=variable_text,
     )
 
@@ -86,7 +92,7 @@ def _region(
     spec,
     variable_text: str,
     *,
-    status: str = "definite",
+    status: StatusLiteral = "definite",
     earliest_index: int = 0,
     no_data_reason: str | None = None,
     extra_specs: tuple = (),
@@ -99,7 +105,7 @@ def _region(
         specs = ()
     return RegionResult(
         variable_text=variable_text,
-        status=status,  # type: ignore[arg-type]
+        status=status,
         specs=specs,
         no_data_reason=no_data_reason,
         warnings=(),
@@ -154,8 +160,9 @@ def test_collapse_same_shape_single_slot_merges():
     assert residual == []
     merged = effective[0]
     assert merged.status == "definite"
-    assert merged.spec.slots[0].binding.kind == "set"
-    merged_dcids = {v.ref.dcid for v in merged.spec.slots[0].binding.values}
+    merged_binding = merged.spec.slots[0].binding
+    assert isinstance(merged_binding, BindingSet)
+    merged_dcids = {ref_dcid(v.ref) for v in merged_binding.values}
     assert merged_dcids == {"ValA", "ValB"}
 
 
@@ -169,9 +176,9 @@ def test_collapse_same_shape_set_ordering_preserves_first():
     effective, _ = collapse_same_shape([r_a, r_b])
 
     binding = effective[0].spec.slots[0].binding
-    assert binding.kind == "set"
-    assert binding.values[0].ref.dcid == "Alpha"
-    assert binding.values[1].ref.dcid == "Beta"
+    assert isinstance(binding, BindingSet)
+    assert ref_dcid(binding.values[0].ref) == "Alpha"
+    assert ref_dcid(binding.values[1].ref) == "Beta"
 
 
 def test_collapse_same_shape_dedupe_same_value():
@@ -267,7 +274,6 @@ def test_same_shape_multislot_residual_warns():
             entities=[],
             coverage=CoverageBare(has_data=True),
             pipeline_trace=[PipelineStep(step="extract", ran=True)],
-            timing_by_step={},
             variable_text=variable_text,
         )
 
@@ -320,7 +326,6 @@ def test_same_shape_multislot_no_cross_shape_warning():
         entities=[],
         coverage=CoverageBare(has_data=True),
         pipeline_trace=[PipelineStep(step="extract", ran=True)],
-        timing_by_step={},
         variable_text="var 1",
     )
     spec_2 = build_spec(
@@ -339,7 +344,6 @@ def test_same_shape_multislot_no_cross_shape_warning():
         entities=[],
         coverage=CoverageBare(has_data=True),
         pipeline_trace=[PipelineStep(step="extract", ran=True)],
-        timing_by_step={},
         variable_text="var 2",
     )
     r1 = _region(spec_1, "var 1", earliest_index=0)
@@ -537,7 +541,6 @@ def test_collapse_same_shape_exact_coverage_downgraded():
         entities=[],
         coverage=CoverageExact(has_data=True, observation_count=50, dimensions=None, window=None),
         pipeline_trace=[PipelineStep(step="extract", ran=True)],
-        timing_by_step={},
         variable_text="var A",
     )
     spec_b = build_spec(
@@ -547,7 +550,6 @@ def test_collapse_same_shape_exact_coverage_downgraded():
         entities=[],
         coverage=CoverageExact(has_data=True, observation_count=30, dimensions=None, window=None),
         pipeline_trace=[PipelineStep(step="extract", ran=True)],
-        timing_by_step={},
         variable_text="var B",
     )
     r_a = _region(spec_a, "var A", earliest_index=0)
@@ -582,3 +584,151 @@ def test_build_conjunction_warnings_pinned_messages():
     assert by_code[CONJUNCTION_PART_NO_DATA].message == (
         "Variable 'malaria deaths' returned no data."
     )
+
+
+# ---------------------------------------------------------------------------
+# echo kwarg passthrough
+# ---------------------------------------------------------------------------
+
+
+def _assemble_kwargs(region: RegionResult, **overrides):
+    """Minimal keyword args for assemble_region / combine_regions."""
+    return dict(
+        query="test query",
+        variable_texts=[region.variable_text],
+        extra_warnings=[],
+        start_ms=now_ms(),
+        engine_build="test",
+        include_sentence=False,
+        max_candidates=10,
+    ) | overrides
+
+
+def _spec_resubmit_echo(variable_text: str = "aid to ethiopia") -> QueryEcho:
+    return QueryEcho(
+        entry_path="spec_resubmit",
+        raw_query=None,
+        normalized_query=None,
+        variable_text=[variable_text],
+        extract_skipped=True,
+    )
+
+
+def test_assemble_region_default_echo_uses_raw_text():
+    """Without an explicit echo, assemble_region builds entry_path='raw_text'."""
+    spec = _spec(_PERSON_SHAPE, "any")
+    region = _region(spec, "population")
+    response = assemble_region(region, **_assemble_kwargs(region))
+    assert response.root.query_echo.entry_path == "raw_text"
+    assert response.root.query_echo.extract_skipped is False
+
+
+def test_assemble_region_supplied_echo_used_verbatim():
+    """When echo is supplied, assemble_region uses it verbatim (entry_path preserved)."""
+    spec = _spec(_PERSON_SHAPE, "any")
+    region = _region(spec, "aid to ethiopia")
+    supplied = _spec_resubmit_echo("aid to ethiopia")
+    response = assemble_region(region, echo=supplied, **_assemble_kwargs(region))
+    assert response.root.query_echo.entry_path == "spec_resubmit"
+    assert response.root.query_echo.extract_skipped is True
+    assert response.root.query_echo.raw_query is None
+
+
+def test_combine_regions_default_echo_uses_raw_text():
+    """Without an explicit echo, combine_regions builds entry_path='raw_text'."""
+    spec_a = _spec(_PERSON_SHAPE, "any", sv_dcid="sv_a")
+    spec_b = _spec(_ECON_SHAPE, "any", sv_dcid="sv_b")
+    regions = [
+        _region(spec_a, "population", earliest_index=0),
+        _region(spec_b, "GDP", earliest_index=1),
+    ]
+    response = combine_regions(
+        regions,
+        query="population and GDP",
+        variable_texts=["population", "GDP"],
+        extra_warnings=[],
+        start_ms=now_ms(),
+        engine_build="test",
+        include_sentence=False,
+        max_candidates=10,
+    )
+    assert response.root.query_echo.entry_path == "raw_text"
+
+
+def test_combine_regions_supplied_echo_used_verbatim():
+    """When echo is supplied, combine_regions uses it verbatim across all branches."""
+    spec_a = _spec(_PERSON_SHAPE, "any", sv_dcid="sv_a")
+    spec_b = _spec(_ECON_SHAPE, "any", sv_dcid="sv_b")
+    regions = [
+        _region(spec_a, "population", earliest_index=0),
+        _region(spec_b, "GDP", earliest_index=1),
+    ]
+    supplied = _spec_resubmit_echo("population and GDP")
+    response = combine_regions(
+        regions,
+        query="population and GDP",
+        variable_texts=["population", "GDP"],
+        extra_warnings=[],
+        start_ms=now_ms(),
+        engine_build="test",
+        include_sentence=False,
+        max_candidates=10,
+        echo=supplied,
+    )
+    assert response.root.query_echo.entry_path == "spec_resubmit"
+    assert response.root.query_echo.extract_skipped is True
+
+
+def test_combine_regions_full_collapse_safety_net_threads_echo():
+    """The full-collapse safety net (len(effective)==1) threads echo into assemble_region."""
+    # Two regions with the same five-tuple collapse to one — triggers the safety net.
+    spec_a = _spec(_PERSON_SHAPE, "grants", sv_dcid="sv_grants")
+    spec_b = _spec(_PERSON_SHAPE, "loans", sv_dcid="sv_loans")
+    regions = [
+        _region(spec_a, "grants", earliest_index=0),
+        _region(spec_b, "loans", earliest_index=1),
+    ]
+    supplied = _spec_resubmit_echo("grants and loans")
+    response = combine_regions(
+        regions,
+        query="grants and loans",
+        variable_texts=["grants", "loans"],
+        extra_warnings=[],
+        start_ms=now_ms(),
+        engine_build="test",
+        include_sentence=False,
+        max_candidates=10,
+        echo=supplied,
+    )
+    # After same-shape collapse the safety net calls assemble_region with the echo.
+    assert response.root.query_echo.entry_path == "spec_resubmit"
+    assert response.root.query_echo.extract_skipped is True
+
+
+# ---------------------------------------------------------------------------
+# collapse_same_shape propagates value_kind from source binding
+# ---------------------------------------------------------------------------
+
+
+def test_collapse_same_shape_propagates_enum_value_kind():
+    """Merged BindingSet carries value_kind from the source slot, not hardcoded 'entity'.
+
+    _value_slot builds what-axis slots with value_kind='enum_value'. After collapse,
+    the merged BindingSet values must also carry 'enum_value', not 'entity'.
+    """
+    spec_a = _spec(_PERSON_SHAPE, "ValA", variable_text="var A")
+    spec_b = _spec(_PERSON_SHAPE, "ValB", variable_text="var B")
+    r_a = _region(spec_a, "var A", earliest_index=0)
+    r_b = _region(spec_b, "var B", earliest_index=1)
+
+    effective, residual = collapse_same_shape([r_a, r_b])
+
+    assert len(effective) == 1
+    assert residual == []
+    merged_binding = effective[0].spec.slots[0].binding
+    assert isinstance(merged_binding, BindingSet)
+    # value_kind must come from the source slot (enum_value), not hardcoded entity
+    for sv in merged_binding.values:
+        assert sv.value_kind == "enum_value", (
+            f"expected 'enum_value' from source binding, got {sv.value_kind!r}"
+        )

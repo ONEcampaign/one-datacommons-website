@@ -34,6 +34,7 @@ from qre.engine.families import (
 from qre.engine.families.dev_finance import PURPOSES, SCHEMES
 from qre.engine.retrieve import Materialised
 from qre.engine.shape import ShapeDraft
+from tests.engine._harness import dimensions_of
 from tests.fixtures import FakeGraph
 
 # ---------------------------------------------------------------------------
@@ -537,7 +538,7 @@ class TestGraphConfirmResolveLabels:
             obs_label="years",
         )
         assert isinstance(result, Materialised)
-        assert {d.label for d in result.coverage.dimensions} == {"donors", "years"}
+        assert {d.label for d in dimensions_of(result.coverage)} == {"donors", "years"}
 
     def test_default_labels_are_sources_observations(self):
         sv = "ONE/CRS_DAC/SomeHealthSV"
@@ -549,4 +550,4 @@ class TestGraphConfirmResolveLabels:
             graph=self._graph_for(sv),
         )
         assert isinstance(result, Materialised)
-        assert {d.label for d in result.coverage.dimensions} == {"sources", "observations"}
+        assert {d.label for d in dimensions_of(result.coverage)} == {"sources", "observations"}

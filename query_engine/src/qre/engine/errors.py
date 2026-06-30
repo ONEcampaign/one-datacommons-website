@@ -1,6 +1,10 @@
 """Engine error types.
 
-Two categories only:
+Three categories:
+
+* EngineInputError — deterministic bad-request (→ HTTP 400). Raised by the engine
+  for invalid caller inputs such as an unknown shape_id, a promote-only violation,
+  or a shape_id/stat_var mismatch. NOT an EngineInfraError subclass.
 
 * EngineInfraError (and subclasses) — fail-loud for transport/timeout/LLM parse
   failures. `GraphInfraError` and `LLMInfraError` map to HTTP 503 (retriable);
@@ -14,6 +18,24 @@ Two categories only:
 Semantic outcomes (entity not found, variable not resolved, denominator absent,
 no observations) are NOT exceptions — they return a NoDataResponse.
 """
+
+
+class EngineInputError(Exception):
+    """Deterministic bad-request error (→ HTTP 400).
+
+    Raised by the engine for invalid caller inputs — unknown shape_id,
+    shape_id/stat_var mismatch, promote-only violation, etc. NOT an
+    EngineInfraError subclass (that maps to 502/503).
+
+    ``code`` carries a machine-readable error token when the failure reveals
+    an operation limit rather than a routing failure (e.g. ``"promote_only"``
+    when a standard resubmit posts edited bindings). Routing failures carry
+    no code so callers cannot probe which shape_ids exist.
+    """
+
+    def __init__(self, *args: object, code: str | None = None, **kwargs: object) -> None:
+        super().__init__(*args, **kwargs)
+        self.code = code
 
 
 class EngineInfraError(Exception):
@@ -30,7 +52,18 @@ class LLMInfraError(EngineInfraError):
 
 
 class GraphInfraError(EngineInfraError):
-    """Graph-specific infrastructure failure (transport error, non-2xx, non-JSON, timeout)."""
+    """Graph-specific infrastructure failure (transport error, non-2xx, non-JSON, timeout).
+
+    upstream_status carries the HTTP status code from the upstream graph server
+    when available (e.g. 404, 500). A 4xx value causes the app layer to return
+    502 Bad Gateway rather than 503 Service Unavailable, letting callers
+    distinguish a bad request routed upstream from a transient infra failure.
+    Defaults to None when the upstream status is unknown (e.g. network error).
+    """
+
+    def __init__(self, *args, upstream_status: int | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.upstream_status = upstream_status
 
 
 class GroundingMiss(Exception):

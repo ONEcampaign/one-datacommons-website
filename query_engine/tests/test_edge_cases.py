@@ -182,12 +182,14 @@ class TestTimeWindow:
 class TestCandidateSetMinTwoSpecs:
     def test_one_spec_raises(self):
         with pytest.raises(ValidationError):
-            CandidateSet(ordering="broadest_first", max_candidates=5, specs=[minimal_spec("s1")])
+            # minimal_spec returns a contract-valid Spec dict that Pydantic coerces.
+            CandidateSet(ordering="broadest_first", max_candidates=5, specs=[minimal_spec("s1")])  # ty: ignore[invalid-argument-type]
 
     def test_two_specs_validates(self):
         cs = CandidateSet(
             ordering="broadest_first",
             max_candidates=5,
-            specs=[minimal_spec("s1"), minimal_spec("s2")],
+            # minimal_spec returns a contract-valid Spec dict that Pydantic coerces.
+            specs=[minimal_spec("s1"), minimal_spec("s2")],  # ty: ignore[invalid-argument-type]
         )
         assert len(cs.specs) == 2

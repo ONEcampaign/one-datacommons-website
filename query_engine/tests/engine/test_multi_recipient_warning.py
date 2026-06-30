@@ -10,8 +10,10 @@ an inline FakeGraph on a STANDARD-family scenario so the LLM bind is skipped.
 from __future__ import annotations
 
 import asyncio
+import logging
 
-from qre.engine.regions import MULTI_RECIPIENT_TRUNCATED, resolve_variable
+from qre.engine.regions import MULTI_RECIPIENT_TRUNCATED, decide_multi_recipient, resolve_variable
+from qre.models import Warning
 from tests.fixtures import FakeGraph, FakeLLM
 
 # A single standard-family SV (non-CRS_DAC prefix so it routes to STANDARD_RULE).
@@ -86,3 +88,76 @@ def test_multi_bare_entity_warns():
         entities=["Kenya", "Uganda"],
     )
     assert any(w.code == MULTI_RECIPIENT_TRUNCATED for w in result.warnings)
+
+
+# ---------------------------------------------------------------------------
+# F23: decide_multi_recipient helper unit tests
+# ---------------------------------------------------------------------------
+
+
+def test_decide_multi_recipient_near_miss_emits_debug(caplog):
+    """F23: decide_multi_recipient emits DEBUG when multi-recipient is handled by constraint slots."""
+    warnings_out: list[Warning] = []
+    with caplog.at_level(logging.DEBUG, logger="qre.engine.regions"):
+        recipient, effective, conditions = decide_multi_recipient(
+            ["country/ETH", "country/KEN"],
+            True,  # has_constraint_slots → dev-finance path, no warning, emit DEBUG
+            warnings=warnings_out,
+        )
+
+    assert recipient == "country/ETH"
+    assert effective == ["country/ETH", "country/KEN"]
+    assert not warnings_out  # no warning emitted
+    assert "MULTI_RECIPIENT near-miss" in caplog.text
+
+
+def test_decide_multi_recipient_standard_path_emits_warning():
+    """F23: decide_multi_recipient emits MULTI_RECIPIENT_TRUNCATED for standard path."""
+    warnings_out: list[Warning] = []
+    recipient, effective, conditions = decide_multi_recipient(
+        ["country/ETH", "country/KEN"],
+        False,  # not has_constraint_slots → standard path, emit warning
+        warnings=warnings_out,
+    )
+    assert recipient == "country/ETH"
+    assert effective == ["country/ETH"]  # truncated to first recipient
+    assert any(w.code == MULTI_RECIPIENT_TRUNCATED for w in warnings_out)
+
+
+def test_decide_multi_recipient_conditions_trace():
+    """F23: conditions list tracks which gates were evaluated."""
+    warnings_out: list[Warning] = []
+    _, _, conditions = decide_multi_recipient(
+        ["country/ETH", "country/KEN"],
+        True,
+        warnings=warnings_out,
+    )
+    conditions_dict = dict(conditions)
+    assert conditions_dict["multi_directional"] is True
+    assert conditions_dict["has_constraint_slots"] is True
+
+
+def test_decide_multi_recipient_single_recipient_no_warning():
+    """F23: single recipient (no multi) emits no warning regardless of constraint slots."""
+    warnings_out: list[Warning] = []
+    recipient, effective, _ = decide_multi_recipient(
+        ["country/ETH"],
+        False,
+        warnings=warnings_out,
+    )
+    assert recipient == "country/ETH"
+    assert effective == ["country/ETH"]
+    assert not warnings_out
+
+
+def test_decide_multi_recipient_empty_no_data():
+    """F23: empty to_dcids returns (None, [], conditions)."""
+    warnings_out: list[Warning] = []
+    recipient, effective, conditions = decide_multi_recipient(
+        [],
+        False,
+        warnings=warnings_out,
+    )
+    assert recipient is None
+    assert effective == []
+    assert not warnings_out

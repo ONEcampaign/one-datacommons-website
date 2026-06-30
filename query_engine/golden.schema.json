@@ -81,7 +81,26 @@
       ]
     },
     "candidate_count": { "type": ["integer", "null"], "minimum": 2 },
-    "status": { "enum": ["VERIFIED_AGAINST_GRAPH", "DEFERRED"] },
+    "status": { "enum": ["VERIFIED_AGAINST_GRAPH", "DEFERRED", "UNVERIFIED"] },
+    "shape_id": {
+      "type": "string",
+      "description": "For spec_resubmit entries: the shape_id posted to the engine"
+    },
+    "slots": {
+      "type": "array",
+      "description": "For spec_resubmit entries: verbatim list[Slot] serialization posted to the engine; coordinator verifies dcids in H1",
+      "items": { "type": "object" }
+    },
+    "stat_var_dcids": {
+      "type": "array",
+      "description": "For standard spec_resubmit promote: resolved StatVar dcids",
+      "items": { "type": "string" }
+    },
+    "entity_dcids": {
+      "type": "array",
+      "description": "For standard spec_resubmit promote: resolved entity dcids",
+      "items": { "type": "string" }
+    },
     "notes": { "type": "string" }
   },
   "allOf": [

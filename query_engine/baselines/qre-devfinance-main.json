@@ -1,12 +1,12 @@
 {
   "dataset": "qre-devfinance-main",
-  "engine_build": "qre-baseline-devfinance-v1",
+  "engine_build": "qre-engine-dev",
   "model": "gemini-3.1-flash-lite",
   "graph_endpoint": "https://dc-staging.one.org",
-  "frozen": "2026-06-29",
-  "frozen_at": "2026-06-29T16:13:45+00:00",
-  "items": 12,
-  "note": "Phase-0 dev-finance regression anchor. Re-freezing is a human-reviewed diff: post before/after metrics in the PR. See .design/eval-gate.md section 3. Baseline is pinned to gemini-3.1-flash-lite (the dated GA release that -latest resolved to; pin completed per eval-gate.md section 4). behaviour_match_rate_candidates is intentionally null: dev-finance is monomorphic with no candidates goldens, so the engine emits no candidates response to anchor. Set a real value when a family with a candidates path lands, or the gate will skip that metric silently. Re-frozen 2026-06-29 from 11 to 12 items. Added df-14, a two-recipient directional golden (\"health ODA grants from USA to Kenya and Ethiopia\") that exercises the multi-recipient set where-binding over country/KEN and country/ETH. All metrics held at parity, fabricated_ref_rate 0.0 with 121 refs walked.",
+  "frozen": "2026-06-30",
+  "frozen_at": "2026-06-30T15:28:27+00:00",
+  "items": 13,
+  "note": "Phase-0 dev-finance regression anchor. Re-freezing is a human-reviewed diff: post before/after metrics in the PR. See .design/eval-gate.md section 3. Baseline is pinned to gemini-3.1-flash-lite (the dated GA release that -latest resolved to; pin completed per eval-gate.md section 4). behaviour_match_rate_candidates is intentionally null: dev-finance is monomorphic with no candidates goldens, so the engine emits no candidates response to anchor. Set a real value when a family with a candidates path lands, or the gate will skip that metric silently. Re-frozen 2026-06-29 from 11 to 12 items. Added df-14, a two-recipient directional golden (\"health ODA grants from USA to Kenya and Ethiopia\") that exercises the multi-recipient set where-binding over country/KEN and country/ETH. All metrics held at parity, fabricated_ref_rate 0.0 with 121 refs walked. Re-frozen 2026-06-30 from 12 to 13 items, adding spec-df-01 (a spec_resubmit re-materialise golden); all metrics held at parity.",
   "metrics": {
     "interpretation_match_rate": 1.0,
     "behaviour_match_rate_definite": 1.0,
@@ -15,5 +15,106 @@
     "materialisation_correct_rate": 1.0,
     "structural_conformance_rate": 1.0,
     "fabricated_ref_rate": 0.0
+  },
+  "per_item": {
+    "spec-df-01": {
+      "structural_conformance": 1.0,
+      "groundedness": 1.0,
+      "interpretation_match": 1.0,
+      "materialisation": 1.0,
+      "behaviour_match_definite": 1.0,
+      "entry_path_audit": 1.0,
+      "axis_classification": 1.0
+    },
+    "df-14": {
+      "structural_conformance": 1.0,
+      "groundedness": 1.0,
+      "interpretation_match": 1.0,
+      "materialisation": 1.0,
+      "behaviour_match_definite": 1.0,
+      "axis_classification": 1.0
+    },
+    "nd-02": {
+      "structural_conformance": 1.0,
+      "groundedness": 1.0,
+      "behaviour_match_no_data": 1.0
+    },
+    "df-11": {
+      "structural_conformance": 1.0,
+      "groundedness": 1.0,
+      "behaviour_match_no_data": 1.0
+    },
+    "df-09": {
+      "structural_conformance": 1.0,
+      "groundedness": 1.0,
+      "interpretation_match": 1.0,
+      "materialisation": 1.0,
+      "behaviour_match_definite": 1.0,
+      "axis_classification": 1.0
+    },
+    "df-08": {
+      "structural_conformance": 1.0,
+      "groundedness": 1.0,
+      "interpretation_match": 1.0,
+      "materialisation": 1.0,
+      "behaviour_match_definite": 1.0,
+      "axis_classification": 1.0
+    },
+    "df-07": {
+      "structural_conformance": 1.0,
+      "groundedness": 1.0,
+      "interpretation_match": 1.0,
+      "materialisation": 1.0,
+      "behaviour_match_definite": 1.0,
+      "axis_classification": 1.0
+    },
+    "df-06": {
+      "structural_conformance": 1.0,
+      "groundedness": 1.0,
+      "interpretation_match": 1.0,
+      "materialisation": 1.0,
+      "behaviour_match_definite": 1.0,
+      "axis_classification": 1.0
+    },
+    "df-13": {
+      "structural_conformance": 1.0,
+      "groundedness": 1.0,
+      "interpretation_match": 1.0,
+      "materialisation": 1.0,
+      "behaviour_match_definite": 1.0,
+      "axis_classification": 1.0
+    },
+    "df-05": {
+      "structural_conformance": 1.0,
+      "groundedness": 1.0,
+      "interpretation_match": 1.0,
+      "materialisation": 1.0,
+      "behaviour_match_definite": 1.0,
+      "axis_classification": 1.0
+    },
+    "df-04": {
+      "structural_conformance": 1.0,
+      "groundedness": 1.0,
+      "interpretation_match": 1.0,
+      "materialisation": 1.0,
+      "behaviour_match_definite": 1.0,
+      "axis_classification": 1.0
+    },
+    "df-03": {
+      "structural_conformance": 1.0,
+      "groundedness": 1.0,
+      "interpretation_match": 1.0,
+      "materialisation": 1.0,
+      "behaviour_match_definite": 1.0,
+      "axis_classification": 1.0
+    },
+    "df-01": {
+      "structural_conformance": 1.0,
+      "groundedness": 1.0,
+      "interpretation_match": 1.0,
+      "materialisation": 1.0,
+      "behaviour_match_definite": 1.0,
+      "axis_classification": 1.0
+    }
   }
 }

@@ -52,6 +52,7 @@ class FakeLLM:
     @staticmethod
     def _key(schema_name: str, system: str, prompt: str) -> str:
         digest = hashlib.sha1((system + "\x01" + prompt).encode()).hexdigest()
+        # schema_name is the unqualified class name
         return f"{schema_name}:{digest}"
 
     def generate_structured(
@@ -60,7 +61,7 @@ class FakeLLM:
         prompt: str,
         system: str,
         schema: type[_T],
-    ) -> _T:
+    ) -> tuple[_T, dict | None]:
         schema_name = schema.__name__
         key = self._key(schema_name, system, prompt)
         if key not in self._responses:
@@ -70,7 +71,11 @@ class FakeLLM:
                 f"  user prompt:\n{prompt}\n"
                 f"Add an entry to tests/fixtures/llm_responses.json with the key above."
             )
-        return schema.model_validate(self._responses[key])
+        parsed = schema.model_validate(self._responses[key])
+        # FakeLLM has no real usage metadata; return zeros so callers receive
+        # a non-None dict with the expected keys for end-to-end tests.
+        usage: dict | None = {"input_tokens": 0, "output_tokens": 0, "cached_tokens": 0}
+        return parsed, usage
 
 
 # ---------------------------------------------------------------------------
@@ -106,6 +111,19 @@ class _RaiseOnAny:
 
     def node_arcs_batch(self, dcids: list[str]) -> dict[str, dict | None]:
         raise GraphInfraError("FakeGraph(raise=True): simulated transport error")
+
+    def observation_facets_batch(
+        self,
+        stat_vars: list[str],
+        entities: list[str],
+        needs_dates: bool = False,
+    ) -> dict[str, dict[str, list[Facet]]]:
+        raise GraphInfraError("FakeGraph(raise=True): simulated transport error")
+
+    def child_dcids(self, parent_dcid: str) -> list[str]:
+        raise GraphInfraError(
+            f"FakeGraph(raise=True): simulated transport error for {parent_dcid!r}"
+        )
 
     def exists(self, dcid: str) -> bool:
         raise GraphInfraError(f"FakeGraph(raise=True): simulated transport error for {dcid!r}")
@@ -192,9 +210,9 @@ class FakeGraph:
                 (sv, sc) for sv, sc in zip(svs, raw_scores) if sc >= QRE_RELEVANCE_THRESHOLD
             ]
             if filtered:
-                svs, out_scores = zip(*filtered, strict=False)
-                svs = list(svs)
-                out_scores = list(out_scores)
+                _zipped_svs, _zipped_scores = zip(*filtered, strict=False)
+                svs = list(_zipped_svs)
+                out_scores = list(_zipped_scores)
             else:
                 svs = []
                 out_scores = []
@@ -252,6 +270,38 @@ class FakeGraph:
                 continue
             arcs = node.get("arcs")
             result[dcid] = arcs if arcs else None
+        return result
+
+    def child_dcids(self, parent_dcid: str) -> list[str]:
+        """Return dcids whose ->isPartOf points to parent_dcid (reverse scan of _nodes)."""
+        if self._impl is not None:
+            return self._impl.child_dcids(parent_dcid)
+        result = []
+        for dcid, node in self._nodes.items():
+            arcs = node.get("arcs", {})
+            parent_nodes = arcs.get("isPartOf", {}).get("nodes", [])
+            if any(n.get("dcid") == parent_dcid for n in parent_nodes):
+                result.append(dcid)
+        return result
+
+    def observation_facets_batch(
+        self,
+        stat_vars: list[str],
+        entities: list[str],
+        needs_dates: bool = False,
+    ) -> dict[str, dict[str, list[Facet]]]:
+        """Batch observation lookup from the obs fixture; iterates the cartesian product."""
+        if self._impl is not None:
+            return self._impl.observation_facets_batch(
+                stat_vars, entities, needs_dates=needs_dates
+            )
+        result: dict[str, dict[str, list[Facet]]] = {}
+        for sv in stat_vars:
+            result[sv] = {}
+            for entity in entities:
+                result[sv][entity] = self.observation_facets(
+                    stat_var=sv, entity=entity, needs_dates=needs_dates
+                )
         return result
 
     def exists(self, dcid: str) -> bool:

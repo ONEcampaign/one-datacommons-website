@@ -59,11 +59,11 @@ class _RecordingLLM:
         self._llm = live_llm
         self._store = store
 
-    def generate_structured(self, *, prompt: str, system: str, schema: type[_T]) -> _T:
-        result = self._llm.generate_structured(prompt=prompt, system=system, schema=schema)
+    def generate_structured(self, *, prompt: str, system: str, schema: type[_T]) -> tuple[_T, dict | None]:
+        result, usage = self._llm.generate_structured(prompt=prompt, system=system, schema=schema)
         key = _llm_key(schema.__name__, system, prompt)
         self._store[key] = result.model_dump(mode="json")
-        return result
+        return result, usage
 
 
 class _RecordingGraph:
@@ -124,19 +124,43 @@ class _RecordingGraph:
 
     def observation_facets(self, *, stat_var: str, entity: str, needs_dates: bool = False):
         time.sleep(_RECORD_THROTTLE_S)
-        # Recording stores only summary fields (obs_count/earliest_date/latest_date);
-        # per-observation dates are never stored in the fixture format.
-        # needs_dates is accepted for Protocol conformance but not threaded further.
-        result = self._graph.observation_facets(stat_var=stat_var, entity=entity)
+        # Pass needs_dates through so date-aware recordings capture the full payload.
+        result = self._graph.observation_facets(
+            stat_var=stat_var, entity=entity, needs_dates=needs_dates
+        )
         key = f"{stat_var}|{entity}"
-        self._obs[key] = [
-            {
-                "earliestDate": f.earliest_date,
-                "latestDate": f.latest_date,
-                "obsCount": f.obs_count,
-            }
-            for f in result
-        ]
+        # Never overwrite an existing fixture entry. Hand-curated minimal facets
+        # (provenance anchors like the HumanCRS entry, exact-count test fixtures) are
+        # authoritative; recording only fills keys not already present. To refresh a
+        # recorded key, delete it from graph_obs.json first.
+        if key not in self._obs:
+            self._obs[key] = [
+                {
+                    "earliestDate": f.earliest_date,
+                    "latestDate": f.latest_date,
+                    "obsCount": f.obs_count,
+                    # Capture provenance so recorded facets drive resolved_sources offline.
+                    **({"provenanceId": f.provenance_id} if f.provenance_id else {}),
+                    **({"importName": f.import_name} if f.import_name else {}),
+                }
+                for f in result
+            ]
+        return result
+
+    def observation_facets_batch(
+        self,
+        stat_vars: list[str],
+        entities: list[str],
+        needs_dates: bool = False,
+    ):
+        """Fan out to individual observation_facets calls and record each pair."""
+        result = {}
+        for sv in stat_vars:
+            result[sv] = {}
+            for entity in entities:
+                result[sv][entity] = self.observation_facets(
+                    stat_var=sv, entity=entity, needs_dates=needs_dates
+                )
         return result
 
     def node_arcs_batch(self, dcids: list[str]) -> dict[str, dict | None]:
@@ -162,6 +186,15 @@ class _RecordingGraph:
     def count_observations(self, *, stat_vars, entities, window=None) -> int | None:
         return self._graph.count_observations(stat_vars=stat_vars, entities=entities, window=window)
 
+    def child_dcids(self, parent_dcid: str) -> list[str]:
+        time.sleep(_RECORD_THROTTLE_S)
+        children = self._graph.child_dcids(parent_dcid)
+        # Replay's FakeGraph.child_dcids reverse-scans recorded node arcs for ->isPartOf,
+        # so record each child node (its arcs carry the isPartOf edge back to the parent).
+        for dcid in children:
+            self._record_node(dcid)
+        return children
+
 
 def _write_json(path: Path, data: dict) -> None:
     tmp = path.with_suffix(".tmp")
@@ -177,7 +210,7 @@ def main() -> None:
 
     from qre.engine.graph import LiveGraphClient
     from qre.engine.llm import LLM
-    from qre.models import RawTextInput, ResolveRequest
+    from qre.models import RawTextInput, ResolveRequest, SpecResubmitInput
 
     parser = argparse.ArgumentParser(description="QRE fixture recorder")
     parser.add_argument(
@@ -240,7 +273,17 @@ def main() -> None:
             _max_attempts = 5
             for _attempt in range(1, _max_attempts + 1):
                 try:
-                    request = ResolveRequest(input=RawTextInput(query=query))
+                    entry_path = golden.get("entry_path", "raw_text")
+                    if entry_path == "spec_resubmit":
+                        req_input = SpecResubmitInput(
+                            shape_id=golden["shape_id"],
+                            slots=golden["slots"],
+                            stat_var_dcids=golden.get("stat_var_dcids"),
+                            entity_dcids=golden.get("entity_dcids"),
+                        )
+                    else:
+                        req_input = RawTextInput(query=query)
+                    request = ResolveRequest(input=req_input)
                     asyncio.run(resolve_async(request, graph=rec_graph, llm=rec_llm))
                     break
                 except Exception as exc:

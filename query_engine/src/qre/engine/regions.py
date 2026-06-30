@@ -10,6 +10,7 @@ import logging
 from dataclasses import dataclass
 
 from qre.engine.assemble import (
+    bind_when_slot,
     build_shape_model,
     build_slot,
     build_spec,
@@ -17,7 +18,7 @@ from qre.engine.assemble import (
     make_pipeline_step,
     now_ms,
 )
-from qre.engine.bind import SlotBindingDraft, bind
+from qre.engine.bind import SlotBindingDraft, _BindOutput, bind
 from qre.engine.config import (
     QRE_DOMINANCE_MARGIN,
     QRE_MAX_CANDIDATES,
@@ -28,37 +29,45 @@ from qre.engine.discover import (
     derive_shapes,
     filter_offtopic_shapes,
     read_constraints,
+    read_five_tuple,
     read_slot_taxonomy,
 )
-from qre.engine.errors import GroundingMiss
+from qre.engine.errors import EngineInputError, GroundingMiss
 from qre.engine.extract import DateRequest
 from qre.engine.families import (
+    DEV_FINANCE_FAMILY,
     DONOR_ROLE_DCID,
     PROP_RECIPIENT,
     RECIPIENT_ROLE_DCID,
 )
 from qre.engine.families.dev_finance import DEV_FINANCE_RULE
+from qre.engine.families.protocol import FamilyRule
 from qre.engine.families.registry import REGISTRY, STANDARD_RULE
 from qre.engine.graph import EngineGraphClient, Facet
 from qre.engine.ground import graphref, graphrefs
 from qre.engine.interpret import Recall, recall
-from qre.engine.llm import LLM
+from qre.engine.llm import SupportsLLM
 from qre.engine.place_role import (
     SEAM_OFF_INFO_CODE,
     SEAM_OFF_WARN_CODE,
     DirectionalRole,
     EntityRoleDraft,
+    SubjectRole,
     directional_roles,
 )
 from qre.engine.retrieve import Materialised, MaterialisedCandidates, NoDataDraft, materialise
-from qre.engine.shape import ShapeDraft, build_shape, family_for
+from qre.engine.shape import ShapeDraft, build_shape, family_for, shape_draft_from
 from qre.models import (
+    BindingSet,
+    BindingUnbound,
+    BindingValue,
     Entity,
     EntityRoleDirectional,
     EntityRoleSubject,
     GraphRef,
     PipelineStep,
     Spec,
+    SpecResubmitInput,
     StatusLiteral,
     Warning,
 )
@@ -67,6 +76,87 @@ logger = logging.getLogger(__name__)
 
 MULTI_RECIPIENT_TRUNCATED = "MULTI_RECIPIENT_TRUNCATED"
 RETRIEVAL_SCORE_WEAK = "RETRIEVAL_SCORE_WEAK"
+
+
+def detect_set_ref(
+    *,
+    value_dcids: list[str],
+    graph: EngineGraphClient,
+) -> GraphRef | None:
+    """Label a BindingSet with the taxonomy parent it exactly covers, or None.
+
+    Conservative full-children match, one level only: read each member's ->isPartOf
+    parents; require every member to have exactly one immediate parent and all equal (P).
+    Then read P's complete <-isPartOf children; only when that child set equals the
+    member set, ground P to a GraphRef (label from the graph) and return it.
+
+    Any member with != 1 parent, members spanning parents, a partial-children match, or
+    an unread parent label → None. Never fabricates, never over-claims partial subsets.
+    Scoped to taxonomy (what/how) axes — callers gate on axis before invoking.
+    """
+    if len(value_dcids) < 2:
+        return None
+    arcs = graph.node_arcs_batch(value_dcids)
+    # Collect the single ->isPartOf parent for each member; any ambiguity → None.
+    parent: str | None = None
+    for dcid in value_dcids:
+        member_arcs = arcs.get(dcid) or {}
+        parent_nodes = member_arcs.get("isPartOf", {}).get("nodes", [])
+        parent_dcids = [n["dcid"] for n in parent_nodes if "dcid" in n]
+        if len(parent_dcids) != 1:
+            return None
+        p = parent_dcids[0]
+        if parent is None:
+            parent = p
+        elif p != parent:
+            return None
+    if parent is None:
+        return None
+    # Full-children check: member set must equal the parent's complete <-isPartOf child set.
+    children = set(graph.child_dcids(parent))
+    if children != set(value_dcids):
+        return None
+    label = graph.node_labels_batch([parent]).get(parent)
+    if label is None:
+        return None
+    return GraphRef(dcid=parent, label=label)
+
+
+def decide_multi_recipient(
+    to_dcids: list[str],
+    has_constraint_slots: bool,
+    *,
+    warnings: list[Warning],
+) -> tuple[str | None, list[str], list[tuple[str, bool]]]:
+    """Gate directional multi-recipient handling by constraint-slot capability.
+
+    Returns ``(recipient_dcid, effective_to_dcids, conditions)``.
+
+    ``conditions`` is an ordered ``(gate_name, matched)`` trace. When
+    ``has_constraint_slots`` is True (dev-finance), all recipients are used
+    and a DEBUG line is emitted instead of a warning. When False (standard),
+    only the first recipient is kept and MULTI_RECIPIENT_TRUNCATED is appended.
+    """
+    conditions: list[tuple[str, bool]] = [
+        ("multi_directional", len(to_dcids) > 1),
+        ("has_constraint_slots", has_constraint_slots),
+    ]
+    if not to_dcids:
+        return None, [], conditions
+    recipient_dcid = to_dcids[0]
+    if len(to_dcids) > 1:
+        if has_constraint_slots:
+            # Dev-finance path handles all recipients via BindingSet; no warning fires.
+            logger.debug("MULTI_RECIPIENT near-miss: %s", conditions)
+            return recipient_dcid, to_dcids, conditions
+        warnings.append(
+            Warning(
+                code=MULTI_RECIPIENT_TRUNCATED,
+                severity="warn",
+                message=f"{len(to_dcids)} directional recipients detected; only 1 used.",
+            )
+        )
+    return recipient_dcid, [recipient_dcid], conditions
 
 
 # ---------------------------------------------------------------------------
@@ -89,6 +179,8 @@ class RegionResult:
     warnings: tuple[Warning, ...]
     timing_by_step: dict[str, int]
     earliest_index: int = 0
+    nearest_real: tuple[Spec, ...] | None = None  # populated on no_data when relaxation finds data
+    llm_usage: dict | None = None  # aggregated token usage for this variable's LLM calls
 
     @property
     def spec(self) -> Spec:
@@ -334,11 +426,26 @@ def _ground_answer(
         if b_draft and b_draft.kind in ("value", "set"):
             grounded_vals = graphrefs(b_draft.value_dcids, graph=graph)
 
+        # For a what/how set with 2+ grounded values, check whether they are the
+        # complete <-isPartOf children of a shared taxonomy parent (decision §0.3).
+        # The where-axis is gated out: isPartOf also models geographic containment.
+        slot_set_ref: GraphRef | None = None
+        if (
+            b_draft is not None
+            and b_draft.kind == "set"
+            and slot_draft.axis in ("what", "how")
+            and len(grounded_vals) >= 2
+        ):
+            slot_set_ref = detect_set_ref(
+                value_dcids=[gv.dcid for gv in grounded_vals], graph=graph
+            )
+
         slot = build_slot(
             slot_draft,
             b_draft,
             grounded_vals,
             property_ref=prop_ref,
+            set_ref=slot_set_ref,
         )
         slots.append(slot)
         slot_key_models.append(slot.key)
@@ -402,6 +509,114 @@ def _build_entity(
 
 
 # ---------------------------------------------------------------------------
+# _suggest_nearest_real: axis-relaxation probe for the no_data path
+# ---------------------------------------------------------------------------
+
+
+def _suggest_nearest_real(
+    *,
+    graph: EngineGraphClient,
+    shape_draft: ShapeDraft,
+    bindings: list[SlotBindingDraft],
+    roles: dict,
+    recipient_dcid: str | None,
+    donor_dcid: str | None,
+    date_request: DateRequest | None,
+    n_max: int = 2,
+) -> list[Spec]:
+    """Relax one constraint binding at a time; return up to n_max grounded Specs.
+
+    Called synchronously on a no_observations path. Each iteration replaces one
+    non-trivial (value/set) binding with "unbound" and probes graph_confirm_resolve.
+    Only confirmed graph reads are used — no fabricated strings.
+
+    Returns an empty list when no relaxation yields data or on any error.
+    """
+    from qre.engine.discover import (
+        graph_confirm_resolve,  # noqa: PLC0415 (avoid circular at module level)
+    )
+    from qre.engine.retrieve import Materialised  # noqa: PLC0415
+
+    suggestions: list[Spec] = []
+
+    for i, binding in enumerate(bindings):
+        if len(suggestions) >= n_max:
+            break
+        # Only relax value/set bindings on constraint axes (skip when/source and unbound/absent).
+        if binding.kind not in ("value", "set"):
+            continue
+        if binding.axis in ("when", "source"):
+            continue
+
+        # Build relaxed binding list: replace binding[i] with unbound.
+        relaxed = list(bindings)
+        relaxed[i] = SlotBindingDraft(
+            axis=binding.axis,
+            property_dcid=binding.property_dcid,
+            kind="unbound",
+            value_dcids=[],
+        )
+
+        # DELIBERATE, NARROW fail-loud exception: this is the OPTIONAL suggestion
+        # probe on an already-decided no_data path. The relaxed graph probe
+        # (graph_confirm_resolve) can raise GraphInfraError, and the downstream
+        # spec build can raise on invalid intermediate state. Per this helper's
+        # contract ("returns an empty list on any error"), ANY failure here must
+        # yield no suggestion rather than convert a valid no_data response into a
+        # 503. This guard applies ONLY to the optional probe — it does NOT relax
+        # fail-loud on the primary resolution path.
+        try:
+            mat = graph_confirm_resolve(
+                shape=shape_draft,
+                bindings=relaxed,
+                recipient_dcid=recipient_dcid,
+                donor_dcid=donor_dcid,
+                graph=graph,
+                date_request=date_request,
+            )
+            if not isinstance(mat, Materialised):
+                continue
+
+            ground = _ground_answer(
+                shape_draft, relaxed, mat.sv_dcids, roles, graph, mat.facets
+            )
+
+            (ft_refs, role_refs, slots, slot_key_models, sv_refs, entity_data, source_refs) = ground
+            if not sv_refs:
+                continue
+
+            shape_model = build_shape_model(
+                shape_draft, slot_key_models, ft_refs, member_count=len(sv_refs)
+            )
+            stat_vars_list = build_stat_vars(
+                sv_refs,
+                shape_draft.shape_id,
+                slots,
+                facets_by_sv=mat.facets_by_sv,
+                recipient_confirmed=mat.recipient_confirmed,
+            )
+            entities_list = [
+                _build_entity(rd, er, etr, role_refs) for rd, er, etr in entity_data
+            ]
+            slots = bind_when_slot(slots, window=mat.coverage.window)
+            spec = build_spec(
+                shape=shape_model,
+                slots=slots,
+                stat_vars=stat_vars_list,
+                entities=entities_list,
+                coverage=mat.coverage,
+                pipeline_trace=[],
+                resolved_sources=source_refs,
+            )
+        except Exception:  # noqa: BLE001 — optional probe: any error yields no suggestion
+            continue
+
+        suggestions.append(spec)
+
+    return suggestions
+
+
+# ---------------------------------------------------------------------------
 # resolve_variable: per-variable core pipeline (recall → answer)
 # ---------------------------------------------------------------------------
 
@@ -415,9 +630,10 @@ async def resolve_variable(
     role_query: str,
     pac: bool,
     graph: EngineGraphClient,
-    llm: LLM,
+    llm: SupportsLLM,
     base_steps: list[PipelineStep],
     base_timing: dict[str, int],
+    pre_resolved: dict[str, str] | None = None,
 ) -> RegionResult:
     """Run the per-variable pipeline from recall through answer.
 
@@ -435,6 +651,10 @@ async def resolve_variable(
         llm:          LLM wrapper (shared, stateless per call).
         base_steps:   Pipeline steps from the shared extract stage ([extract_step]).
         base_timing:  Timing dict from the shared extract stage ({"extract": ms}).
+        pre_resolved: Optional map of already-resolved entity names to dcids. When
+                      provided, these entities skip the per-variable resolve_entity call.
+                      Reduces graph round-trips when multiple variables share the same
+                      entity list.
 
     Returns:
         A RegionResult with status "definite", "candidates", or "no_data".
@@ -443,7 +663,9 @@ async def resolve_variable(
     timing: dict[str, int] = dict(base_timing)
     warnings: list[Warning] = []
 
-    def _no_data(reason: str) -> RegionResult:
+    _var_usage: dict | None = None  # accumulates LLM token usage for this variable's pipeline calls
+
+    def _no_data(reason: str, *, llm_usage: dict | None = None) -> RegionResult:
         return RegionResult(
             variable_text=variable,
             status="no_data",
@@ -451,13 +673,19 @@ async def resolve_variable(
             no_data_reason=reason,
             warnings=tuple(warnings),
             timing_by_step=dict(timing),
+            llm_usage=llm_usage,
         )
 
     # --- Step: recall ---
     t0 = now_ms()
-    rcl: Recall = await recall(variable, entities, graph=graph, raw_query=detect_query)
+    rcl: Recall = await recall(
+        variable, entities, graph=graph, raw_query=detect_query, pre_resolved=pre_resolved
+    )
     timing["recall"] = now_ms() - t0
     pipeline_steps.append(make_pipeline_step("recall", ran=True, ms=timing["recall"]))
+
+    # Capture the count before derive_shapes applies relevance filtering.
+    n_recalled: int = len(rcl.candidate_svs)
 
     # --- Step: shape ---
     # Graph-derived shape discovery: confirm each candidate SV via node_arcs,
@@ -605,6 +833,15 @@ async def resolve_variable(
         for surface, dcid in rcl.resolved_entity_names.items()
     ]
 
+    # Fetch canonical graph labels for all resolved entities; these provide a third anchor
+    # in direction detection beyond the surface text and DCID slug. node_labels_batch
+    # reads cached hits (populated during shape discovery), so this adds no new round-trips.
+    _entity_dcids = [dcid for dcid, _ in resolved_pairs]
+    _label_batch = graph.node_labels_batch(_entity_dcids) if _entity_dcids else {}
+    canonical_names: dict[str, str | None] = {
+        dcid: _label_batch.get(dcid) for dcid in _entity_dcids
+    }
+
     # Find the directional recipient entity for SV construction (always with pac=True);
     # the seam flag affects only how roles are presented in the response.
     # role_query is always the full raw query so that "from"/"to" prepositions are
@@ -615,6 +852,7 @@ async def resolve_variable(
         place_as_constraint=True,
         recipient_role_dcid=RECIPIENT_ROLE_DCID,
         donor_role_dcid=DONOR_ROLE_DCID,
+        canonical_names=canonical_names,
     )
 
     # When seam=ON (pac=True) the two role calls would be identical; skip the redundant second.
@@ -629,6 +867,7 @@ async def resolve_variable(
             place_as_constraint=False,
             recipient_role_dcid=RECIPIENT_ROLE_DCID,
             donor_role_dcid=DONOR_ROLE_DCID,
+            canonical_names=canonical_names,
         )
 
     # Emit seam warnings
@@ -696,7 +935,7 @@ async def resolve_variable(
 
     # --- Build slot taxonomy for bind ---
     # Use the per-shape taxonomy stamped by discover.read_slot_taxonomy.
-    # For dev-finance this is the hand-verified seed (B1); for standard it is the
+    # For dev-finance this is the hand-verified seed; for standard it is the
     # observed-union from the arc facts carried on the ShapeDraft.
     # The where/recipient slot is injected here after deterministic entity resolution.
     slot_taxonomy: dict[str, list[str]] = {}
@@ -711,6 +950,13 @@ async def resolve_variable(
     _is_standard = shape_draft.family_rule is STANDARD_RULE
     _has_constraint_slots = bool(slot_taxonomy) and not _is_standard
 
+    # Gate directional multi-recipient handling: dev-finance can carry all recipients in a
+    # BindingSet; standard truncates to one. decide_multi_recipient encapsulates the
+    # condition chain and emits a near-miss DEBUG trace when dev-finance suppresses the warning.
+    _recipient_direct, effective_to_dcids, _mr_conditions = decide_multi_recipient(
+        to_dcids, _has_constraint_slots, warnings=warnings
+    )
+
     if _has_constraint_slots:
         # Inject the deterministically-resolved recipient into the where slot.
         # This mirrors the existing dev-finance behaviour: the LLM is shown the
@@ -720,9 +966,21 @@ async def resolve_variable(
 
         # --- Step: bind ---
         t0 = now_ms()
-        bindings: list[SlotBindingDraft] = await bind(variable, slot_taxonomy, llm=llm)
+        bind_result: _BindOutput
+        _bind_usage: dict | None
+        bind_result, _bind_usage = await bind(variable, slot_taxonomy, llm=llm)
+        _var_usage = _bind_usage  # record token usage for this variable's bind call
         timing["bind"] = now_ms() - t0
         pipeline_steps.append(make_pipeline_step("bind", ran=True, ms=timing["bind"]))
+
+        # When the LLM signals the variable is completely off-topic for this taxonomy,
+        # return no_data immediately. Never fail-open on an all-unbound response.
+        if bind_result.ask:
+            for step in ("materialise", "answer"):
+                pipeline_steps.append(make_pipeline_step(step, ran=False))
+            return _no_data("variable_not_resolved", llm_usage=_var_usage)
+
+        bindings: list[SlotBindingDraft] = bind_result.bindings
 
         # The recipient is resolved deterministically (entity resolution + directional
         # detection), so override the LLM binding with the resolved recipient dcid
@@ -734,9 +992,9 @@ async def resolve_variable(
                     axis="where", property_dcid=PROP_RECIPIENT, kind="value", value_dcids=[]
                 )
                 bindings.append(where_binding)
-            if len(to_dcids) > 1:
+            if len(effective_to_dcids) > 1:
                 where_binding.kind = "set"
-                where_binding.value_dcids = list(to_dcids)
+                where_binding.value_dcids = list(effective_to_dcids)
             else:
                 where_binding.kind = "value"
                 where_binding.value_dcids = [recipient_dcid]
@@ -745,20 +1003,9 @@ async def resolve_variable(
         # with bare count SV, etc.).  Build a minimal where-only binding from the resolved
         # entity so the grounding stage has a recipient to display.  No property_dcid for
         # the entity-only where slot (matches the SlotKeyDraft(property_dcid=None) pattern).
-        # Standard family keeps a scalar where-binding (recipient_dcid == to_dcids[0]);
-        # BindingSet multi-recipient support is a dev-finance specialization only.  Because
-        # this path truncates to the first recipient, a directional multi-recipient query
-        # re-emits MULTI_RECIPIENT_TRUNCATED here to keep the drop loud. The set-binding
-        # fix only covers the dev-finance branch above, so this path stays fail-loud.
+        # decide_multi_recipient already emitted MULTI_RECIPIENT_TRUNCATED if applicable;
+        # no duplicate warning needed here.
         pipeline_steps.append(make_pipeline_step("bind", ran=False))
-        if len(to_dcids) > 1:
-            warnings.append(
-                Warning(
-                    code=MULTI_RECIPIENT_TRUNCATED,
-                    severity="warn",
-                    message=f"{len(to_dcids)} directional recipients detected; only 1 used.",
-                )
-            )
         bindings = []
         if recipient_dcid:
             bindings.append(
@@ -817,7 +1064,32 @@ async def resolve_variable(
 
     if isinstance(mat_result, NoDataDraft):
         pipeline_steps.append(make_pipeline_step("answer", ran=False))
-        return _no_data(mat_result.reason)
+        # Relax constraint bindings to suggest nearby data when observations are missing.
+        # Only probe the definite path (single shape); candidates path has multiple shapes.
+        nearest_real: tuple[Spec, ...] | None = None
+        if not _is_candidates_path and mat_result.reason == "no_observations":
+            near_specs = await asyncio.to_thread(
+                _suggest_nearest_real,
+                graph=graph,
+                shape_draft=shape_draft,
+                bindings=bindings,
+                roles=roles,
+                recipient_dcid=recipient_dcid,
+                donor_dcid=donor_dcid,
+                date_request=date_request,
+            )
+            if near_specs:
+                nearest_real = tuple(near_specs)
+        return RegionResult(
+            variable_text=variable,
+            status="no_data",
+            specs=(),
+            no_data_reason=mat_result.reason,
+            warnings=tuple(warnings),
+            timing_by_step=dict(timing),
+            nearest_real=nearest_real,
+            llm_usage=_var_usage,
+        )
 
     # --- Step: answer (ground everything and assemble Spec) ---
     t0 = now_ms()
@@ -865,11 +1137,18 @@ async def resolve_variable(
                 ft_refs,
                 member_count=cand_member_count,
             )
-            cand_stat_vars = build_stat_vars(cand_sv_refs, cand_shape.shape_id, cand_slots)
+            cand_stat_vars = build_stat_vars(
+                cand_sv_refs,
+                cand_shape.shape_id,
+                cand_slots,
+                facets_by_sv=cand_mat.facets_by_sv,
+                recipient_confirmed=cand_mat.recipient_confirmed,
+            )
             cand_entities = [
                 _build_entity(rd, er, etr, role_refs)
                 for rd, er, etr in cand_entity_data
             ]
+            cand_slots = bind_when_slot(cand_slots, window=cand_mat.coverage.window)
             cand_spec = build_spec(
                 shape=cand_shape_model,
                 slots=cand_slots,
@@ -877,9 +1156,9 @@ async def resolve_variable(
                 entities=cand_entities,
                 coverage=cand_mat.coverage,
                 pipeline_trace=pipeline_steps,
-                timing_by_step=timing,
                 variable_text=variable,
                 resolved_sources=cand_source_refs,
+                n_recalled=n_recalled,
             )
             specs.append(cand_spec)
 
@@ -895,7 +1174,7 @@ async def resolve_variable(
         pipeline_steps.append(make_pipeline_step("answer", ran=True, ms=timing["answer"]))
 
         if len(unique_specs) == 0:
-            return _no_data("no_observations")
+            return _no_data("no_observations", llm_usage=_var_usage)
         if len(unique_specs) == 1:
             # Single surviving candidate collapses to a definite region.
             return RegionResult(
@@ -905,6 +1184,7 @@ async def resolve_variable(
                 no_data_reason=None,
                 warnings=tuple(warnings),
                 timing_by_step=dict(timing),
+                llm_usage=_var_usage,
             )
         return RegionResult(
             variable_text=variable,
@@ -913,6 +1193,7 @@ async def resolve_variable(
             no_data_reason=None,
             warnings=tuple(warnings),
             timing_by_step=dict(timing),
+            llm_usage=_var_usage,
         )
 
     # Definite path: single Materialised result.
@@ -945,7 +1226,13 @@ async def resolve_variable(
     )
 
     # Build StatVars
-    stat_vars = build_stat_vars(sv_refs, shape_draft.shape_id, slots)
+    stat_vars = build_stat_vars(
+        sv_refs,
+        shape_draft.shape_id,
+        slots,
+        facets_by_sv=mat_result.facets_by_sv,
+        recipient_confirmed=mat_result.recipient_confirmed,
+    )
 
     # Assemble Entity objects from grounded data
     entity_objects: list[Entity] = [
@@ -956,6 +1243,9 @@ async def resolve_variable(
     timing["answer"] = now_ms() - t0
     pipeline_steps.append(make_pipeline_step("answer", ran=True, ms=timing["answer"]))
 
+    # Bind the when-slot to the extracted window before assembling the Spec
+    slots = bind_when_slot(slots, window=mat_result.coverage.window)
+
     # Assemble the Spec
     spec = build_spec(
         shape=shape_model,
@@ -964,9 +1254,9 @@ async def resolve_variable(
         entities=entity_objects,
         coverage=mat_result.coverage,
         pipeline_trace=pipeline_steps,
-        timing_by_step=timing,
         variable_text=variable,
         resolved_sources=source_refs,
+        n_recalled=n_recalled,
     )
 
     return RegionResult(
@@ -976,4 +1266,473 @@ async def resolve_variable(
         no_data_reason=None,
         warnings=tuple(warnings),
         timing_by_step=dict(timing),
+        llm_usage=_var_usage,
+    )
+
+
+# ---------------------------------------------------------------------------
+# resolve_spec_resubmit: Path C entry — named refine + standard promote
+# ---------------------------------------------------------------------------
+
+# NOTE: materialise → _ground_answer → build_spec is fully synchronous;
+# no async def in the chain.  The asyncio.to_thread wrap in core.py is therefore
+# safe and non-blocking on the event loop.
+
+
+def _slots_to_binding_drafts(slots: list) -> list[SlotBindingDraft]:
+    """Convert posted Slot objects to SlotBindingDraft for the pipeline.
+
+    Posted labels are discarded; only the dcids are carried forward.
+    time_window and literal bindings have no ref dcid and map to unbound.
+
+    Note: SlotKey.property is a GraphRef | None (not a plain string); extract
+    the dcid explicitly.
+    """
+    result: list[SlotBindingDraft] = []
+    for slot in slots:
+        axis = slot.key.axis
+        prop_ref = slot.key.property
+        prop = prop_ref.dcid if prop_ref is not None else None
+        binding = slot.binding
+        if isinstance(binding, BindingValue):
+            ref = binding.value.ref
+            if ref is not None:
+                result.append(SlotBindingDraft(
+                    axis=axis, property_dcid=prop, kind="value", value_dcids=[ref.dcid]
+                ))
+            else:
+                result.append(SlotBindingDraft(
+                    axis=axis, property_dcid=prop, kind="unbound", value_dcids=[]
+                ))
+        elif isinstance(binding, BindingSet):
+            dcids = [v.ref.dcid for v in binding.values if v.ref is not None]
+            result.append(SlotBindingDraft(
+                axis=axis, property_dcid=prop, kind="set", value_dcids=dcids
+            ))
+        elif isinstance(binding, BindingUnbound):
+            result.append(SlotBindingDraft(
+                axis=axis, property_dcid=prop, kind="unbound", value_dcids=[]
+            ))
+        else:  # BindingAbsent
+            result.append(SlotBindingDraft(
+                axis=axis, property_dcid=prop, kind="absent", value_dcids=[]
+            ))
+    return result
+
+
+def _date_request_from_slots(slots: list) -> DateRequest | None:
+    """Derive DateRequest from the when-slot binding when present."""
+    for slot in slots:
+        if slot.key.axis == "when" and isinstance(slot.binding, BindingValue):
+            tw = slot.binding.value.time_window
+            if tw is not None:
+                return DateRequest(window=tw, latest=False)
+    return None
+
+
+def resolve_spec_resubmit(
+    *,
+    inp: SpecResubmitInput,
+    rule: FamilyRule | None,
+    graph: EngineGraphClient,
+) -> RegionResult:
+    """Resolve a spec_resubmit input, bypassing extract/recall/shape/bind.
+
+    Branches on rule:
+      - Named family (rule not None, e.g. DEV_FINANCE_RULE): refine supported.
+        Reconstructs SVs from the (possibly edited) slots via construct_sv_dcid.
+      - Standard (rule is None): promote-only.
+        Re-reads posted SV arcs, regenerates shape_id, guards against edited
+        bindings, then materialises the unchanged candidate.
+
+    In both paths:
+      - extract step is marked ran=False in the pipeline trace.
+      - All GraphRef labels are read from the graph (decision #2); posted labels
+        are discarded.
+      - Absent graph nodes → no_data, never fabricated refs.
+
+    Raises:
+        EngineInputError: For unroutable inputs (unknown shape, mismatch, missing
+            stat_var_dcids for standard) or promote-only violations (code="promote_only").
+    """
+    extract_step = make_pipeline_step("extract", ran=False)
+    pipeline_steps: list[PipelineStep] = [extract_step]
+
+    if rule is not None:
+        return _resolve_named_family_resubmit(inp, rule, graph, pipeline_steps)
+    return _resolve_standard_promote(inp, graph, pipeline_steps)
+
+
+def _no_data_region(variable_text: str) -> RegionResult:
+    """Minimal no_data region for absent-graph-node outcomes."""
+    return RegionResult(
+        variable_text=variable_text,
+        status="no_data",
+        specs=(),
+        no_data_reason="variable_not_resolved",
+        warnings=(),
+        timing_by_step={},
+    )
+
+
+def _resolve_named_family_resubmit(
+    inp: SpecResubmitInput,
+    rule: FamilyRule,
+    graph: EngineGraphClient,
+    pipeline_steps: list[PipelineStep],
+) -> RegionResult:
+    """Named-family path (dev-finance): refine supported via construct_sv_dcid."""
+    variable_text = inp.shape_id  # best label available without extraction
+
+    # Build the canonical ShapeDraft for this family (mirrors the fallback path
+    # in resolve_variable).
+    shape_draft = dataclasses.replace(
+        build_shape(DEV_FINANCE_FAMILY), family_rule=rule
+    )
+
+    # Collect all posted dcids that carry graph refs; re-read their labels.
+    # Any dcid absent from the graph → no_data (decision #2: never fabricate).
+    posted_dcids: list[str] = []
+    for slot in inp.slots:
+        binding = slot.binding
+        if isinstance(binding, BindingValue) and binding.value.ref:
+            posted_dcids.append(binding.value.ref.dcid)
+        elif isinstance(binding, BindingSet):
+            posted_dcids.extend(v.ref.dcid for v in binding.values if v.ref is not None)
+
+    entity_dcid: str | None = None
+    if inp.entity_dcids:
+        entity_dcid = inp.entity_dcids[0]
+        posted_dcids.append(entity_dcid)
+    elif inp.slots:
+        # Fall back to where-slot entity (scalar sentinel: first confirmed ref in set)
+        for slot in inp.slots:
+            if slot.key.axis == "where":
+                if isinstance(slot.binding, BindingValue):
+                    if slot.binding.value.ref:
+                        entity_dcid = slot.binding.value.ref.dcid
+                elif isinstance(slot.binding, BindingSet):
+                    first = next((v for v in slot.binding.values if v.ref is not None), None)
+                    if first is not None and first.ref is not None:
+                        entity_dcid = first.ref.dcid
+                break
+
+    if posted_dcids:
+        label_map = graph.node_labels_batch(posted_dcids)
+        absent = [d for d in posted_dcids if d not in label_map]
+        if absent:
+            return _no_data_region(variable_text)
+
+    # Convert posted Slot objects to SlotBindingDraft for the pipeline.
+    bindings = _slots_to_binding_drafts(inp.slots)
+
+    # Derive date_request from the when-slot when present.
+    date_request = _date_request_from_slots(inp.slots)
+
+    # Derive recipient_dcid: entity_dcids[0] takes precedence over posted slots.
+    recipient_dcid = entity_dcid
+
+    # Materialise via the named-family resolver (calls construct_sv_dcid → confirms SV).
+    mat_result = materialise(
+        shape_draft, bindings, recipient_dcid, donor_dcid=None,
+        graph=graph, date_request=date_request,
+    )
+    if isinstance(mat_result, NoDataDraft):
+        return RegionResult(
+            variable_text=variable_text,
+            status="no_data",
+            specs=(),
+            no_data_reason=mat_result.reason,
+            warnings=(),
+            timing_by_step={},
+        )
+    if not isinstance(mat_result, Materialised):
+        # MaterialisedCandidates: named-family resubmit always yields one SV; treat as no_data.
+        return _no_data_region(variable_text)
+
+    # Build entity roles dict for _ground_answer.
+    roles: dict[str, EntityRoleDraft] = {}
+    if recipient_dcid:
+        roles[recipient_dcid] = EntityRoleDraft(
+            dcid=recipient_dcid,
+            surface=None,
+            role=DirectionalRole(kind="directional", direction="to", role_dcid=RECIPIENT_ROLE_DCID),
+        )
+    # When the where-slot is a BindingSet, add all recipients as directional "to" roles
+    # so the returned Spec's entity list covers every posted recipient.
+    for slot in inp.slots:
+        if slot.key.axis == "where" and isinstance(slot.binding, BindingSet):
+            for v in slot.binding.values:
+                if v.ref is not None and v.ref.dcid not in roles:
+                    roles[v.ref.dcid] = EntityRoleDraft(
+                        dcid=v.ref.dcid,
+                        surface=None,
+                        role=DirectionalRole(
+                            kind="directional", direction="to", role_dcid=RECIPIENT_ROLE_DCID
+                        ),
+                    )
+            break
+
+    grounding = _ground_answer(
+        shape_draft, bindings, mat_result.sv_dcids, roles, graph, mat_result.facets
+    )
+    (
+        five_tuple_refs, role_refs, slots, slot_key_models, sv_refs, entity_data, source_refs
+    ) = grounding
+
+    shape_model = build_shape_model(
+        shape_draft, slot_key_models, five_tuple_refs, member_count=len(sv_refs)
+    )
+    stat_vars = build_stat_vars(
+        sv_refs,
+        shape_draft.shape_id,
+        slots,
+        facets_by_sv=mat_result.facets_by_sv,
+        recipient_confirmed=mat_result.recipient_confirmed,
+    )
+    entities = [_build_entity(rd, er, etr, role_refs) for rd, er, etr in entity_data]
+    slots = bind_when_slot(slots, window=mat_result.coverage.window)
+    spec = build_spec(
+        shape=shape_model,
+        slots=slots,
+        stat_vars=stat_vars,
+        entities=entities,
+        coverage=mat_result.coverage,
+        pipeline_trace=pipeline_steps,
+        resolved_sources=source_refs,
+    )
+
+    return RegionResult(
+        variable_text=variable_text,
+        status="definite",
+        specs=(spec,),
+        no_data_reason=None,
+        warnings=(),
+        timing_by_step={},
+    )
+
+
+def _resolve_standard_promote(
+    inp: SpecResubmitInput,
+    graph: EngineGraphClient,
+    pipeline_steps: list[PipelineStep],
+) -> RegionResult:
+    """Standard path: promote-only from re-read posted SV arcs.
+
+    Raises EngineInputError for:
+      - Missing stat_var_dcids (no code)
+      - SVs spanning multiple five-tuples (no code)
+      - shape_id mismatch (no code)
+      - Edited bindings not in SV constraints (code="promote_only")
+
+    Absent posted dcids → no_data, not an error.
+    """
+    variable_text = inp.shape_id
+
+    if not inp.stat_var_dcids:
+        raise EngineInputError(
+            "standard resubmit requires stat_var_dcids; "
+            "omit for named families (e.g. dev_finance_crs_dac)"
+        )
+
+    # Re-read arcs for every posted SV; any absent → no_data.
+    arcs_map = graph.node_arcs_batch(inp.stat_var_dcids)
+    absent_svs = [sv for sv, arcs in arcs_map.items() if arcs is None]
+    if absent_svs:
+        return _no_data_region(variable_text)
+    # Narrow: all values are non-None after the above guard.
+    confirmed_arcs: dict[str, dict] = {sv: a for sv, a in arcs_map.items() if a is not None}
+
+    # Extract five-tuple for every SV; require all to share one five-tuple.
+    five_tuples = {sv: read_five_tuple(confirmed_arcs[sv]) for sv in inp.stat_var_dcids}
+    unique_fts = set(five_tuples.values())
+    if len(unique_fts) > 1:
+        raise EngineInputError(
+            "posted stat_var_dcids span multiple five-tuple shapes; "
+            "a candidate is one shape"
+        )
+
+    ft = next(iter(unique_fts))
+
+    # Regenerate the standard shape_id from the re-read five-tuple (mirrors
+    # discover.py:412-417) and require it to match inp.shape_id.  This stops the
+    # engine silently resolving a shape the client did not name, and catches
+    # dev-finance SVs posted under a standard shape_id.
+    regenerated_shape_id = (
+        f"{ft.pop_type_dcid}_{ft.meas_prop_dcid}"
+        f"_{ft.stat_type_dcid}"
+        + (f"_{ft.meas_qual_dcid}" if ft.meas_qual_dcid else "")
+        + (f"_per_{ft.meas_denom_dcid}" if ft.meas_denom_dcid else "")
+    ).lower()
+
+    if regenerated_shape_id != inp.shape_id:
+        raise EngineInputError(
+            "shape_id does not match the five-tuple derived from the posted stat_var_dcids"
+        )
+
+    # Build union constraint map from all posted SVs' arc facts.
+    union_constraints: dict[str, set[str]] = {}
+    for sv in inp.stat_var_dcids:
+        sv_constraints = read_constraints(confirmed_arcs[sv])
+        for prop, val in sv_constraints.items():
+            union_constraints.setdefault(prop, set()).add(val)
+
+    # Guard against refinement (editing slots beyond promote): only validate what/how slots
+    # whose property is a key in the constraint map.  Skip where/when/source (geographic
+    # entities are never enum constraints and must not false-400 an honest promote).
+    for slot in inp.slots:
+        if slot.key.axis not in ("what", "how"):
+            continue
+        prop_ref = slot.key.property
+        prop = prop_ref.dcid if prop_ref is not None else None
+        if prop is None or prop not in union_constraints:
+            continue
+        binding = slot.binding
+        if isinstance(binding, BindingValue) and binding.value.ref:
+            if binding.value.ref.dcid not in union_constraints[prop]:
+                raise EngineInputError(
+                    "standard resubmit is promote-only; edited bindings are not supported — "
+                    "submit a raw_text query to change the interpretation",
+                    code="promote_only",
+                )
+        elif isinstance(binding, BindingSet):
+            for sv_val in binding.values:
+                if sv_val.ref and sv_val.ref.dcid not in union_constraints[prop]:
+                    raise EngineInputError(
+                        "standard resubmit is promote-only; edited bindings are not supported — "
+                        "submit a raw_text query to change the interpretation",
+                        code="promote_only",
+                    )
+
+    # entity_dcids[0] takes precedence over a where-slot entity.
+    entity_dcid: str | None = None
+    if inp.entity_dcids:
+        entity_dcid = inp.entity_dcids[0]
+    else:
+        # Fall back to the where-slot entity.
+        for slot in inp.slots:
+            if slot.key.axis == "where" and isinstance(slot.binding, BindingValue):
+                if slot.binding.value.ref:
+                    entity_dcid = slot.binding.value.ref.dcid
+                break
+
+    # Honest re-read: confirm entity dcids via node_labels_batch (decision #2).
+    # Constraint values are already confirmed by being in the SV's arc facts;
+    # _ground_answer will silently drop any that lack a standalone label.
+    # Absent entity → no_data (no entity to probe against).
+    if entity_dcid:
+        label_map = graph.node_labels_batch([entity_dcid])
+        if entity_dcid not in label_map:
+            return _no_data_region(variable_text)
+
+    # Reconstruct ShapeDraft from the re-read five-tuple and per-SV arc facts.
+    # Build constraint_props, prop_labels, prop_observed_values from the arcs.
+    # Use the first SV as the representative (insertion-order stable).
+    rep_sv = inp.stat_var_dcids[0]
+    rep_arcs = confirmed_arcs[rep_sv]
+    rep_constraints = read_constraints(rep_arcs)
+    constraint_props = list(rep_constraints.keys())
+
+    # Collect all observed values per property across all SVs for classify_axis.
+    prop_observed_values: dict[str, list[str]] = {p: [] for p in constraint_props}
+    for sv in inp.stat_var_dcids:
+        sv_c = read_constraints(confirmed_arcs[sv])
+        for prop, val in sv_c.items():
+            if prop in prop_observed_values:
+                prop_observed_values[prop].append(val)
+
+    # Derive prop labels from node_labels_batch (decision #2: graph-read only).
+    prop_label_map = graph.node_labels_batch(constraint_props) if constraint_props else {}
+    prop_labels = {p: prop_label_map.get(p, p) for p in constraint_props}
+
+    sv_arc_facts = {sv: confirmed_arcs[sv] for sv in inp.stat_var_dcids}
+
+    shape_draft = shape_draft_from(
+        shape_id=regenerated_shape_id,
+        label=regenerated_shape_id,  # standard label; grounding will set the anchors
+        pop_type_dcid=ft.pop_type_dcid,
+        meas_prop_dcid=ft.meas_prop_dcid,
+        stat_type_dcid=ft.stat_type_dcid,
+        meas_qual_dcid=ft.meas_qual_dcid,
+        meas_denom_dcid=ft.meas_denom_dcid,
+        constraint_props=constraint_props,
+        prop_labels=prop_labels,
+        prop_observed_values=prop_observed_values,
+        family_rule=STANDARD_RULE,
+        sv_arc_facts=sv_arc_facts,
+    )
+
+    # Build bindings: where + arc-derived constraints.
+    bindings: list[SlotBindingDraft] = []
+    if entity_dcid:
+        bindings.append(SlotBindingDraft(
+            axis="where", property_dcid=None, kind="value", value_dcids=[entity_dcid],
+        ))
+    bindings.extend(standard_bindings_from_arcs(shape=shape_draft, rep_sv_dcid=rep_sv))
+
+    date_request = _date_request_from_slots(inp.slots)
+
+    # Materialise via the standard resolver (probes the representative SV).
+    mat_result = materialise(
+        shape_draft, bindings, entity_dcid, donor_dcid=None,
+        graph=graph, date_request=date_request,
+    )
+    if isinstance(mat_result, NoDataDraft):
+        return RegionResult(
+            variable_text=variable_text,
+            status="no_data",
+            specs=(),
+            no_data_reason=mat_result.reason,
+            warnings=(),
+            timing_by_step={},
+        )
+    if not isinstance(mat_result, Materialised):
+        # MaterialisedCandidates: standard promote re-reads one fixed SV; treat as no_data.
+        return _no_data_region(variable_text)
+
+    # Build entity roles dict for _ground_answer (standard = subject role).
+    roles: dict[str, EntityRoleDraft] = {}
+    if entity_dcid:
+        roles[entity_dcid] = EntityRoleDraft(
+            dcid=entity_dcid,
+            surface=None,
+            role=SubjectRole(),
+        )
+
+    grounding = _ground_answer(
+        shape_draft, bindings, mat_result.sv_dcids, roles, graph, mat_result.facets
+    )
+    (
+        five_tuple_refs, role_refs, slots, slot_key_models, sv_refs, entity_data, source_refs
+    ) = grounding
+
+    shape_model = build_shape_model(
+        shape_draft, slot_key_models, five_tuple_refs, member_count=len(sv_refs)
+    )
+    stat_vars = build_stat_vars(
+        sv_refs,
+        shape_draft.shape_id,
+        slots,
+        facets_by_sv=mat_result.facets_by_sv,
+        recipient_confirmed=mat_result.recipient_confirmed,
+    )
+    entities = [_build_entity(rd, er, etr, role_refs) for rd, er, etr in entity_data]
+    slots = bind_when_slot(slots, window=mat_result.coverage.window)
+    spec = build_spec(
+        shape=shape_model,
+        slots=slots,
+        stat_vars=stat_vars,
+        entities=entities,
+        coverage=mat_result.coverage,
+        pipeline_trace=pipeline_steps,
+        resolved_sources=source_refs,
+    )
+
+    return RegionResult(
+        variable_text=variable_text,
+        status="definite",
+        specs=(spec,),
+        no_data_reason=None,
+        warnings=(),
+        timing_by_step={},
     )

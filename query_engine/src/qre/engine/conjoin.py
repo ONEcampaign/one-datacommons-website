@@ -13,6 +13,7 @@ Pure helper functions (unit-tested in test_conjoin.py):
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from qre.engine.assemble import (
@@ -30,7 +31,7 @@ from qre.models import (
 
 if TYPE_CHECKING:
     from qre.engine.regions import RegionResult
-    from qre.models import ResolveResponse
+    from qre.models import GraphRef, QueryEcho, ResolveResponse
 
 # ---------------------------------------------------------------------------
 # Warning code constants — severities and message templates are PINNED
@@ -98,6 +99,8 @@ def _slot_key_t(slot) -> tuple[str, str | None]:
 
 def collapse_same_shape(
     definite: list["RegionResult"],
+    *,
+    set_ref_for: "Callable[[list[str]], GraphRef | None] | None" = None,
 ) -> tuple[list["RegionResult"], list[str]]:
     """Tier-1 same-shape collapse: merge regions sharing the same five-tuple.
 
@@ -207,13 +210,25 @@ def collapse_same_shape(
             continue
 
 
-        # Build merged slots: all slots unchanged except the differing one becomes a BindingSet
+        # Build merged slots: all slots unchanged except the differing one becomes a BindingSet.
+        # Propagate value_kind from the source binding rather than hardcoding "entity"; the
+        # all_value check above guarantees every diff-slot is a BindingValue with a value.
+        src_slot = next(s for s in group[0].spec.slots if _slot_key_t(s) == diff_key)
+        assert isinstance(src_slot.binding, BindingValue)  # all_value guarantees this
+        source_vk = src_slot.binding.value.value_kind
+        # Only detect set_ref for what/how taxonomy axes (not where — isPartOf also
+        # models geographic containment, so where-axis sets must not be labelled).
+        merged_set_ref: "GraphRef | None" = None
+        if diff_key[0] in ("what", "how") and set_ref_for is not None:
+            merged_set_ref = set_ref_for([r.dcid for r in diff_refs])
         merged_slots = []
         for sl in base_spec.slots:
             if _slot_key_t(sl) == diff_key:
-                set_values = [SlotValue(ref=ref, value_kind="entity") for ref in diff_refs]
+                set_values = [SlotValue(ref=ref, value_kind=source_vk) for ref in diff_refs]
                 merged_slots.append(
-                    sl.model_copy(update={"binding": BindingSet(values=set_values)})
+                    sl.model_copy(
+                        update={"binding": BindingSet(values=set_values, set_ref=merged_set_ref)}
+                    )
                 )
             else:
                 merged_slots.append(sl)
@@ -260,7 +275,6 @@ def collapse_same_shape(
             entities=base_spec.entities,
             coverage=merged_coverage,
             pipeline_trace=list(base_spec.resolution.pipeline_trace),
-            timing_by_step={},
             variable_text=merged_variable_text,
         )
         merged_timing = dict(group[0].timing_by_step)
@@ -384,6 +398,8 @@ def assemble_region(
     engine_build: str,
     include_sentence: bool,
     max_candidates: int,
+    llm_usage: dict | None = None,
+    echo: "QueryEcho | None" = None,
 ) -> "ResolveResponse":
     """Assemble a single RegionResult into a ResolveResponse.
 
@@ -391,14 +407,26 @@ def assemble_region(
     safety net so the two paths produce identical output.
 
     n_measures = len(variable_texts) — when >= 2 the C5 sentence suffix applies.
+    llm_usage is the total aggregated LLM token usage for this request, summed
+    across the extract call and all per-variable bind calls by the caller.
+    echo, when supplied by the caller, is used verbatim; when None the default
+    raw_text echo is built from query + variable_texts. Pass a pre-built echo for
+    non-raw-text entry paths (spec_resubmit) so the response faithfully reflects
+    which path was taken.
     """
 
     warnings = _dedupe_by(
         list(region.warnings) + extra_warnings,
         key=lambda w: (w.code, w.severity, w.message),
     )
-    echo = make_query_echo(query, variable_texts, extract_skipped=False)
-    diag = make_diagnostics(engine_build, warnings, region.timing_by_step, now_ms() - start_ms)
+    echo = (
+        echo if echo is not None
+        else make_query_echo(query, variable_texts, extract_skipped=False)
+    )
+    diag = make_diagnostics(
+        engine_build, warnings, region.timing_by_step, now_ms() - start_ms,
+        llm_usage=llm_usage,
+    )
     k = len(variable_texts)
 
     if region.status == "definite":
@@ -416,9 +444,10 @@ def assemble_region(
             n_measures=k,
         )
     return assemble_no_data(
-        region.no_data_reason, echo, diag,
+        region.no_data_reason or "variable_not_resolved", echo, diag,
         include_sentence=include_sentence,
         n_measures=k,
+        nearest_real=list(region.nearest_real) if region.nearest_real else None,
     )
 
 
@@ -437,6 +466,9 @@ def combine_regions(
     engine_build: str,
     include_sentence: bool,
     max_candidates: int,
+    llm_usage: dict | None = None,
+    echo: "QueryEcho | None" = None,
+    set_ref_for: "Callable[[list[str]], GraphRef | None] | None" = None,
 ) -> "ResolveResponse":
     """Combine N≥2 RegionResults into a single ResolveResponse.
 
@@ -445,11 +477,16 @@ def combine_regions(
       2. Cross-shape conjunction: primary in interpretation, other definites in
          additional_interpretations, non-definites surfaced as warnings.
       3. Full mixed-outcome matrix (primary candidates / no_data).
+
+    llm_usage is the total aggregated LLM token usage for this request, summed
+    across the extract call and all per-variable bind calls by the caller.
+    echo, when supplied by the caller, is used verbatim; when None the default
+    raw_text echo is built from query + variable_texts.
     """
     definite = [r for r in regions if r.status == "definite"]
     others = [r for r in regions if r.status != "definite"]
 
-    collapsed, residual_texts = collapse_same_shape(definite)
+    collapsed, residual_texts = collapse_same_shape(definite, set_ref_for=set_ref_for)
     effective = sorted(collapsed + others, key=lambda r: r.earliest_index)
 
     residual_warnings: list[Warning] = [
@@ -473,6 +510,8 @@ def combine_regions(
             engine_build=engine_build,
             include_sentence=include_sentence,
             max_candidates=max_candidates,
+            llm_usage=llm_usage,
+            echo=echo,
         )
 
     # Multi-region path
@@ -485,9 +524,13 @@ def combine_regions(
     conj_warnings = build_conjunction_warnings(primary, extras, variable_texts)
     warnings = base_warnings + extra_warnings + residual_warnings + conj_warnings
 
-    echo = make_query_echo(query, variable_texts, extract_skipped=False)
+    echo = (
+        echo if echo is not None
+        else make_query_echo(query, variable_texts, extract_skipped=False)
+    )
     diag = make_diagnostics(
-        engine_build, warnings, primary.timing_by_step, now_ms() - start_ms
+        engine_build, warnings, primary.timing_by_step, now_ms() - start_ms,
+        llm_usage=llm_usage,
     )
     k = len(variable_texts)
 
@@ -521,7 +564,8 @@ def combine_regions(
 
     # Primary is no_data; conjunction acknowledged via warnings.
     return assemble_no_data(
-        primary.no_data_reason, echo, diag,
+        primary.no_data_reason or "variable_not_resolved", echo, diag,
         include_sentence=include_sentence,
         n_measures=k,
+        nearest_real=list(primary.nearest_real) if primary.nearest_real else None,
     )

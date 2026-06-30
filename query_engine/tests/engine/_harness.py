@@ -10,13 +10,59 @@ from datetime import date
 from unittest.mock import patch
 
 from qre.engine.core import resolve_async
-from qre.models import RawTextInput, ResolveOptions, ResolveRequest, ResolveResponse
+from qre.models import (
+    BindingValue,
+    BreadthDim,
+    Coverage,
+    CoverageBreadth,
+    CoverageExact,
+    GraphRef,
+    RawTextInput,
+    ResolveOptions,
+    ResolveRequest,
+    ResolveResponse,
+    Slot,
+)
 from tests.fixtures import FakeGraph, FakeLLM
 
 PINNED_DATE = date(2026, 6, 23)
 
 _FAKE_GRAPH = FakeGraph()
 _FAKE_LLM = FakeLLM()
+
+
+def ref_dcid(ref: GraphRef | None) -> str:
+    """Return the dcid of a graph ref the caller requires to be present.
+
+    SlotValue.ref is Optional (literal/time-window values carry no ref); these
+    tests only inspect value-bound slots, where the ref is always grounded.
+    The assert makes that precondition explicit instead of an AttributeError.
+    """
+    assert ref is not None
+    return ref.dcid
+
+
+def slot_value_dcid(slot: Slot) -> str:
+    """Return the grounded dcid of a single value-bound slot.
+
+    Asserts the binding is a BindingValue carrying a graph ref, which is the
+    precondition every call site already relies on.
+    """
+    binding = slot.binding
+    assert isinstance(binding, BindingValue)
+    return ref_dcid(binding.value.ref)
+
+
+def dimensions_of(coverage: Coverage) -> list[BreadthDim]:
+    """Return a coverage's breadth dimensions, asserting they are present.
+
+    CoverageBare carries no dimensions and CoverageExact.dimensions is Optional;
+    these tests only inspect coverages that populate dimensions, so the asserts
+    encode that precondition instead of leaking the union/Optional to call sites.
+    """
+    assert isinstance(coverage, (CoverageExact, CoverageBreadth))
+    assert coverage.dimensions is not None
+    return coverage.dimensions
 
 
 def make_request(query: str, pac: bool | None = None) -> ResolveRequest:

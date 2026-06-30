@@ -153,6 +153,30 @@ class _ReconcilingLangfuse:
         return {i for i, s in self._items.items() if s == "ACTIVE"}
 
 
+def test_golden_to_item_spec_resubmit_carries_required_fields(all_goldens):
+    """spec_resubmit goldens must include shape_id + slots in input so the runner can build
+    a ResolveRequest without KeyError (regression guard for the pre-fix failure).
+    """
+    spec_goldens = [g for g in all_goldens if g["entry_path"] == "spec_resubmit"]
+    assert spec_goldens, "expected at least one spec_resubmit golden in goldens.json"
+    for g in spec_goldens:
+        inp = golden_to_item(g)["input"]
+        assert inp["shape_id"] == g["shape_id"], g["id"]
+        assert inp["slots"] == g["slots"], g["id"]
+        # optional dcid fields come through even when absent (None)
+        assert inp.get("stat_var_dcids") == g.get("stat_var_dcids"), g["id"]
+        assert inp.get("entity_dcids") == g.get("entity_dcids"), g["id"]
+
+
+def test_golden_to_item_raw_text_unchanged(all_goldens):
+    """raw_text goldens must not gain extra keys from the spec_resubmit branch."""
+    raw_goldens = [g for g in all_goldens if g["entry_path"] == "raw_text"]
+    assert raw_goldens, "expected raw_text goldens"
+    for g in raw_goldens:
+        inp = golden_to_item(g)["input"]
+        assert set(inp.keys()) == {"query", "entry_path"}, g["id"]
+
+
 def test_sync_dataset_archives_stale_items():
     """A previously-synced item not in the new batch is archived, not left to be scored."""
     stale = "qre-standard-main:qre-golden-cand-r2"
@@ -166,5 +190,5 @@ def test_sync_dataset_archives_stale_items():
     )
     assert stale in report["archived"], "stale cand-r2 should be archived"
     assert stale not in client.active_ids(), "cand-r2 must not remain ACTIVE after reconcile"
-    # The 10 gate items are all ACTIVE; the stale one is gone.
-    assert len(client.active_ids()) == report["n"] == 10
+    # The 14 gate items are all ACTIVE; the stale one is gone.
+    assert len(client.active_ids()) == report["n"] == 14

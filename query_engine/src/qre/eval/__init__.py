@@ -7,7 +7,7 @@ Public surface:
         structural_conformance, interpretation_match,
         behaviour_by_tag, axis_classification,
         make_groundedness, make_materialisation,
-        DEFAULT_ITEM_EVALUATORS, DEFAULT_RUN_EVALUATORS,
+        make_item_evaluators, DEFAULT_RUN_EVALUATORS,
     )
 
 The eval extra (langfuse, datacommons-client) is not required for the core contract models.
@@ -25,16 +25,21 @@ from typing import Protocol
 from qre import ResolveRequest, ResolveResponse
 from qre.eval.dataset import sync_dataset  # noqa: F401
 from qre.eval.evaluators import (  # noqa: F401
-    DEFAULT_ITEM_EVALUATORS,
     DEFAULT_RUN_EVALUATORS,
     axis_classification,
     behaviour_by_tag,
     interpretation_match,
     make_groundedness,
+    make_item_evaluators,
     make_materialisation,
     structural_conformance,
 )
-from qre.eval.gate import GATE_THRESHOLDS, check_gate, load_baseline  # noqa: F401
+from qre.eval.gate import (  # noqa: F401
+    GATE_THRESHOLDS,
+    check_gate,
+    load_baseline,
+    load_baseline_items,
+)
 from qre.eval.graph import GraphClient  # noqa: F401
 from qre.eval.runner import run_eval  # noqa: F401
 
@@ -50,6 +55,7 @@ __all__ = [
     "run_eval",
     "check_gate",
     "load_baseline",
+    "load_baseline_items",
     "GATE_THRESHOLDS",
     "EngineTask",
     "GraphClient",
@@ -59,6 +65,6 @@ __all__ = [
     "axis_classification",
     "make_groundedness",
     "make_materialisation",
-    "DEFAULT_ITEM_EVALUATORS",
+    "make_item_evaluators",
     "DEFAULT_RUN_EVALUATORS",
 ]

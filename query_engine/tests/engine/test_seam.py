@@ -50,6 +50,10 @@ class TestSeamBehavior:
         result_off = offline_resolve(
             make_request("health ODA grants from USA to Ethiopia", pac=False)
         )
-        dcids_on = {e.ref.dcid for e in result_on.root.interpretation.entities}
-        dcids_off = {e.ref.dcid for e in result_off.root.interpretation.entities}
+        inner_on = result_on.root
+        inner_off = result_off.root
+        assert isinstance(inner_on, DefiniteResponse)
+        assert isinstance(inner_off, DefiniteResponse)
+        dcids_on = {e.ref.dcid for e in inner_on.interpretation.entities}
+        dcids_off = {e.ref.dcid for e in inner_off.interpretation.entities}
         assert dcids_on == dcids_off

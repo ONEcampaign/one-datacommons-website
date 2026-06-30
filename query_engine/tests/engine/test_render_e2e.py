@@ -7,6 +7,7 @@ from __future__ import annotations
 from qre.models import (
     CandidatesResponse,
     DefiniteResponse,
+    EntityRoleDirectional,
     NoDataResponse,
     RawTextInput,
     ResolveOptions,
@@ -43,8 +44,10 @@ def test_donor_and_recipient_sentence():
     )
     # Faithful donor read-back: USA carries the "from" directional role.
     roles = {e.ref.dcid: e.role for e in r.interpretation.entities}
-    assert roles["country/USA"].direction == "from"
-    assert roles["country/USA"].role.dcid == "observationAbout"
+    usa_role = roles["country/USA"]
+    assert isinstance(usa_role, EntityRoleDirectional)
+    assert usa_role.direction == "from"
+    assert usa_role.role.dcid == "observationAbout"
 
 
 # ---------------------------------------------------------------------------

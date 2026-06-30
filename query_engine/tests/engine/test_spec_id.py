@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from qre.engine.spec_id import compute_spec_id
 from qre.models import (
+    Axis,
     BindingAbsent,
     BindingSet,
     BindingUnbound,
@@ -20,15 +21,15 @@ from qre.models import (
 )
 
 
-def _slot_key(axis: str, prop_dcid: str | None, label: str = "") -> SlotKey:
+def _slot_key(axis: Axis, prop_dcid: str | None, label: str = "") -> SlotKey:
     return SlotKey(
-        axis=axis,  # type: ignore[arg-type]
+        axis=axis,
         property=GraphRef(dcid=prop_dcid, label=label) if prop_dcid else None,
         label=label or prop_dcid or axis,
     )
 
 
-def _value_slot(axis: str, prop_dcid: str | None, value_dcid: str) -> Slot:
+def _value_slot(axis: Axis, prop_dcid: str | None, value_dcid: str) -> Slot:
     return Slot(
         key=_slot_key(axis, prop_dcid),
         binding=BindingValue(
@@ -40,11 +41,11 @@ def _value_slot(axis: str, prop_dcid: str | None, value_dcid: str) -> Slot:
     )
 
 
-def _unbound_slot(axis: str, prop_dcid: str | None) -> Slot:
+def _unbound_slot(axis: Axis, prop_dcid: str | None) -> Slot:
     return Slot(key=_slot_key(axis, prop_dcid), binding=BindingUnbound())
 
 
-def _absent_slot(axis: str, prop_dcid: str | None) -> Slot:
+def _absent_slot(axis: Axis, prop_dcid: str | None) -> Slot:
     return Slot(key=_slot_key(axis, prop_dcid), binding=BindingAbsent())
 
 

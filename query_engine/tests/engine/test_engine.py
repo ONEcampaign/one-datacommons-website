@@ -12,7 +12,7 @@ from qre.models import (
     ResolveRequest,
 )
 from qre.render import no_data_phrase
-from tests.engine._harness import offline_resolve
+from tests.engine._harness import offline_resolve, slot_value_dcid
 
 
 def make_request(query: str) -> ResolveRequest:
@@ -54,9 +54,9 @@ class TestDefiniteGoldens:
         slot_map = {s.key.property.dcid: s for s in spec.slots if s.key.property}
         assert slot_map["DevelopmentFinanceScheme"].binding.kind == "value"
         assert slot_map["DevelopmentFinancePurpose"].binding.kind == "value"
-        assert slot_map["DevelopmentFinancePurpose"].binding.value.ref.dcid == "DAC/Malariacontrol"
+        assert slot_value_dcid(slot_map["DevelopmentFinancePurpose"]) == "DAC/Malariacontrol"
         assert slot_map["DevelopmentFinanceRecipient"].binding.kind == "value"
-        assert slot_map["DevelopmentFinanceRecipient"].binding.value.ref.dcid == "country/ETH"
+        assert slot_value_dcid(slot_map["DevelopmentFinanceRecipient"]) == "country/ETH"
 
     def test_df03_health_oda_grants_uk_to_kenya(self):
         result = offline_resolve(make_request("health ODA grants from UK to Kenya"))
@@ -66,7 +66,7 @@ class TestDefiniteGoldens:
         sv_dcids = [sv.ref.dcid for sv in spec.stat_vars]
         assert "ONE/CRS_DAC/Health-ODAGrants-KEN" in sv_dcids
         slot_map = {s.key.property.dcid: s for s in spec.slots if s.key.property}
-        assert slot_map["DevelopmentFinanceRecipient"].binding.value.ref.dcid == "country/KEN"
+        assert slot_value_dcid(slot_map["DevelopmentFinanceRecipient"]) == "country/KEN"
 
     def test_df04_official_development_assistance_germany_to_ethiopia(self):
         result = offline_resolve(

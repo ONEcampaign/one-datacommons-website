@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import asyncio
 
-from qre.engine.regions import RETRIEVAL_SCORE_WEAK, resolve_variable
+from qre.engine.regions import RETRIEVAL_SCORE_WEAK, RegionResult, resolve_variable
 from tests.fixtures import FakeGraph, FakeLLM
 
 # A single standard-family SV (non-CRS_DAC prefix so it routes to STANDARD_RULE).
@@ -36,7 +36,7 @@ _NODES: dict = {
 _RESOLVE: dict = {"Kenya": "country/KEN"}
 
 
-def _run(cosine_score: float | None) -> object:
+def _run(cosine_score: float | None) -> RegionResult:
     """Run resolve_variable with a single standard SV at the given cosine score.
 
     cosine_score=None means the detect entry carries no cosine_scores, so FakeGraph

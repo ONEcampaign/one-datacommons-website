@@ -120,7 +120,10 @@
       }
     }
   },
-  "observationAbout": { "label": "observation about", "type": "Property" },
+  "observationAbout": {
+    "label": "observation about",
+    "type": "Property"
+  },
   "ODAGrants": {
     "label": "Official Development Assistance Grants",
     "type": "Property",
@@ -4963,34 +4966,6 @@
     "label": "Domestic general government expenditure on information, education and counseling (IEC) (percent of GDP)",
     "type": "StatisticalVariable",
     "arcs": {
-      "constraintProperties": {
-        "nodes": [
-          {
-            "name": "Source of health financing",
-            "types": [
-              "Property"
-            ],
-            "dcid": "healthFinancingSource"
-          },
-          {
-            "name": "Health care function",
-            "types": [
-              "Property"
-            ],
-            "dcid": "healthCareFunction"
-          }
-        ]
-      },
-      "measurementDenominator": {
-        "nodes": [
-          {
-            "types": [
-              "Thing"
-            ],
-            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
-          }
-        ]
-      },
       "typeOf": {
         "nodes": [
           {
@@ -5008,16 +4983,6 @@
               "Thing"
             ],
             "value": "HC.6.1"
-          }
-        ]
-      },
-      "description": {
-        "nodes": [
-          {
-            "types": [
-              "Thing"
-            ],
-            "value": "Domestic general government expenditure on information, education and counseling (IEC) measured as a percent of gross domestic product (GDP). This category includes government spending on health-related information, education, and counseling activities that aim to improve knowledge and promote healthy behaviors."
           }
         ]
       },
@@ -5043,6 +5008,16 @@
           }
         ]
       },
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          }
+        ]
+      },
       "name": {
         "nodes": [
           {
@@ -5061,6 +5036,34 @@
               "Property"
             ],
             "dcid": "currentHealthExpenditure"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Source of health financing",
+            "types": [
+              "Property"
+            ],
+            "dcid": "healthFinancingSource"
+          },
+          {
+            "name": "Health care function",
+            "types": [
+              "Property"
+            ],
+            "dcid": "healthCareFunction"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Domestic general government expenditure on information, education and counseling (IEC) measured as a percent of gross domestic product (GDP). This category includes government spending on health-related information, education, and counseling activities that aim to improve knowledge and promote healthy behaviors."
           }
         ]
       },
@@ -6146,6 +6149,16 @@
     "label": "General government expenditure",
     "type": "StatisticalVariable",
     "arcs": {
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
       "whoIndicatorCode": {
         "nodes": [
           {
@@ -6193,16 +6206,6 @@
               "Thing"
             ],
             "dcid": "measuredValue"
-          }
-        ]
-      },
-      "typeOf": {
-        "nodes": [
-          {
-            "types": [
-              "Thing"
-            ],
-            "dcid": "StatisticalVariable"
           }
         ]
       }
@@ -6418,16 +6421,6 @@
     "label": "Domestic private expenditure on information, education and counseling (IEC) (percent of GDP)",
     "type": "StatisticalVariable",
     "arcs": {
-      "description": {
-        "nodes": [
-          {
-            "types": [
-              "Thing"
-            ],
-            "value": "Domestic private expenditure on information, education and counseling (IEC) measured as a percent of gross domestic product (GDP). This category includes private spending on health-related information, education, and counseling activities that aim to improve knowledge and promote healthy behaviors."
-          }
-        ]
-      },
       "healthCareFunction": {
         "nodes": [
           {
@@ -6439,6 +6432,17 @@
           }
         ]
       },
+      "healthFinancingSource": {
+        "nodes": [
+          {
+            "name": "Domestic private sources of health financing",
+            "types": [
+              "HealthFinancingSourceEnum"
+            ],
+            "dcid": "DomesticPrivateHealthFinancing"
+          }
+        ]
+      },
       "measurementDenominator": {
         "nodes": [
           {
@@ -6446,6 +6450,24 @@
               "Thing"
             ],
             "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Source of health financing",
+            "types": [
+              "Property"
+            ],
+            "dcid": "healthFinancingSource"
+          },
+          {
+            "name": "Health care function",
+            "types": [
+              "Property"
+            ],
+            "dcid": "healthCareFunction"
           }
         ]
       },
@@ -6470,45 +6492,6 @@
           }
         ]
       },
-      "typeOf": {
-        "nodes": [
-          {
-            "types": [
-              "Thing"
-            ],
-            "dcid": "StatisticalVariable"
-          }
-        ]
-      },
-      "constraintProperties": {
-        "nodes": [
-          {
-            "name": "Source of health financing",
-            "types": [
-              "Property"
-            ],
-            "dcid": "healthFinancingSource"
-          },
-          {
-            "name": "Health care function",
-            "types": [
-              "Property"
-            ],
-            "dcid": "healthCareFunction"
-          }
-        ]
-      },
-      "healthFinancingSource": {
-        "nodes": [
-          {
-            "name": "Domestic private sources of health financing",
-            "types": [
-              "HealthFinancingSourceEnum"
-            ],
-            "dcid": "DomesticPrivateHealthFinancing"
-          }
-        ]
-      },
       "statType": {
         "nodes": [
           {
@@ -6519,6 +6502,16 @@
           }
         ]
       },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
       "whoIndicatorCode": {
         "nodes": [
           {
@@ -6526,6 +6519,16 @@
               "Thing"
             ],
             "value": "HC.6.1"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Domestic private expenditure on information, education and counseling (IEC) measured as a percent of gross domestic product (GDP). This category includes private spending on health-related information, education, and counseling activities that aim to improve knowledge and promote healthy behaviors."
           }
         ]
       }
@@ -6721,6 +6724,76 @@
     "label": "External expenditure on information, education and counseling (IEC) (percent of GDP)",
     "type": "StatisticalVariable",
     "arcs": {
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Source of health financing",
+            "types": [
+              "Property"
+            ],
+            "dcid": "healthFinancingSource"
+          },
+          {
+            "name": "Health care function",
+            "types": [
+              "Property"
+            ],
+            "dcid": "healthCareFunction"
+          }
+        ]
+      },
+      "healthFinancingSource": {
+        "nodes": [
+          {
+            "name": "External sources of health financing",
+            "types": [
+              "HealthFinancingSourceEnum"
+            ],
+            "dcid": "ExternalHealthFinancing"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Current health expenditure",
+            "types": [
+              "Property"
+            ],
+            "dcid": "currentHealthExpenditure"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "External expenditure on information, education and counseling (IEC) measured as a percent of gross domestic product (GDP). This category includes externally financed spending on health-related information, education, and counseling activities that aim to improve knowledge and promote healthy behaviors."
+          }
+        ]
+      },
       "healthCareFunction": {
         "nodes": [
           {
@@ -6742,65 +6815,6 @@
           }
         ]
       },
-      "statType": {
-        "nodes": [
-          {
-            "types": [
-              "Thing"
-            ],
-            "dcid": "measuredValue"
-          }
-        ]
-      },
-      "whoIndicatorCode": {
-        "nodes": [
-          {
-            "types": [
-              "Thing"
-            ],
-            "value": "HC.6.1"
-          }
-        ]
-      },
-      "constraintProperties": {
-        "nodes": [
-          {
-            "name": "Source of health financing",
-            "types": [
-              "Property"
-            ],
-            "dcid": "healthFinancingSource"
-          },
-          {
-            "name": "Health care function",
-            "types": [
-              "Property"
-            ],
-            "dcid": "healthCareFunction"
-          }
-        ]
-      },
-      "description": {
-        "nodes": [
-          {
-            "types": [
-              "Thing"
-            ],
-            "value": "External expenditure on information, education and counseling (IEC) measured as a percent of gross domestic product (GDP). This category includes externally financed spending on health-related information, education, and counseling activities that aim to improve knowledge and promote healthy behaviors."
-          }
-        ]
-      },
-      "healthFinancingSource": {
-        "nodes": [
-          {
-            "name": "External sources of health financing",
-            "types": [
-              "HealthFinancingSourceEnum"
-            ],
-            "dcid": "ExternalHealthFinancing"
-          }
-        ]
-      },
       "name": {
         "nodes": [
           {
@@ -6811,24 +6825,13 @@
           }
         ]
       },
-      "populationType": {
-        "nodes": [
-          {
-            "name": "Current health expenditure",
-            "types": [
-              "Property"
-            ],
-            "dcid": "currentHealthExpenditure"
-          }
-        ]
-      },
-      "typeOf": {
+      "whoIndicatorCode": {
         "nodes": [
           {
             "types": [
               "Thing"
             ],
-            "dcid": "StatisticalVariable"
+            "value": "HC.6.1"
           }
         ]
       }
@@ -29423,23 +29426,47 @@
     "label": "Nominal gross domestic product",
     "type": "StatisticalVariable",
     "arcs": {
-      "activitySource": {
+      "measuredProperty": {
         "nodes": [
           {
-            "name": "GrossDomesticProduction",
+            "name": "amount",
             "types": [
-              "EconomicActivitySourceEnum"
+              "Property"
             ],
-            "dcid": "GrossDomesticProduction",
+            "dcid": "amount",
             "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
       },
-      "name": {
+      "description": {
         "nodes": [
           {
             "provenanceId": "dc/base/HumanReadableStatVars",
-            "value": "Nominal gross domestic product"
+            "value": "Measure of the total value of all goods and services produced within a country's borders in a given period, using current market prices"
+          }
+        ]
+      },
+      "measurementQualifier": {
+        "nodes": [
+          {
+            "name": "Nominal",
+            "types": [
+              "EconomicMetricEnum"
+            ],
+            "dcid": "Nominal",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "EconomicActivity",
+            "types": [
+              "Class"
+            ],
+            "dcid": "EconomicActivity",
+            "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
       },
@@ -29455,14 +29482,144 @@
           }
         ]
       },
-      "measurementQualifier": {
+      "activitySource": {
         "nodes": [
           {
-            "name": "Nominal",
+            "name": "GrossDomesticProduction",
             "types": [
-              "EconomicMetricEnum"
+              "EconomicActivitySourceEnum"
             ],
-            "dcid": "Nominal",
+            "dcid": "GrossDomesticProduction",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "activitySource",
+            "types": [
+              "Property"
+            ],
+            "dcid": "activitySource",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "memberOf": {
+        "nodes": [
+          {
+            "name": "Economic Activity With Activity Source = Gross Domestic Production",
+            "types": [
+              "StatVarGroup"
+            ],
+            "dcid": "dc/g/EconomicActivity_ActivitySource-GrossDomesticProduction",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/HumanReadableStatVars",
+            "value": "Nominal gross domestic product"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "name": "measuredValue",
+            "types": [
+              "Property"
+            ],
+            "dcid": "measuredValue",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "name": "StatisticalVariable",
+            "types": [
+              "Class"
+            ],
+            "dcid": "StatisticalVariable",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      }
+    }
+  },
+  "Amount_EconomicActivity_GrossDomesticProduction_Nominal_PerCapita": {
+    "label": "Nominal gross domestic product per capita",
+    "type": "StatisticalVariable",
+    "arcs": {
+      "name": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/HumanReadableStatVars",
+            "value": "Nominal gross domestic product per capita"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "EconomicActivity",
+            "types": [
+              "Class"
+            ],
+            "dcid": "EconomicActivity",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "provenance": {
+        "nodes": [
+          {
+            "name": "HumanReadableStatVars",
+            "types": [
+              "Provenance"
+            ],
+            "dcid": "dc/base/HumanReadableStatVars",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "activitySource": {
+        "nodes": [
+          {
+            "name": "GrossDomesticProduction",
+            "types": [
+              "EconomicActivitySourceEnum"
+            ],
+            "dcid": "GrossDomesticProduction",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "activitySource",
+            "types": [
+              "Property"
+            ],
+            "dcid": "activitySource",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "memberOf": {
+        "nodes": [
+          {
+            "name": "Economic Activity With Activity Source = Gross Domestic Production",
+            "types": [
+              "StatVarGroup"
+            ],
+            "dcid": "dc/g/EconomicActivity_ActivitySource-GrossDomesticProduction",
             "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
@@ -29483,42 +29640,18 @@
         "nodes": [
           {
             "provenanceId": "dc/base/HumanReadableStatVars",
-            "value": "Measure of the total value of all goods and services produced within a country's borders in a given period, using current market prices"
+            "value": "Measure of a country's economic output relative to its population, calculated by dividing the nominal GDP by the total population."
           }
         ]
       },
-      "measuredProperty": {
+      "measurementQualifier": {
         "nodes": [
           {
-            "name": "amount",
+            "name": "Nominal",
             "types": [
-              "Property"
+              "EconomicMetricEnum"
             ],
-            "dcid": "amount",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "memberOf": {
-        "nodes": [
-          {
-            "name": "Economic Activity With Activity Source = Gross Domestic Production",
-            "types": [
-              "StatVarGroup"
-            ],
-            "dcid": "dc/g/EconomicActivity_ActivitySource-GrossDomesticProduction",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "populationType": {
-        "nodes": [
-          {
-            "name": "EconomicActivity",
-            "types": [
-              "Class"
-            ],
-            "dcid": "EconomicActivity",
+            "dcid": "Nominal",
             "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
@@ -29531,80 +29664,6 @@
               "Property"
             ],
             "dcid": "measuredValue",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "constraintProperties": {
-        "nodes": [
-          {
-            "name": "activitySource",
-            "types": [
-              "Property"
-            ],
-            "dcid": "activitySource",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      }
-    }
-  },
-  "Amount_EconomicActivity_GrossDomesticProduction_Nominal_PerCapita": {
-    "label": "Nominal gross domestic product per capita",
-    "type": "StatisticalVariable",
-    "arcs": {
-      "name": {
-        "nodes": [
-          {
-            "provenanceId": "dc/base/HumanReadableStatVars",
-            "value": "Nominal gross domestic product per capita"
-          }
-        ]
-      },
-      "activitySource": {
-        "nodes": [
-          {
-            "name": "GrossDomesticProduction",
-            "types": [
-              "EconomicActivitySourceEnum"
-            ],
-            "dcid": "GrossDomesticProduction",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "provenance": {
-        "nodes": [
-          {
-            "name": "HumanReadableStatVars",
-            "types": [
-              "Provenance"
-            ],
-            "dcid": "dc/base/HumanReadableStatVars",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "statType": {
-        "nodes": [
-          {
-            "name": "measuredValue",
-            "types": [
-              "Property"
-            ],
-            "dcid": "measuredValue",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "typeOf": {
-        "nodes": [
-          {
-            "name": "StatisticalVariable",
-            "types": [
-              "Class"
-            ],
-            "dcid": "StatisticalVariable",
             "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
@@ -29631,62 +29690,6 @@
             "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
-      },
-      "memberOf": {
-        "nodes": [
-          {
-            "name": "Economic Activity With Activity Source = Gross Domestic Production",
-            "types": [
-              "StatVarGroup"
-            ],
-            "dcid": "dc/g/EconomicActivity_ActivitySource-GrossDomesticProduction",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "populationType": {
-        "nodes": [
-          {
-            "name": "EconomicActivity",
-            "types": [
-              "Class"
-            ],
-            "dcid": "EconomicActivity",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "constraintProperties": {
-        "nodes": [
-          {
-            "name": "activitySource",
-            "types": [
-              "Property"
-            ],
-            "dcid": "activitySource",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "description": {
-        "nodes": [
-          {
-            "provenanceId": "dc/base/HumanReadableStatVars",
-            "value": "Measure of a country's economic output relative to its population, calculated by dividing the nominal GDP by the total population."
-          }
-        ]
-      },
-      "measurementQualifier": {
-        "nodes": [
-          {
-            "name": "Nominal",
-            "types": [
-              "EconomicMetricEnum"
-            ],
-            "dcid": "Nominal",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
       }
     }
   },
@@ -29694,50 +29697,6 @@
     "label": "Measure of gross domestic product",
     "type": "StatisticalVariable",
     "arcs": {
-      "populationType": {
-        "nodes": [
-          {
-            "name": "EconomicActivity",
-            "types": [
-              "Class"
-            ],
-            "dcid": "EconomicActivity",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "typeOf": {
-        "nodes": [
-          {
-            "name": "StatisticalVariable",
-            "types": [
-              "Class"
-            ],
-            "dcid": "StatisticalVariable",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "description": {
-        "nodes": [
-          {
-            "provenanceId": "dc/base/HumanReadableStatVars",
-            "value": "Inflation-adjusted measure of a country's economic output."
-          }
-        ]
-      },
-      "memberOf": {
-        "nodes": [
-          {
-            "name": "Economic Activity With Activity Source = Gross Domestic Production",
-            "types": [
-              "StatVarGroup"
-            ],
-            "dcid": "dc/g/EconomicActivity_ActivitySource-GrossDomesticProduction",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
       "name": {
         "nodes": [
           {
@@ -29758,14 +29717,14 @@
           }
         ]
       },
-      "activitySource": {
+      "typeOf": {
         "nodes": [
           {
-            "name": "GrossDomesticProduction",
+            "name": "StatisticalVariable",
             "types": [
-              "EconomicActivitySourceEnum"
+              "Class"
             ],
-            "dcid": "GrossDomesticProduction",
+            "dcid": "StatisticalVariable",
             "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
@@ -29779,6 +29738,62 @@
             ],
             "dcid": "activitySource",
             "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "memberOf": {
+        "nodes": [
+          {
+            "name": "Economic Activity With Activity Source = Gross Domestic Production",
+            "types": [
+              "StatVarGroup"
+            ],
+            "dcid": "dc/g/EconomicActivity_ActivitySource-GrossDomesticProduction",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "EconomicActivity",
+            "types": [
+              "Class"
+            ],
+            "dcid": "EconomicActivity",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "provenance": {
+        "nodes": [
+          {
+            "name": "HumanReadableStatVars",
+            "types": [
+              "Provenance"
+            ],
+            "dcid": "dc/base/HumanReadableStatVars",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "activitySource": {
+        "nodes": [
+          {
+            "name": "GrossDomesticProduction",
+            "types": [
+              "EconomicActivitySourceEnum"
+            ],
+            "dcid": "GrossDomesticProduction",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/HumanReadableStatVars",
+            "value": "Inflation-adjusted measure of a country's economic output."
           }
         ]
       },
@@ -29805,18 +29820,6 @@
             "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
-      },
-      "provenance": {
-        "nodes": [
-          {
-            "name": "HumanReadableStatVars",
-            "types": [
-              "Provenance"
-            ],
-            "dcid": "dc/base/HumanReadableStatVars",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
       }
     }
   },
@@ -29824,30 +29827,6 @@
     "label": "Amount of Economic Activity (Nominal): Gross Domestic Production, Other Services, Except Public Administration (NAICS/81)",
     "type": "StatisticalVariable",
     "arcs": {
-      "activitySource": {
-        "nodes": [
-          {
-            "name": "GrossDomesticProduction",
-            "types": [
-              "EconomicActivitySourceEnum"
-            ],
-            "dcid": "GrossDomesticProduction",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "statType": {
-        "nodes": [
-          {
-            "name": "measuredValue",
-            "types": [
-              "Property"
-            ],
-            "dcid": "measuredValue",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
       "constraintProperties": {
         "nodes": [
           {
@@ -29868,6 +29847,14 @@
           }
         ]
       },
+      "name": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/HumanReadableStatVars",
+            "value": "Amount of Economic Activity (Nominal): Gross Domestic Production, Other Services, Except Public Administration (NAICS/81)"
+          }
+        ]
+      },
       "measuredProperty": {
         "nodes": [
           {
@@ -29880,6 +29867,18 @@
           }
         ]
       },
+      "statType": {
+        "nodes": [
+          {
+            "name": "measuredValue",
+            "types": [
+              "Property"
+            ],
+            "dcid": "measuredValue",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
       "measurementQualifier": {
         "nodes": [
           {
@@ -29888,38 +29887,6 @@
               "EconomicMetricEnum"
             ],
             "dcid": "Nominal",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "naics": {
-        "nodes": [
-          {
-            "name": "Other services, except public administration",
-            "types": [
-              "NAICSEnum"
-            ],
-            "dcid": "NAICS/81",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "name": {
-        "nodes": [
-          {
-            "provenanceId": "dc/base/HumanReadableStatVars",
-            "value": "Amount of Economic Activity (Nominal): Gross Domestic Production, Other Services, Except Public Administration (NAICS/81)"
-          }
-        ]
-      },
-      "populationType": {
-        "nodes": [
-          {
-            "name": "EconomicActivity",
-            "types": [
-              "Class"
-            ],
-            "dcid": "EconomicActivity",
             "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
@@ -29948,6 +29915,30 @@
           }
         ]
       },
+      "naics": {
+        "nodes": [
+          {
+            "name": "Other services, except public administration",
+            "types": [
+              "NAICSEnum"
+            ],
+            "dcid": "NAICS/81",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "EconomicActivity",
+            "types": [
+              "Class"
+            ],
+            "dcid": "EconomicActivity",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
       "provenance": {
         "nodes": [
           {
@@ -29959,6 +29950,18 @@
             "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
+      },
+      "activitySource": {
+        "nodes": [
+          {
+            "name": "GrossDomesticProduction",
+            "types": [
+              "EconomicActivitySourceEnum"
+            ],
+            "dcid": "GrossDomesticProduction",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
       }
     }
   },
@@ -29966,26 +29969,6 @@
     "label": "Industries by GDP",
     "type": "Topic",
     "arcs": {
-      "relevantVariableList": {
-        "nodes": [
-          {
-            "provenanceId": "dc/base/HumanReadableStatVars",
-            "value": "dc/svpg/RealGDPByIndustry"
-          }
-        ]
-      },
-      "typeOf": {
-        "nodes": [
-          {
-            "name": "Topic",
-            "types": [
-              "Class"
-            ],
-            "dcid": "Topic",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
       "name": {
         "nodes": [
           {
@@ -30017,6 +30000,26 @@
             "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
+      },
+      "relevantVariableList": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/HumanReadableStatVars",
+            "value": "dc/svpg/RealGDPByIndustry"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "name": "Topic",
+            "types": [
+              "Class"
+            ],
+            "dcid": "Topic",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
       }
     }
   },
@@ -30024,18 +30027,6 @@
     "label": "Amount of Economic Activity (Nominal): Gross Domestic Production, Management of Companies And Enterprises (NAICS/55)",
     "type": "StatisticalVariable",
     "arcs": {
-      "memberOf": {
-        "nodes": [
-          {
-            "name": "Economic Activity With Activity Source = Gross Domestic Production, Industry = Management of Companies And Enterprises (NAICS/55)",
-            "types": [
-              "StatVarGroup"
-            ],
-            "dcid": "dc/g/EconomicActivity_ActivitySource-GrossDomesticProduction_Industry-NAICS/55",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
       "name": {
         "nodes": [
           {
@@ -30052,6 +30043,74 @@
               "Class"
             ],
             "dcid": "StatisticalVariable",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "measurementQualifier": {
+        "nodes": [
+          {
+            "name": "Nominal",
+            "types": [
+              "EconomicMetricEnum"
+            ],
+            "dcid": "Nominal",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "provenance": {
+        "nodes": [
+          {
+            "name": "HumanReadableStatVars",
+            "types": [
+              "Provenance"
+            ],
+            "dcid": "dc/base/HumanReadableStatVars",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "name": "measuredValue",
+            "types": [
+              "Property"
+            ],
+            "dcid": "measuredValue",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "activitySource": {
+        "nodes": [
+          {
+            "name": "GrossDomesticProduction",
+            "types": [
+              "EconomicActivitySourceEnum"
+            ],
+            "dcid": "GrossDomesticProduction",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "activitySource",
+            "types": [
+              "Property"
+            ],
+            "dcid": "activitySource",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          },
+          {
+            "name": "naics",
+            "types": [
+              "Property"
+            ],
+            "dcid": "naics",
             "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
@@ -30092,70 +30151,14 @@
           }
         ]
       },
-      "provenance": {
+      "memberOf": {
         "nodes": [
           {
-            "name": "HumanReadableStatVars",
+            "name": "Economic Activity With Activity Source = Gross Domestic Production, Industry = Management of Companies And Enterprises (NAICS/55)",
             "types": [
-              "Provenance"
+              "StatVarGroup"
             ],
-            "dcid": "dc/base/HumanReadableStatVars",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "statType": {
-        "nodes": [
-          {
-            "name": "measuredValue",
-            "types": [
-              "Property"
-            ],
-            "dcid": "measuredValue",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "activitySource": {
-        "nodes": [
-          {
-            "name": "GrossDomesticProduction",
-            "types": [
-              "EconomicActivitySourceEnum"
-            ],
-            "dcid": "GrossDomesticProduction",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "constraintProperties": {
-        "nodes": [
-          {
-            "name": "activitySource",
-            "types": [
-              "Property"
-            ],
-            "dcid": "activitySource",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          },
-          {
-            "name": "naics",
-            "types": [
-              "Property"
-            ],
-            "dcid": "naics",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "measurementQualifier": {
-        "nodes": [
-          {
-            "name": "Nominal",
-            "types": [
-              "EconomicMetricEnum"
-            ],
-            "dcid": "Nominal",
+            "dcid": "dc/g/EconomicActivity_ActivitySource-GrossDomesticProduction_Industry-NAICS/55",
             "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
@@ -30166,14 +30169,6 @@
     "label": "GDP by Industry",
     "type": "Topic",
     "arcs": {
-      "name": {
-        "nodes": [
-          {
-            "provenanceId": "dc/base/HumanReadableStatVars",
-            "value": "GDP by Industry"
-          }
-        ]
-      },
       "provenance": {
         "nodes": [
           {
@@ -30225,6 +30220,14 @@
             "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/HumanReadableStatVars",
+            "value": "GDP by Industry"
+          }
+        ]
       }
     }
   },
@@ -30232,6 +30235,16 @@
     "label": "General government expenditure (percent of GDP)",
     "type": "StatisticalVariable",
     "arcs": {
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
       "typeOf": {
         "nodes": [
           {
@@ -30291,16 +30304,6 @@
             "dcid": "EconomicActivity"
           }
         ]
-      },
-      "statType": {
-        "nodes": [
-          {
-            "types": [
-              "Thing"
-            ],
-            "dcid": "measuredValue"
-          }
-        ]
       }
     }
   },
@@ -30308,6 +30311,26 @@
     "label": "Gross domestic product growth rate",
     "type": "StatisticalVariable",
     "arcs": {
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "amount",
+            "types": [
+              "Property"
+            ],
+            "dcid": "amount",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/HumanReadableStatVars",
+            "value": "Gross domestic product growth rate"
+          }
+        ]
+      },
       "provenance": {
         "nodes": [
           {
@@ -30316,6 +30339,30 @@
               "Provenance"
             ],
             "dcid": "dc/base/HumanReadableStatVars",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "name": "StatisticalVariable",
+            "types": [
+              "Class"
+            ],
+            "dcid": "StatisticalVariable",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "EconomicActivity",
+            "types": [
+              "Class"
+            ],
+            "dcid": "EconomicActivity",
             "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
@@ -30332,50 +30379,6 @@
           }
         ]
       },
-      "constraintProperties": {
-        "nodes": [
-          {
-            "name": "activitySource",
-            "types": [
-              "Property"
-            ],
-            "dcid": "activitySource",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "name": {
-        "nodes": [
-          {
-            "provenanceId": "dc/base/HumanReadableStatVars",
-            "value": "Gross domestic product growth rate"
-          }
-        ]
-      },
-      "populationType": {
-        "nodes": [
-          {
-            "name": "EconomicActivity",
-            "types": [
-              "Class"
-            ],
-            "dcid": "EconomicActivity",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "typeOf": {
-        "nodes": [
-          {
-            "name": "StatisticalVariable",
-            "types": [
-              "Class"
-            ],
-            "dcid": "StatisticalVariable",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
       "activitySource": {
         "nodes": [
           {
@@ -30388,15 +30391,11 @@
           }
         ]
       },
-      "measuredProperty": {
+      "description": {
         "nodes": [
           {
-            "name": "amount",
-            "types": [
-              "Property"
-            ],
-            "dcid": "amount",
-            "provenanceId": "dc/base/HumanReadableStatVars"
+            "provenanceId": "dc/base/HumanReadableStatVars",
+            "value": "The percentage change in a country's gross domestic product (GDP) over a specific period."
           }
         ]
       },
@@ -30412,56 +30411,6 @@
           }
         ]
       },
-      "description": {
-        "nodes": [
-          {
-            "provenanceId": "dc/base/HumanReadableStatVars",
-            "value": "The percentage change in a country's gross domestic product (GDP) over a specific period."
-          }
-        ]
-      }
-    }
-  },
-  "Amount_EconomicActivity_GrossDomesticProduction_NAICSFinanceInsurance_RealValue": {
-    "label": "GDP of the Finance and Insurance Industry",
-    "type": "StatisticalVariable",
-    "arcs": {
-      "activitySource": {
-        "nodes": [
-          {
-            "name": "GrossDomesticProduction",
-            "types": [
-              "EconomicActivitySourceEnum"
-            ],
-            "dcid": "GrossDomesticProduction",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "measurementQualifier": {
-        "nodes": [
-          {
-            "name": "RealValue",
-            "types": [
-              "EconomicMetricEnum"
-            ],
-            "dcid": "RealValue",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "statType": {
-        "nodes": [
-          {
-            "name": "measuredValue",
-            "types": [
-              "Property"
-            ],
-            "dcid": "measuredValue",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
       "constraintProperties": {
         "nodes": [
           {
@@ -30471,25 +30420,23 @@
             ],
             "dcid": "activitySource",
             "provenanceId": "dc/base/HumanReadableStatVars"
-          },
-          {
-            "name": "naics",
-            "types": [
-              "Property"
-            ],
-            "dcid": "naics",
-            "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
-      },
-      "memberOf": {
+      }
+    }
+  },
+  "Amount_EconomicActivity_GrossDomesticProduction_NAICSFinanceInsurance_RealValue": {
+    "label": "GDP of the Finance and Insurance Industry",
+    "type": "StatisticalVariable",
+    "arcs": {
+      "measurementQualifier": {
         "nodes": [
           {
-            "name": "Economic Activity With Activity Source = Gross Domestic Production, Industry = Finance And Insurance (NAICS/52)",
+            "name": "RealValue",
             "types": [
-              "StatVarGroup"
+              "EconomicMetricEnum"
             ],
-            "dcid": "dc/g/EconomicActivity_ActivitySource-GrossDomesticProduction_Industry-NAICS/52",
+            "dcid": "RealValue",
             "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
@@ -30506,14 +30453,22 @@
           }
         ]
       },
-      "populationType": {
+      "name": {
         "nodes": [
           {
-            "name": "EconomicActivity",
+            "provenanceId": "dc/base/HumanReadableStatVars",
+            "value": "GDP of the Finance and Insurance Industry"
+          }
+        ]
+      },
+      "memberOf": {
+        "nodes": [
+          {
+            "name": "Economic Activity With Activity Source = Gross Domestic Production, Industry = Finance And Insurance (NAICS/52)",
             "types": [
-              "Class"
+              "StatVarGroup"
             ],
-            "dcid": "EconomicActivity",
+            "dcid": "dc/g/EconomicActivity_ActivitySource-GrossDomesticProduction_Industry-NAICS/52",
             "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
@@ -30542,11 +30497,15 @@
           }
         ]
       },
-      "name": {
+      "activitySource": {
         "nodes": [
           {
-            "provenanceId": "dc/base/HumanReadableStatVars",
-            "value": "GDP of the Finance and Insurance Industry"
+            "name": "GrossDomesticProduction",
+            "types": [
+              "EconomicActivitySourceEnum"
+            ],
+            "dcid": "GrossDomesticProduction",
+            "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
       },
@@ -30561,6 +30520,50 @@
             "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "EconomicActivity",
+            "types": [
+              "Class"
+            ],
+            "dcid": "EconomicActivity",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "name": "measuredValue",
+            "types": [
+              "Property"
+            ],
+            "dcid": "measuredValue",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "activitySource",
+            "types": [
+              "Property"
+            ],
+            "dcid": "activitySource",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          },
+          {
+            "name": "naics",
+            "types": [
+              "Property"
+            ],
+            "dcid": "naics",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
       }
     }
   },
@@ -30568,6 +30571,78 @@
     "label": "Amount of Economic Activity (Nominal): Gross Domestic Production, Retail Trade (NAICS/44-45)",
     "type": "StatisticalVariable",
     "arcs": {
+      "activitySource": {
+        "nodes": [
+          {
+            "name": "GrossDomesticProduction",
+            "types": [
+              "EconomicActivitySourceEnum"
+            ],
+            "dcid": "GrossDomesticProduction",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "memberOf": {
+        "nodes": [
+          {
+            "name": "Economic Activity With Activity Source = Gross Domestic Production, Industry = Retail Trade (NAICS/44-45)",
+            "types": [
+              "StatVarGroup"
+            ],
+            "dcid": "dc/g/EconomicActivity_ActivitySource-GrossDomesticProduction_Industry-NAICS/4445",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "EconomicActivity",
+            "types": [
+              "Class"
+            ],
+            "dcid": "EconomicActivity",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "name": "measuredValue",
+            "types": [
+              "Property"
+            ],
+            "dcid": "measuredValue",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "measurementQualifier": {
+        "nodes": [
+          {
+            "name": "Nominal",
+            "types": [
+              "EconomicMetricEnum"
+            ],
+            "dcid": "Nominal",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "provenance": {
+        "nodes": [
+          {
+            "name": "HumanReadableStatVars",
+            "types": [
+              "Provenance"
+            ],
+            "dcid": "dc/base/HumanReadableStatVars",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
       "typeOf": {
         "nodes": [
           {
@@ -30600,14 +30675,14 @@
           }
         ]
       },
-      "measurementQualifier": {
+      "measuredProperty": {
         "nodes": [
           {
-            "name": "Nominal",
+            "name": "amount",
             "types": [
-              "EconomicMetricEnum"
+              "Property"
             ],
-            "dcid": "Nominal",
+            "dcid": "amount",
             "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
@@ -30620,78 +30695,6 @@
               "NAICSEnum"
             ],
             "dcid": "NAICS/44-45",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "populationType": {
-        "nodes": [
-          {
-            "name": "EconomicActivity",
-            "types": [
-              "Class"
-            ],
-            "dcid": "EconomicActivity",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "memberOf": {
-        "nodes": [
-          {
-            "name": "Economic Activity With Activity Source = Gross Domestic Production, Industry = Retail Trade (NAICS/44-45)",
-            "types": [
-              "StatVarGroup"
-            ],
-            "dcid": "dc/g/EconomicActivity_ActivitySource-GrossDomesticProduction_Industry-NAICS/4445",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "provenance": {
-        "nodes": [
-          {
-            "name": "HumanReadableStatVars",
-            "types": [
-              "Provenance"
-            ],
-            "dcid": "dc/base/HumanReadableStatVars",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "statType": {
-        "nodes": [
-          {
-            "name": "measuredValue",
-            "types": [
-              "Property"
-            ],
-            "dcid": "measuredValue",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "activitySource": {
-        "nodes": [
-          {
-            "name": "GrossDomesticProduction",
-            "types": [
-              "EconomicActivitySourceEnum"
-            ],
-            "dcid": "GrossDomesticProduction",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "measuredProperty": {
-        "nodes": [
-          {
-            "name": "amount",
-            "types": [
-              "Property"
-            ],
-            "dcid": "amount",
             "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
@@ -30816,14 +30819,6 @@
     "label": "17.1.1: Total government revenue as a proportion of GDP, by source",
     "type": "Topic",
     "arcs": {
-      "name": {
-        "nodes": [
-          {
-            "provenanceId": "dc/base/HumanReadableStatVars",
-            "value": "17.1.1: Total government revenue as a proportion of GDP, by source"
-          }
-        ]
-      },
       "provenance": {
         "nodes": [
           {
@@ -30867,6 +30862,14 @@
             "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/HumanReadableStatVars",
+            "value": "17.1.1: Total government revenue as a proportion of GDP, by source"
+          }
+        ]
       }
     }
   },
@@ -30874,6 +30877,26 @@
     "label": "Economic Equity",
     "type": "Topic",
     "arcs": {
+      "relevantVariableList": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/HumanReadableStatVars",
+            "value": "dc/svpg/dc/topic/EconomicEquity_GiniIndex,dc/topic/PovertyByGender,dc/topic/PovertyByRace,dc/topic/Benefits,dc/topic/IncomeEquity,dc/topic/EmploymentEquity"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "name": "Topic",
+            "types": [
+              "Class"
+            ],
+            "dcid": "Topic",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
       "name": {
         "nodes": [
           {
@@ -30945,26 +30968,6 @@
             "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
-      },
-      "relevantVariableList": {
-        "nodes": [
-          {
-            "provenanceId": "dc/base/HumanReadableStatVars",
-            "value": "dc/svpg/dc/topic/EconomicEquity_GiniIndex,dc/topic/PovertyByGender,dc/topic/PovertyByRace,dc/topic/Benefits,dc/topic/IncomeEquity,dc/topic/EmploymentEquity"
-          }
-        ]
-      },
-      "typeOf": {
-        "nodes": [
-          {
-            "name": "Topic",
-            "types": [
-              "Class"
-            ],
-            "dcid": "Topic",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
       }
     }
   },
@@ -30972,106 +30975,6 @@
     "label": "Real gross domestic product by economic activity",
     "type": "StatisticalVariable",
     "arcs": {
-      "statType": {
-        "nodes": [
-          {
-            "name": "measuredValue",
-            "types": [
-              "Property"
-            ],
-            "dcid": "measuredValue",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "constraintProperties": {
-        "nodes": [
-          {
-            "name": "activitySource",
-            "types": [
-              "Property"
-            ],
-            "dcid": "activitySource",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "populationType": {
-        "nodes": [
-          {
-            "name": "EconomicActivity",
-            "types": [
-              "Class"
-            ],
-            "dcid": "EconomicActivity",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "provenance": {
-        "nodes": [
-          {
-            "name": "HumanReadableStatVars",
-            "types": [
-              "Provenance"
-            ],
-            "dcid": "dc/base/HumanReadableStatVars",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "measuredProperty": {
-        "nodes": [
-          {
-            "name": "amount",
-            "types": [
-              "Property"
-            ],
-            "dcid": "amount",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "measurementQualifier": {
-        "nodes": [
-          {
-            "name": "RealValue",
-            "types": [
-              "EconomicMetricEnum"
-            ],
-            "dcid": "RealValue",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "memberOf": {
-        "nodes": [
-          {
-            "name": "Economic Activity With Activity Source = Gross Domestic Production",
-            "types": [
-              "StatVarGroup"
-            ],
-            "dcid": "dc/g/EconomicActivity_ActivitySource-GrossDomesticProduction",
-            "provenanceId": "dc/base/HumanReadableStatVars"
-          }
-        ]
-      },
-      "description": {
-        "nodes": [
-          {
-            "provenanceId": "dc/base/HumanReadableStatVars",
-            "value": "Inflation-adjusted measure reflecting the value of all goods and services produced by an economy, typically on an annual basis."
-          }
-        ]
-      },
-      "name": {
-        "nodes": [
-          {
-            "provenanceId": "dc/base/HumanReadableStatVars",
-            "value": "Real gross domestic product by economic activity"
-          }
-        ]
-      },
       "typeOf": {
         "nodes": [
           {
@@ -31095,6 +30998,106 @@
             "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "activitySource",
+            "types": [
+              "Property"
+            ],
+            "dcid": "activitySource",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/HumanReadableStatVars",
+            "value": "Real gross domestic product by economic activity"
+          }
+        ]
+      },
+      "provenance": {
+        "nodes": [
+          {
+            "name": "HumanReadableStatVars",
+            "types": [
+              "Provenance"
+            ],
+            "dcid": "dc/base/HumanReadableStatVars",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "measurementQualifier": {
+        "nodes": [
+          {
+            "name": "RealValue",
+            "types": [
+              "EconomicMetricEnum"
+            ],
+            "dcid": "RealValue",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "EconomicActivity",
+            "types": [
+              "Class"
+            ],
+            "dcid": "EconomicActivity",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/HumanReadableStatVars",
+            "value": "Inflation-adjusted measure reflecting the value of all goods and services produced by an economy, typically on an annual basis."
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "name": "measuredValue",
+            "types": [
+              "Property"
+            ],
+            "dcid": "measuredValue",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "amount",
+            "types": [
+              "Property"
+            ],
+            "dcid": "amount",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "memberOf": {
+        "nodes": [
+          {
+            "name": "Economic Activity With Activity Source = Gross Domestic Production",
+            "types": [
+              "StatVarGroup"
+            ],
+            "dcid": "dc/g/EconomicActivity_ActivitySource-GrossDomesticProduction",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
       }
     }
   },
@@ -31102,14 +31105,6 @@
     "label": "GDP",
     "type": "Topic",
     "arcs": {
-      "relevantVariableList": {
-        "nodes": [
-          {
-            "provenanceId": "dc/base/HumanReadableStatVars",
-            "value": "Amount_EconomicActivity_GrossDomesticProduction_Nominal,Amount_EconomicActivity_GrossDomesticProduction_Nominal_PerCapita,Amount_EconomicActivity_GrossDomesticProduction_RealValue,GrowthRate_Amount_EconomicActivity_GrossDomesticProduction,RealValue_GrowthRate_Amount_EconomicActivity_GrossDomesticProduction,InflationAdjustedGDP,dc/topic/GDPByIndustry,dc/topic/InflationAdjustedGDP,RealValue_GrowthRate_Amount_EconomicActivity_GrossDomesticProduction,Nominal_GrowthRate_Amount_EconomicActivity_GrossDomesticProduction"
-          }
-        ]
-      },
       "typeOf": {
         "nodes": [
           {
@@ -31217,6 +31212,14 @@
             "provenanceId": "dc/base/HumanReadableStatVars"
           }
         ]
+      },
+      "relevantVariableList": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/HumanReadableStatVars",
+            "value": "Amount_EconomicActivity_GrossDomesticProduction_Nominal,Amount_EconomicActivity_GrossDomesticProduction_Nominal_PerCapita,Amount_EconomicActivity_GrossDomesticProduction_RealValue,GrowthRate_Amount_EconomicActivity_GrossDomesticProduction,RealValue_GrowthRate_Amount_EconomicActivity_GrossDomesticProduction,InflationAdjustedGDP,dc/topic/GDPByIndustry,dc/topic/InflationAdjustedGDP,RealValue_GrowthRate_Amount_EconomicActivity_GrossDomesticProduction,Nominal_GrowthRate_Amount_EconomicActivity_GrossDomesticProduction"
+          }
+        ]
       }
     }
   },
@@ -31224,14 +31227,31 @@
     "label": "Domestic private expenditure on other and unspecified diseases and conditions (n.e.c.) (percent of GDP)",
     "type": "StatisticalVariable",
     "arcs": {
-      "populationType": {
+      "whoIndicatorCode": {
         "nodes": [
           {
-            "name": "Current health expenditure",
+            "types": [
+              "Thing"
+            ],
+            "value": "DIS.nec"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Source of health financing",
             "types": [
               "Property"
             ],
-            "dcid": "currentHealthExpenditure"
+            "dcid": "healthFinancingSource"
+          },
+          {
+            "name": "Disease and conditions",
+            "types": [
+              "Property"
+            ],
+            "dcid": "diseaseAndCondition"
           }
         ]
       },
@@ -31243,6 +31263,16 @@
               "HealthFinancingSourceEnum"
             ],
             "dcid": "DomesticPrivateHealthFinancing"
+          }
+        ]
+      },
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
           }
         ]
       },
@@ -31276,34 +31306,6 @@
           }
         ]
       },
-      "whoIndicatorCode": {
-        "nodes": [
-          {
-            "types": [
-              "Thing"
-            ],
-            "value": "DIS.nec"
-          }
-        ]
-      },
-      "constraintProperties": {
-        "nodes": [
-          {
-            "name": "Source of health financing",
-            "types": [
-              "Property"
-            ],
-            "dcid": "healthFinancingSource"
-          },
-          {
-            "name": "Disease and conditions",
-            "types": [
-              "Property"
-            ],
-            "dcid": "diseaseAndCondition"
-          }
-        ]
-      },
       "description": {
         "nodes": [
           {
@@ -31325,13 +31327,14 @@
           }
         ]
       },
-      "measurementDenominator": {
+      "populationType": {
         "nodes": [
           {
+            "name": "Current health expenditure",
             "types": [
-              "Thing"
+              "Property"
             ],
-            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+            "dcid": "currentHealthExpenditure"
           }
         ]
       }
@@ -31341,6 +31344,16 @@
     "label": "External expenditure on other and unspecified diseases and conditions (n.e.c.) (percent of GDP)",
     "type": "StatisticalVariable",
     "arcs": {
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          }
+        ]
+      },
       "statType": {
         "nodes": [
           {
@@ -31361,17 +31374,6 @@
           }
         ]
       },
-      "healthFinancingSource": {
-        "nodes": [
-          {
-            "name": "External sources of health financing",
-            "types": [
-              "HealthFinancingSourceEnum"
-            ],
-            "dcid": "ExternalHealthFinancing"
-          }
-        ]
-      },
       "whoIndicatorCode": {
         "nodes": [
           {
@@ -31382,24 +31384,6 @@
           }
         ]
       },
-      "constraintProperties": {
-        "nodes": [
-          {
-            "name": "Source of health financing",
-            "types": [
-              "Property"
-            ],
-            "dcid": "healthFinancingSource"
-          },
-          {
-            "name": "Disease and conditions",
-            "types": [
-              "Property"
-            ],
-            "dcid": "diseaseAndCondition"
-          }
-        ]
-      },
       "description": {
         "nodes": [
           {
@@ -31407,27 +31391,6 @@
               "Thing"
             ],
             "value": "External expenditure on other and unspecified diseases and conditions measured as a percent of gross domestic product. Other and unspecified diseases and conditions are health problems not classified as infectious and parasitic diseases, reproductive health conditions, nutritional deficiencies, noncommunicable diseases, or injuries."
-          }
-        ]
-      },
-      "diseaseAndCondition": {
-        "nodes": [
-          {
-            "name": "Other and unspecified Diseases and Conditions (n.e.c.) (DIS.nec)",
-            "types": [
-              "DiseaseAndConditionEnum"
-            ],
-            "dcid": "DIS_nec"
-          }
-        ]
-      },
-      "measurementDenominator": {
-        "nodes": [
-          {
-            "types": [
-              "Thing"
-            ],
-            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
           }
         ]
       },
@@ -31451,6 +31414,46 @@
             "dcid": "currentHealthExpenditure"
           }
         ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Source of health financing",
+            "types": [
+              "Property"
+            ],
+            "dcid": "healthFinancingSource"
+          },
+          {
+            "name": "Disease and conditions",
+            "types": [
+              "Property"
+            ],
+            "dcid": "diseaseAndCondition"
+          }
+        ]
+      },
+      "diseaseAndCondition": {
+        "nodes": [
+          {
+            "name": "Other and unspecified Diseases and Conditions (n.e.c.) (DIS.nec)",
+            "types": [
+              "DiseaseAndConditionEnum"
+            ],
+            "dcid": "DIS_nec"
+          }
+        ]
+      },
+      "healthFinancingSource": {
+        "nodes": [
+          {
+            "name": "External sources of health financing",
+            "types": [
+              "HealthFinancingSourceEnum"
+            ],
+            "dcid": "ExternalHealthFinancing"
+          }
+        ]
       }
     }
   },
@@ -31458,6 +31461,37 @@
     "label": "Expenditure on other and unspecified diseases and conditions (n.e.c.) (percent of GDP)",
     "type": "StatisticalVariable",
     "arcs": {
+      "whoIndicatorCode": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "DIS.nec"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Disease and conditions",
+            "types": [
+              "Property"
+            ],
+            "dcid": "diseaseAndCondition"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Expenditure on other and unspecified diseases and conditions (n.e.c.) (percent of GDP)"
+          }
+        ]
+      },
       "statType": {
         "nodes": [
           {
@@ -31478,16 +31512,6 @@
           }
         ]
       },
-      "whoIndicatorCode": {
-        "nodes": [
-          {
-            "types": [
-              "Thing"
-            ],
-            "value": "DIS.nec"
-          }
-        ]
-      },
       "description": {
         "nodes": [
           {
@@ -31495,37 +31519,6 @@
               "Thing"
             ],
             "value": "Expenditure on other and unspecified diseases and conditions measured as a percent of gross domestic product. Other and unspecified diseases and conditions are diseases and conditions not classified as infectious and parasitic diseases, reproductive health, nutritional deficiencies, noncommunicable diseases, or injuries."
-          }
-        ]
-      },
-      "measurementDenominator": {
-        "nodes": [
-          {
-            "types": [
-              "Thing"
-            ],
-            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
-          }
-        ]
-      },
-      "name": {
-        "nodes": [
-          {
-            "types": [
-              "Thing"
-            ],
-            "value": "Expenditure on other and unspecified diseases and conditions (n.e.c.) (percent of GDP)"
-          }
-        ]
-      },
-      "constraintProperties": {
-        "nodes": [
-          {
-            "name": "Disease and conditions",
-            "types": [
-              "Property"
-            ],
-            "dcid": "diseaseAndCondition"
           }
         ]
       },
@@ -31537,6 +31530,16 @@
               "DiseaseAndConditionEnum"
             ],
             "dcid": "DIS_nec"
+          }
+        ]
+      },
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
           }
         ]
       },
@@ -31557,47 +31560,6 @@
     "label": "Domestic private expenditure on ancillary services (percent of GDP)",
     "type": "StatisticalVariable",
     "arcs": {
-      "description": {
-        "nodes": [
-          {
-            "types": [
-              "Thing"
-            ],
-            "value": "Domestic private expenditure on ancillary services measured as a percent of gross domestic product (GDP). Ancillary services comprise laboratory services, imaging, patient transport, and other specialized diagnostic and therapeutic services that support curative, rehabilitative, and long-term care but are not delivered as part of inpatient or outpatient encounters."
-          }
-        ]
-      },
-      "measurementDenominator": {
-        "nodes": [
-          {
-            "types": [
-              "Thing"
-            ],
-            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
-          }
-        ]
-      },
-      "populationType": {
-        "nodes": [
-          {
-            "name": "Current health expenditure",
-            "types": [
-              "Property"
-            ],
-            "dcid": "currentHealthExpenditure"
-          }
-        ]
-      },
-      "statType": {
-        "nodes": [
-          {
-            "types": [
-              "Thing"
-            ],
-            "dcid": "measuredValue"
-          }
-        ]
-      },
       "typeOf": {
         "nodes": [
           {
@@ -31618,17 +31580,6 @@
           }
         ]
       },
-      "healthCareFunction": {
-        "nodes": [
-          {
-            "name": "Ancillary services (non-specified by function) (HC.4)",
-            "types": [
-              "HealthCareFunctionEnum"
-            ],
-            "dcid": "HC_4"
-          }
-        ]
-      },
       "healthFinancingSource": {
         "nodes": [
           {
@@ -31640,13 +31591,13 @@
           }
         ]
       },
-      "name": {
+      "statType": {
         "nodes": [
           {
             "types": [
               "Thing"
             ],
-            "value": "Domestic private expenditure on ancillary services (percent of GDP)"
+            "dcid": "measuredValue"
           }
         ]
       },
@@ -31667,6 +31618,58 @@
             "dcid": "healthCareFunction"
           }
         ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Domestic private expenditure on ancillary services measured as a percent of gross domestic product (GDP). Ancillary services comprise laboratory services, imaging, patient transport, and other specialized diagnostic and therapeutic services that support curative, rehabilitative, and long-term care but are not delivered as part of inpatient or outpatient encounters."
+          }
+        ]
+      },
+      "healthCareFunction": {
+        "nodes": [
+          {
+            "name": "Ancillary services (non-specified by function) (HC.4)",
+            "types": [
+              "HealthCareFunctionEnum"
+            ],
+            "dcid": "HC_4"
+          }
+        ]
+      },
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Domestic private expenditure on ancillary services (percent of GDP)"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Current health expenditure",
+            "types": [
+              "Property"
+            ],
+            "dcid": "currentHealthExpenditure"
+          }
+        ]
       }
     }
   },
@@ -31684,16 +31687,6 @@
           }
         ]
       },
-      "description": {
-        "nodes": [
-          {
-            "types": [
-              "Thing"
-            ],
-            "value": "Domestic general government expenditure on other and unspecified diseases and conditions measured as a percent of gross domestic product. Other and unspecified diseases and conditions are health problems not classified as infectious and parasitic diseases, reproductive health, nutritional deficiencies, noncommunicable diseases, or injuries."
-          }
-        ]
-      },
       "diseaseAndCondition": {
         "nodes": [
           {
@@ -31705,13 +31698,13 @@
           }
         ]
       },
-      "name": {
+      "measurementDenominator": {
         "nodes": [
           {
             "types": [
               "Thing"
             ],
-            "value": "Domestic general government expenditure on other and unspecified diseases and conditions (n.e.c.) (percent of GDP)"
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
           }
         ]
       },
@@ -31733,6 +31726,16 @@
           }
         ]
       },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Domestic general government expenditure on other and unspecified diseases and conditions measured as a percent of gross domestic product. Other and unspecified diseases and conditions are health problems not classified as infectious and parasitic diseases, reproductive health, nutritional deficiencies, noncommunicable diseases, or injuries."
+          }
+        ]
+      },
       "healthFinancingSource": {
         "nodes": [
           {
@@ -31744,13 +31747,13 @@
           }
         ]
       },
-      "measurementDenominator": {
+      "name": {
         "nodes": [
           {
             "types": [
               "Thing"
             ],
-            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+            "value": "Domestic general government expenditure on other and unspecified diseases and conditions (n.e.c.) (percent of GDP)"
           }
         ]
       },
@@ -31791,13 +31794,45 @@
     "label": "Expenditure on gross capital health formation (percent of GDP)",
     "type": "StatisticalVariable",
     "arcs": {
-      "statType": {
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Capital health expenditure",
+            "types": [
+              "Property"
+            ],
+            "dcid": "capitalHealthExpenditure"
+          }
+        ]
+      },
+      "measurementDenominator": {
         "nodes": [
           {
             "types": [
               "Thing"
             ],
-            "dcid": "measuredValue"
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Capital health expenditure",
+            "types": [
+              "Property"
+            ],
+            "dcid": "capitalHealthExpenditure"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Total net investment by health providers in assets used for more than one year (gross capital formation in health) measured as a percent of gross domestic product (GDP)."
           }
         ]
       },
@@ -31808,6 +31843,16 @@
               "Thing"
             ],
             "value": "Expenditure on gross capital health formation (percent of GDP)"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
           }
         ]
       },
@@ -31839,48 +31884,6 @@
               "CapitalHealthExpenditure"
             ],
             "dcid": "HK_1"
-          }
-        ]
-      },
-      "constraintProperties": {
-        "nodes": [
-          {
-            "name": "Capital health expenditure",
-            "types": [
-              "Property"
-            ],
-            "dcid": "capitalHealthExpenditure"
-          }
-        ]
-      },
-      "description": {
-        "nodes": [
-          {
-            "types": [
-              "Thing"
-            ],
-            "value": "Total net investment by health providers in assets used for more than one year (gross capital formation in health) measured as a percent of gross domestic product (GDP)."
-          }
-        ]
-      },
-      "measurementDenominator": {
-        "nodes": [
-          {
-            "types": [
-              "Thing"
-            ],
-            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
-          }
-        ]
-      },
-      "populationType": {
-        "nodes": [
-          {
-            "name": "Capital health expenditure",
-            "types": [
-              "Property"
-            ],
-            "dcid": "capitalHealthExpenditure"
           }
         ]
       }
@@ -41000,6 +41003,2408 @@
               "DevelopmentFinanceRecipientEnum"
             ],
             "dcid": "DAC/Europe"
+          }
+        ]
+      }
+    }
+  },
+  "Nominal": {
+    "label": "Nominal",
+    "type": "EconomicMetricEnum",
+    "arcs": {
+      "provenance": {
+        "nodes": [
+          {
+            "name": "BaseSchema",
+            "types": [
+              "Provenance"
+            ],
+            "dcid": "dc/base/BaseSchema",
+            "provenanceId": "dc/base/BaseSchema"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "name": "EconomicMetricEnum",
+            "types": [
+              "Class"
+            ],
+            "dcid": "EconomicMetricEnum",
+            "provenanceId": "dc/base/BaseSchema"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/BaseSchema",
+            "value": "Measurement is evaluated at current market prices, without adjusting for inflation."
+          }
+        ]
+      },
+      "descriptionUrl": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/BaseSchema",
+            "value": "https://en.wikipedia.org/wiki/Real_versus_nominal_value_(economics)"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/BaseSchema",
+            "value": "Nominal"
+          }
+        ]
+      }
+    }
+  },
+  "GrossDomesticProduction": {
+    "label": "GrossDomesticProduction",
+    "type": "EconomicActivitySourceEnum",
+    "arcs": {
+      "provenance": {
+        "nodes": [
+          {
+            "name": "BaseSchema",
+            "types": [
+              "Provenance"
+            ],
+            "dcid": "dc/base/BaseSchema",
+            "provenanceId": "dc/base/BaseSchema"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "name": "EconomicActivitySourceEnum",
+            "types": [
+              "Class"
+            ],
+            "dcid": "EconomicActivitySourceEnum",
+            "provenanceId": "dc/base/BaseSchema"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/BaseSchema",
+            "value": "A monetary measure of the market value of all the final goods and services produced in a specific time period."
+          }
+        ]
+      },
+      "descriptionUrl": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/BaseSchema",
+            "value": "https://en.wikipedia.org/wiki/Gross_domestic_product"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/BaseSchema",
+            "value": "GrossDomesticProduction"
+          }
+        ]
+      }
+    }
+  },
+  "dc/base/WorldDevelopmentIndicators": {
+    "label": "WorldDevelopmentIndicators",
+    "type": null
+  },
+  "dc/base/India_NationalAccountsStatistics": {
+    "label": "India_NationalAccountsStatistics",
+    "type": null
+  },
+  "dc/base/India_RBIStateDomesticProduct_AggCountry": {
+    "label": "India_RBIStateDomesticProduct_AggCountry",
+    "type": null
+  },
+  "ONE/who_dis3-gdp-pvtd": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "healthFinancingSource": {
+        "nodes": [
+          {
+            "name": "Domestic private sources of health financing",
+            "types": [
+              "HealthFinancingSourceEnum"
+            ],
+            "dcid": "DomesticPrivateHealthFinancing"
+          }
+        ]
+      },
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Current health expenditure",
+            "types": [
+              "Property"
+            ],
+            "dcid": "currentHealthExpenditure"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "whoIndicatorCode": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "DIS.3"
+          }
+        ]
+      },
+      "diseaseAndCondition": {
+        "nodes": [
+          {
+            "name": "Nutritional Deficiencies (DIS.3)",
+            "types": [
+              "DiseaseAndConditionEnum"
+            ],
+            "dcid": "DIS_3"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Domestic private expenditure on nutritional deficiencies (percent of GDP)"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Source of health financing",
+            "types": [
+              "Property"
+            ],
+            "dcid": "healthFinancingSource"
+          },
+          {
+            "name": "Disease and conditions",
+            "types": [
+              "Property"
+            ],
+            "dcid": "diseaseAndCondition"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Domestic private expenditure on nutritional deficiencies measured as a percent of gross domestic product. Nutritional deficiencies are health problems due to lack of essential nutrients, such as protein-energy malnutrition, vitamin A deficiency, iodine deficiency, and iron-deficiency anemia."
+          }
+        ]
+      }
+    }
+  },
+  "ONE/who_hc4-gdp": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "whoIndicatorCode": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "HC.4"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Health care function",
+            "types": [
+              "Property"
+            ],
+            "dcid": "healthCareFunction"
+          }
+        ]
+      },
+      "healthCareFunction": {
+        "nodes": [
+          {
+            "name": "Ancillary services (non-specified by function) (HC.4)",
+            "types": [
+              "HealthCareFunctionEnum"
+            ],
+            "dcid": "HC_4"
+          }
+        ]
+      },
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Expenditure on ancillary services (percent of GDP)"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Expenditure on ancillary services measured as a percent of gross domestic product (GDP). Ancillary services comprise laboratory services, imaging, patient transport, and other specialized diagnostic and therapeutic services that support curative, rehabilitative, and long-term care but are not delivered as part of inpatient or outpatient encounters."
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Current health expenditure",
+            "types": [
+              "Property"
+            ],
+            "dcid": "currentHealthExpenditure"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/who_hc4-ext-gdp": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "healthCareFunction": {
+        "nodes": [
+          {
+            "name": "Ancillary services (non-specified by function) (HC.4)",
+            "types": [
+              "HealthCareFunctionEnum"
+            ],
+            "dcid": "HC_4"
+          }
+        ]
+      },
+      "healthFinancingSource": {
+        "nodes": [
+          {
+            "name": "External sources of health financing",
+            "types": [
+              "HealthFinancingSourceEnum"
+            ],
+            "dcid": "ExternalHealthFinancing"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "External expenditure on ancillary services (percent of GDP)"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Source of health financing",
+            "types": [
+              "Property"
+            ],
+            "dcid": "healthFinancingSource"
+          },
+          {
+            "name": "Health care function",
+            "types": [
+              "Property"
+            ],
+            "dcid": "healthCareFunction"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "External expenditure on ancillary services measured as a percent of gross domestic product (GDP). Ancillary services comprise laboratory services, imaging, patient transport, and other specialized diagnostic and therapeutic services that support curative, rehabilitative, and long-term care but are not delivered as part of inpatient or outpatient encounters."
+          }
+        ]
+      },
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Current health expenditure",
+            "types": [
+              "Property"
+            ],
+            "dcid": "currentHealthExpenditure"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "whoIndicatorCode": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "HC.4"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/who_hc4nec-gdp": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "healthCareFunction": {
+        "nodes": [
+          {
+            "name": "Unspecified ancillary services (n.e.c.) (HC.4.nec)",
+            "types": [
+              "HealthCareFunctionEnum"
+            ],
+            "dcid": "HC_4_nec"
+          }
+        ]
+      },
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Current health expenditure",
+            "types": [
+              "Property"
+            ],
+            "dcid": "currentHealthExpenditure"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Health care function",
+            "types": [
+              "Property"
+            ],
+            "dcid": "healthCareFunction"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Expenditure on unspecified ancillary services measured as a percent of gross domestic product (GDP). Unspecified ancillary services include spending on diagnostic or therapeutic services such as laboratory, imaging, patient transport, or other ancillary activities when the exact type of service is not identified."
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Expenditure on unspecified ancillary services (percent of GDP)"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "whoIndicatorCode": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "HC.4.nec"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/who_hc4-gghed-gdp": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Source of health financing",
+            "types": [
+              "Property"
+            ],
+            "dcid": "healthFinancingSource"
+          },
+          {
+            "name": "Health care function",
+            "types": [
+              "Property"
+            ],
+            "dcid": "healthCareFunction"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Domestic general government expenditure on ancillary services measured as a percent of gross domestic product (GDP). Ancillary services comprise laboratory services, imaging, patient transport, and other specialized diagnostic and therapeutic services that support curative, rehabilitative, and long-term care but are not delivered as part of inpatient or outpatient encounters."
+          }
+        ]
+      },
+      "healthFinancingSource": {
+        "nodes": [
+          {
+            "name": "Domestic general government sources of health financing",
+            "types": [
+              "HealthFinancingSourceEnum"
+            ],
+            "dcid": "DomesticGeneralGovernmentHealthFinancing"
+          }
+        ]
+      },
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Current health expenditure",
+            "types": [
+              "Property"
+            ],
+            "dcid": "currentHealthExpenditure"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "whoIndicatorCode": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "HC.4"
+          }
+        ]
+      },
+      "healthCareFunction": {
+        "nodes": [
+          {
+            "name": "Ancillary services (non-specified by function) (HC.4)",
+            "types": [
+              "HealthCareFunctionEnum"
+            ],
+            "dcid": "HC_4"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Domestic general government expenditure on ancillary services (percent of GDP)"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/who_fs6-gdp": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Revenue of health financing scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "healthFinancingSchemeRevenue"
+          }
+        ]
+      },
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Current health expenditure financed through other domestic revenues n.e.c. (percent of GDP)"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Current health expenditure",
+            "types": [
+              "Property"
+            ],
+            "dcid": "currentHealthExpenditure"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "whoIndicatorCode": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "FS.6"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Current health expenditure financed through other domestic revenues n.e.c. measured as a percent of gross domestic product (GDP). The financing scheme revenue classification Other domestic revenues n.e.c. (FS.6) covers domestic revenues of financing schemes not categorised as Transfers from government domestic revenue (FS.1), Transfers distributed by government from foreign origin (FS.2), Social insurance contributions (FS.3), Compulsory prepayment (FS.4), or Voluntary prepayment (FS.5). This is a revenue inflow to health financing schemes rather than an expenditure."
+          }
+        ]
+      },
+      "healthFinancingSchemeRevenue": {
+        "nodes": [
+          {
+            "name": "Other domestic revenues n.e.c. (FS.6)",
+            "types": [
+              "HealthFinancingSchemeRevenueEnum"
+            ],
+            "dcid": "FS_6"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/who_dis3-gdp-ext": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "External expenditure on nutritional deficiencies measured as a percent of gross domestic product. Nutritional deficiencies are health problems due to lack of essential nutrients, such as protein-energy malnutrition, vitamin A deficiency, iodine deficiency, and iron-deficiency anemia."
+          }
+        ]
+      },
+      "healthFinancingSource": {
+        "nodes": [
+          {
+            "name": "External sources of health financing",
+            "types": [
+              "HealthFinancingSourceEnum"
+            ],
+            "dcid": "ExternalHealthFinancing"
+          }
+        ]
+      },
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "External expenditure on nutritional deficiencies (percent of GDP)"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Current health expenditure",
+            "types": [
+              "Property"
+            ],
+            "dcid": "currentHealthExpenditure"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Source of health financing",
+            "types": [
+              "Property"
+            ],
+            "dcid": "healthFinancingSource"
+          },
+          {
+            "name": "Disease and conditions",
+            "types": [
+              "Property"
+            ],
+            "dcid": "diseaseAndCondition"
+          }
+        ]
+      },
+      "diseaseAndCondition": {
+        "nodes": [
+          {
+            "name": "Nutritional Deficiencies (DIS.3)",
+            "types": [
+              "DiseaseAndConditionEnum"
+            ],
+            "dcid": "DIS_3"
+          }
+        ]
+      },
+      "whoIndicatorCode": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "DIS.3"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/who_dis3-gdp-gghed": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Current health expenditure",
+            "types": [
+              "Property"
+            ],
+            "dcid": "currentHealthExpenditure"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Source of health financing",
+            "types": [
+              "Property"
+            ],
+            "dcid": "healthFinancingSource"
+          },
+          {
+            "name": "Disease and conditions",
+            "types": [
+              "Property"
+            ],
+            "dcid": "diseaseAndCondition"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Domestic general government expenditure on nutritional deficiencies measured as a percent of gross domestic product. Nutritional deficiencies are health problems due to lack of essential nutrients, such as protein-energy malnutrition, vitamin A deficiency, iodine deficiency, and iron-deficiency anemia."
+          }
+        ]
+      },
+      "healthFinancingSource": {
+        "nodes": [
+          {
+            "name": "Domestic general government sources of health financing",
+            "types": [
+              "HealthFinancingSourceEnum"
+            ],
+            "dcid": "DomesticGeneralGovernmentHealthFinancing"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "whoIndicatorCode": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "DIS.3"
+          }
+        ]
+      },
+      "diseaseAndCondition": {
+        "nodes": [
+          {
+            "name": "Nutritional Deficiencies (DIS.3)",
+            "types": [
+              "DiseaseAndConditionEnum"
+            ],
+            "dcid": "DIS_3"
+          }
+        ]
+      },
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Domestic general government expenditure on nutritional deficiencies (percent of GDP)"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/who_dis22-gdp": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "whoIndicatorCode": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "DIS.2.2"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Disease and conditions",
+            "types": [
+              "Property"
+            ],
+            "dcid": "diseaseAndCondition"
+          }
+        ]
+      },
+      "diseaseAndCondition": {
+        "nodes": [
+          {
+            "name": "Perinatal Conditions (DIS.2.2)",
+            "types": [
+              "DiseaseAndConditionEnum"
+            ],
+            "dcid": "DIS_2_2"
+          }
+        ]
+      },
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Current health expenditure",
+            "types": [
+              "Property"
+            ],
+            "dcid": "currentHealthExpenditure"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Expenditure on perinatal conditions measured as a percent of gross domestic product. Perinatal conditions are conditions during the perinatal period, which spans from 22 completed weeks of gestation and ends 7 completed days after birth, such as birth trauma and consequences of preterm birth."
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Expenditure on perinatal conditions (percent of GDP)"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/who_hk-gdp-ext": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Source of health financing",
+            "types": [
+              "Property"
+            ],
+            "dcid": "healthFinancingSource"
+          }
+        ]
+      },
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "External capital health expenditure (percent of GDP)"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Capital health expenditure",
+            "types": [
+              "Property"
+            ],
+            "dcid": "capitalHealthExpenditure"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "whoIndicatorCode": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "HK"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Spending from external sources as a percent of gross domestic product (GDP) on long‑term health system assets such as buildings, equipment and software acquired by health providers, recorded as acquisitions minus disposals."
+          }
+        ]
+      },
+      "healthFinancingSource": {
+        "nodes": [
+          {
+            "name": "External sources of health financing",
+            "types": [
+              "HealthFinancingSourceEnum"
+            ],
+            "dcid": "ExternalHealthFinancing"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/who_dis3-gdp": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Current health expenditure",
+            "types": [
+              "Property"
+            ],
+            "dcid": "currentHealthExpenditure"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Disease and conditions",
+            "types": [
+              "Property"
+            ],
+            "dcid": "diseaseAndCondition"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Expenditure on nutritional deficiencies measured as a percent of gross domestic product. Nutritional deficiencies are health problems due to lack of essential nutrients, such as protein-energy malnutrition, vitamin A deficiency, iodine deficiency, and iron-deficiency anemia."
+          }
+        ]
+      },
+      "diseaseAndCondition": {
+        "nodes": [
+          {
+            "name": "Nutritional Deficiencies (DIS.3)",
+            "types": [
+              "DiseaseAndConditionEnum"
+            ],
+            "dcid": "DIS_3"
+          }
+        ]
+      },
+      "whoIndicatorCode": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "DIS.3"
+          }
+        ]
+      },
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Expenditure on nutritional deficiencies (percent of GDP)"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/who_fs61-gdp": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Revenue of health financing scheme",
+            "types": [
+              "Property"
+            ],
+            "dcid": "healthFinancingSchemeRevenue"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Current health expenditure financed through other revenues from households n.e.c. measured as a percent of gross domestic product (GDP). The financing scheme revenue classification Other revenues from households n.e.c. (FS.6.1) covers sources of households’ out-of-pocket payments, as well as any voluntary transfers from households to health financing schemes, other than those classified under voluntary prepayments (FS.5), for example, donations to NPISH health programmes. This is a revenue inflow to health financing schemes rather than an expenditure."
+          }
+        ]
+      },
+      "healthFinancingSchemeRevenue": {
+        "nodes": [
+          {
+            "name": "Other revenues from households n.e.c. (FS.6.1)",
+            "types": [
+              "HealthFinancingSchemeRevenueEnum"
+            ],
+            "dcid": "FS_6_1"
+          }
+        ]
+      },
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Current health expenditure financed through other revenues from households n.e.c. (percent of GDP)"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Current health expenditure",
+            "types": [
+              "Property"
+            ],
+            "dcid": "currentHealthExpenditure"
+          }
+        ]
+      },
+      "whoIndicatorCode": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "FS.6.1"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/who_dis22-gdp-ext": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "External expenditure on perinatal conditions measured as a percent of gross domestic product. Perinatal conditions are health problems that occur during the perinatal period, from 22 completed weeks of gestation until 7 completed days after birth, such as birth trauma and consequences of preterm birth."
+          }
+        ]
+      },
+      "healthFinancingSource": {
+        "nodes": [
+          {
+            "name": "External sources of health financing",
+            "types": [
+              "HealthFinancingSourceEnum"
+            ],
+            "dcid": "ExternalHealthFinancing"
+          }
+        ]
+      },
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "whoIndicatorCode": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "DIS.2.2"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Source of health financing",
+            "types": [
+              "Property"
+            ],
+            "dcid": "healthFinancingSource"
+          },
+          {
+            "name": "Disease and conditions",
+            "types": [
+              "Property"
+            ],
+            "dcid": "diseaseAndCondition"
+          }
+        ]
+      },
+      "diseaseAndCondition": {
+        "nodes": [
+          {
+            "name": "Perinatal Conditions (DIS.2.2)",
+            "types": [
+              "DiseaseAndConditionEnum"
+            ],
+            "dcid": "DIS_2_2"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "External expenditure on perinatal conditions (percent of GDP)"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Current health expenditure",
+            "types": [
+              "Property"
+            ],
+            "dcid": "currentHealthExpenditure"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/who_hk-gdp": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Capital health expenditure",
+            "types": [
+              "Property"
+            ],
+            "dcid": "capitalHealthExpenditure"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "whoIndicatorCode": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "HK"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Spending as a percent of gross domestic product (GDP) on long‑term health system assets such as buildings, equipment and software acquired by health providers, recorded as acquisitions minus disposals."
+          }
+        ]
+      },
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Capital health expenditure (percent of GDP)"
+          }
+        ]
+      }
+    }
+  },
+  "healthFinancingSchemeRevenue": {
+    "label": "Revenue of health financing scheme",
+    "type": null
+  },
+  "capitalHealthExpenditure": {
+    "label": "Capital health expenditure",
+    "type": null
+  },
+  "growthRate": {
+    "label": "growthRate",
+    "type": "Property",
+    "arcs": {
+      "description": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/BaseSchema",
+            "value": "A value of the statType property of a StatisticalVariable. Indicates that the variable measures the percentage change in observations over a certain time period. An example of this is a price index."
+          }
+        ]
+      },
+      "domainIncludes": {
+        "nodes": [
+          {
+            "name": "Observation",
+            "types": [
+              "Class"
+            ],
+            "dcid": "Observation",
+            "provenanceId": "dc/base/BaseSchema"
+          },
+          {
+            "name": "StatisticalVariable",
+            "types": [
+              "Class"
+            ],
+            "dcid": "StatisticalVariable",
+            "provenanceId": "dc/base/BaseSchema"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/BaseSchema",
+            "value": "growthRate"
+          }
+        ]
+      },
+      "provenance": {
+        "nodes": [
+          {
+            "name": "BaseSchema",
+            "types": [
+              "Provenance"
+            ],
+            "dcid": "dc/base/BaseSchema",
+            "provenanceId": "dc/base/BaseSchema"
+          }
+        ]
+      },
+      "rangeIncludes": {
+        "nodes": [
+          {
+            "name": "Number",
+            "types": [
+              "DataType"
+            ],
+            "dcid": "Number",
+            "provenanceId": "dc/base/BaseSchema"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "name": "Property",
+            "types": [
+              "Class"
+            ],
+            "dcid": "Property",
+            "provenanceId": "dc/base/BaseSchema"
+          }
+        ]
+      }
+    }
+  },
+  "PerCapita": {
+    "label": null,
+    "type": "ProvisionalNode",
+    "arcs": {
+      "isProvisional": {
+        "nodes": [
+          {
+            "name": "True",
+            "types": [
+              "Boolean"
+            ],
+            "dcid": "True",
+            "provenanceId": "dc/base/BaseSchema"
+          }
+        ]
+      },
+      "provenance": {
+        "nodes": [
+          {
+            "name": "BaseSchema",
+            "types": [
+              "Provenance"
+            ],
+            "dcid": "dc/base/BaseSchema",
+            "provenanceId": "dc/base/BaseSchema"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "name": "ProvisionalNode",
+            "types": [
+              "Class"
+            ],
+            "dcid": "ProvisionalNode",
+            "provenanceId": "dc/base/BaseSchema"
+          }
+        ]
+      }
+    }
+  },
+  "Amount_EconomicActivity_GrossDomesticProduction_Nominal_AsAFractionOf_Count_Person": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "name": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/HumanReadableStatVars",
+            "value": "Nominal gross domestic product per capita"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "name": "StatisticalVariable",
+            "types": [
+              "Class"
+            ],
+            "dcid": "StatisticalVariable",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/HumanReadableStatVars",
+            "value": "Measure of a country's total economic output per person, calculated by dividing the nominal GDP by the population"
+          }
+        ]
+      },
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "amount",
+            "types": [
+              "Property"
+            ],
+            "dcid": "amount",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "EconomicActivity",
+            "types": [
+              "Class"
+            ],
+            "dcid": "EconomicActivity",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "provenance": {
+        "nodes": [
+          {
+            "name": "HumanReadableStatVars",
+            "types": [
+              "Provenance"
+            ],
+            "dcid": "dc/base/HumanReadableStatVars",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "name": "measuredValue",
+            "types": [
+              "Property"
+            ],
+            "dcid": "measuredValue",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "activitySource": {
+        "nodes": [
+          {
+            "name": "GrossDomesticProduction",
+            "types": [
+              "EconomicActivitySourceEnum"
+            ],
+            "dcid": "GrossDomesticProduction",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "activitySource",
+            "types": [
+              "Property"
+            ],
+            "dcid": "activitySource",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "name": "Total population",
+            "types": [
+              "StatisticalVariable"
+            ],
+            "dcid": "Count_Person",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "measurementQualifier": {
+        "nodes": [
+          {
+            "name": "Nominal",
+            "types": [
+              "EconomicMetricEnum"
+            ],
+            "dcid": "Nominal",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "memberOf": {
+        "nodes": [
+          {
+            "name": "Economic Activity With Activity Source = Gross Domestic Production",
+            "types": [
+              "StatVarGroup"
+            ],
+            "dcid": "dc/g/EconomicActivity_ActivitySource-GrossDomesticProduction",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      }
+    }
+  },
+  "sdg/EN_MAT_DOMCMPG": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "measuredProperty": {
+        "nodes": [
+          {
+            "name": "value",
+            "types": [
+              "Property"
+            ],
+            "dcid": "value",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "memberOf": {
+        "nodes": [
+          {
+            "name": "Domestic Material Consumption Per Unit of GDP, by Type of Raw Material",
+            "types": [
+              "StatVarGroup"
+            ],
+            "dcid": "dc/g/SDGENMATDOMCMPG",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/HumanReadableStatVars",
+            "value": "Domestic material consumption per unit of GDP"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Domestic material consumption per unit of GDP, by type of raw material",
+            "types": [
+              "SDG_Series"
+            ],
+            "dcid": "SDG_EN_MAT_DOMCMPG",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "provenance": {
+        "nodes": [
+          {
+            "name": "HumanReadableStatVars",
+            "types": [
+              "Provenance"
+            ],
+            "dcid": "dc/base/HumanReadableStatVars",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "name": "measuredValue",
+            "types": [
+              "Property"
+            ],
+            "dcid": "measuredValue",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "name": "StatisticalVariable",
+            "types": [
+              "Class"
+            ],
+            "dcid": "StatisticalVariable",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "footnote": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/HumanReadableStatVars",
+            "value": "Includes data from the following sources: Eurostat; WESR / Global Material Flows Database"
+          }
+        ]
+      }
+    }
+  },
+  "dc/topic/sdg_8.1.1": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "relevantVariable": {
+        "nodes": [
+          {
+            "name": "Annual growth rate of real GDP per capita",
+            "types": [
+              "StatisticalVariable"
+            ],
+            "dcid": "sdg/NY_GDP_PCAP",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "name": "Topic",
+            "types": [
+              "Class"
+            ],
+            "dcid": "Topic",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "provenanceId": "dc/base/HumanReadableStatVars",
+            "value": "8.1.1: Annual growth rate of real GDP per capita"
+          }
+        ]
+      },
+      "provenance": {
+        "nodes": [
+          {
+            "name": "HumanReadableStatVars",
+            "types": [
+              "Provenance"
+            ],
+            "dcid": "dc/base/HumanReadableStatVars",
+            "provenanceId": "dc/base/HumanReadableStatVars"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/who_hk-gdp-pvtd": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Domestic private capital health expenditure (percent of GDP)"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Capital health expenditure",
+            "types": [
+              "Property"
+            ],
+            "dcid": "capitalHealthExpenditure"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "whoIndicatorCode": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "HK"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Domestic private spending as a percent of gross domestic product (GDP) on long‑term health system assets such as buildings, equipment and software acquired by health providers, recorded as acquisitions minus disposals."
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Source of health financing",
+            "types": [
+              "Property"
+            ],
+            "dcid": "healthFinancingSource"
+          }
+        ]
+      },
+      "healthFinancingSource": {
+        "nodes": [
+          {
+            "name": "Domestic private sources of health financing",
+            "types": [
+              "HealthFinancingSourceEnum"
+            ],
+            "dcid": "DomesticPrivateHealthFinancing"
+          }
+        ]
+      },
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/who_hk11-gdp": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Capital health expenditure",
+            "types": [
+              "Property"
+            ],
+            "dcid": "capitalHealthExpenditure"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Capital health expenditure",
+            "types": [
+              "Property"
+            ],
+            "dcid": "capitalHealthExpenditure"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Investment in fixed assets (e.g., buildings, equipment, software/databases) used repeatedly for more than one year by health providers measured as a percent of gross domestic product (GDP)."
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Expenditure on gross fixed capital health formation (percent of GDP)"
+          }
+        ]
+      },
+      "whoIndicatorCode": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "HK.1.1"
+          }
+        ]
+      },
+      "capitalHealthExpenditure": {
+        "nodes": [
+          {
+            "name": "Gross fixed capital formation (HK.1.1)",
+            "types": [
+              "CapitalHealthExpenditure"
+            ],
+            "dcid": "HK_1_1"
+          }
+        ]
+      },
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/who_che-pvtd-gdp": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Source of health financing",
+            "types": [
+              "Property"
+            ],
+            "dcid": "healthFinancingSource"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Current health expenditure financed from domestic private sources, including household out-of-pocket payments and other domestic private sources of financing for health care, measured as a percent of gross domestic product (GDP)"
+          }
+        ]
+      },
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Domestic private current health expenditure (percent of GDP)"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Current health expenditure",
+            "types": [
+              "Property"
+            ],
+            "dcid": "currentHealthExpenditure"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
+          }
+        ]
+      },
+      "whoIndicatorCode": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "PVT-D"
+          }
+        ]
+      },
+      "healthFinancingSource": {
+        "nodes": [
+          {
+            "name": "Domestic private sources of health financing",
+            "types": [
+              "HealthFinancingSourceEnum"
+            ],
+            "dcid": "DomesticPrivateHealthFinancing"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      }
+    }
+  },
+  "ONE/who_hk-gdp-gghed": {
+    "label": null,
+    "type": null,
+    "arcs": {
+      "constraintProperties": {
+        "nodes": [
+          {
+            "name": "Source of health financing",
+            "types": [
+              "Property"
+            ],
+            "dcid": "healthFinancingSource"
+          }
+        ]
+      },
+      "description": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Domestic general government spending as a percent of gross domestic product (GDP) on long‑term health system assets such as buildings, equipment and software acquired by health providers, recorded as acquisitions minus disposals."
+          }
+        ]
+      },
+      "healthFinancingSource": {
+        "nodes": [
+          {
+            "name": "Domestic general government sources of health financing",
+            "types": [
+              "HealthFinancingSourceEnum"
+            ],
+            "dcid": "DomesticGeneralGovernmentHealthFinancing"
+          }
+        ]
+      },
+      "measurementDenominator": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "Amount_EconomicActivity_GrossDomesticProduction_Nominal"
+          }
+        ]
+      },
+      "populationType": {
+        "nodes": [
+          {
+            "name": "Capital health expenditure",
+            "types": [
+              "Property"
+            ],
+            "dcid": "capitalHealthExpenditure"
+          }
+        ]
+      },
+      "statType": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "measuredValue"
+          }
+        ]
+      },
+      "whoIndicatorCode": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "HK"
+          }
+        ]
+      },
+      "name": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "value": "Domestic general government capital health expenditure (percent of GDP)"
+          }
+        ]
+      },
+      "typeOf": {
+        "nodes": [
+          {
+            "types": [
+              "Thing"
+            ],
+            "dcid": "StatisticalVariable"
           }
         ]
       }

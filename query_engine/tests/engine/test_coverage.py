@@ -8,6 +8,7 @@ from qre.engine.coverage import coverage_from_facets
 from qre.engine.extract import DateRequest
 from qre.engine.graph import Facet
 from qre.models import CoverageBare, CoverageBreadth, CoverageExact, TimeWindow
+from tests.engine._harness import dimensions_of
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -60,7 +61,7 @@ def test_no_request_has_data_true_when_obs_present() -> None:
 def test_no_request_dimensions_two() -> None:
     cov = coverage_from_facets([_facet(obs_count=402)])
     assert isinstance(cov, CoverageExact)
-    assert len(cov.dimensions) == 2
+    assert len(dimensions_of(cov)) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -88,7 +89,7 @@ def test_concrete_window_full_cover_window_carried() -> None:
 def test_concrete_window_full_cover_dimensions_two() -> None:
     req = DateRequest(window=TimeWindow(start_year=2010, end_year=2024), latest=False)
     cov = coverage_from_facets([_facet(obs_count=2, dates=["2015", "2016"])], date_request=req)
-    assert len(cov.dimensions) == 2
+    assert len(dimensions_of(cov)) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -111,7 +112,7 @@ def test_partial_overlap_dimensions_two() -> None:
     facets = [_facet(obs_count=3, dates=dates)]
     req = DateRequest(window=TimeWindow(start_year=2014, end_year=2016), latest=False)
     cov = coverage_from_facets(facets, date_request=req)
-    assert len(cov.dimensions) == 2
+    assert len(dimensions_of(cov)) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -141,7 +142,7 @@ def test_exclude_all_window_dimensions_two() -> None:
     facets = [_facet(obs_count=1, dates=["2000"])]
     req = DateRequest(window=TimeWindow(start_year=2015, end_year=2020), latest=False)
     cov = coverage_from_facets(facets, date_request=req)
-    assert len(cov.dimensions) == 2
+    assert len(dimensions_of(cov)) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -175,7 +176,7 @@ def test_latest_dimensions_two() -> None:
     facets = [_facet(obs_count=3, latest="2022", dates=["2022", "2020", "2021"])]
     req = DateRequest(window=None, latest=True)
     cov = coverage_from_facets(facets, date_request=req)
-    assert len(cov.dimensions) == 2
+    assert len(dimensions_of(cov)) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -208,7 +209,7 @@ def test_no_facets_has_data_override_true_returns_bare_with_has_data() -> None:
 def test_default_labels_are_sources_and_observations() -> None:
     cov = coverage_from_facets([_facet(obs_count=10)])
     assert isinstance(cov, CoverageExact)
-    dim_labels = [d.label for d in cov.dimensions]
+    dim_labels = [d.label for d in dimensions_of(cov)]
     assert dim_labels[0] == "sources"
     assert dim_labels[1] == "observations"
 
@@ -217,7 +218,7 @@ def test_sources_dim_count_equals_facet_count() -> None:
     facets = [_facet(obs_count=100), _facet(obs_count=200)]
     cov = coverage_from_facets(facets)
     assert isinstance(cov, CoverageExact)
-    sources_dim = next(d for d in cov.dimensions if d.label == "sources")
+    sources_dim = next(d for d in dimensions_of(cov) if d.label == "sources")
     assert sources_dim.count == 2
 
 
@@ -225,7 +226,7 @@ def test_observations_dim_count_is_max_obs_count() -> None:
     facets = [_facet(obs_count=34), _facet(obs_count=402), _facet(obs_count=18)]
     cov = coverage_from_facets(facets)
     assert isinstance(cov, CoverageExact)
-    obs_dim = next(d for d in cov.dimensions if d.label == "observations")
+    obs_dim = next(d for d in dimensions_of(cov) if d.label == "observations")
     assert obs_dim.count == 402
 
 
@@ -236,7 +237,7 @@ def test_devfinance_labels_donors_and_years() -> None:
         obs_label="years",
     )
     assert isinstance(cov, CoverageExact)
-    dim_labels = {d.label for d in cov.dimensions}
+    dim_labels = {d.label for d in dimensions_of(cov)}
     assert "donors" in dim_labels
     assert "years" in dim_labels
 
@@ -245,7 +246,7 @@ def test_devfinance_donors_dim_count_equals_facet_count() -> None:
     facets = [_facet(obs_count=100), _facet(obs_count=200), _facet(obs_count=50)]
     cov = coverage_from_facets(facets, facet_label="donors", obs_label="years")
     assert isinstance(cov, CoverageExact)
-    donors_dim = next(d for d in cov.dimensions if d.label == "donors")
+    donors_dim = next(d for d in dimensions_of(cov) if d.label == "donors")
     assert donors_dim.count == 3
 
 
@@ -253,7 +254,7 @@ def test_devfinance_years_dim_count_is_max_obs_count() -> None:
     facets = [_facet(obs_count=34), _facet(obs_count=402), _facet(obs_count=18)]
     cov = coverage_from_facets(facets, facet_label="donors", obs_label="years")
     assert isinstance(cov, CoverageExact)
-    years_dim = next(d for d in cov.dimensions if d.label == "years")
+    years_dim = next(d for d in dimensions_of(cov) if d.label == "years")
     assert years_dim.count == 402
 
 

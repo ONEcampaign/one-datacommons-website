@@ -58,6 +58,16 @@ print(result.format())
 metrics = {ev.name: ev.value for ev in result.run_evaluations}
 frozen = {k: metrics.get(k) for k in _METRIC_KEYS}
 
+# Per-item check outcomes for the flip guard (gate.py check_gate baseline_items).
+# Key: golden id from item.metadata["id"]; value: {check_name: 0.0|1.0}.
+# None values are excluded so the baseline only records checks that ran.
+per_item = {
+    r.item.metadata["id"]: {
+        ev.name: ev.value for ev in r.evaluations if ev.value is not None
+    }
+    for r in result.item_results
+}
+
 baseline = {
     "dataset": dataset_name,
     "engine_build": ENGINE_BUILD_ID,
@@ -71,6 +81,7 @@ baseline = {
         "See .design/eval-gate.md section 3."
     ),
     "metrics": frozen,
+    "per_item": per_item,
 }
 
 out_path.write_text(json.dumps(baseline, indent=2) + "\n")

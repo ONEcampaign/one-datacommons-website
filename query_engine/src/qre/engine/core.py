@@ -24,6 +24,7 @@ from qre.engine.assemble import (
 from qre.engine.config import (
     ENGINE_BUILD_ID,
     QRE_MAX_CANDIDATES,
+    QRE_MAX_VARIABLE_CONCURRENCY,
     QRE_MAX_VARIABLES,
     QRE_SEAM_DEFAULT,
 )
@@ -34,17 +35,37 @@ from qre.engine.conjoin import (
 )
 from qre.engine.errors import EngineInfraError
 from qre.engine.extract import Extraction, dates_to_request, extract
+from qre.engine.families import rule_for_shape_id
 from qre.engine.graph import EngineGraphClient, LiveGraphClient
-from qre.engine.llm import LLM
-from qre.engine.regions import RegionResult, resolve_variable
+from qre.engine.llm import LLM, SupportsLLM
+from qre.engine.regions import RegionResult, detect_set_ref, resolve_spec_resubmit, resolve_variable
 from qre.models import (
     QueryEcho,
     ResolveRequest,
     ResolveResponse,
+    SpecResubmitInput,
     Warning,
 )
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _sum_usage(a: dict | None, b: dict | None) -> dict | None:
+    """Sum two LLM usage dicts; returns None when both are None."""
+    if a is None:
+        return b
+    if b is None:
+        return a
+    return {
+        "input_tokens": a["input_tokens"] + b["input_tokens"],
+        "output_tokens": a["output_tokens"] + b["output_tokens"],
+        "cached_tokens": a["cached_tokens"] + b["cached_tokens"],
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -56,7 +77,7 @@ async def _resolve_pipeline(
     request: ResolveRequest,
     *,
     graph: EngineGraphClient,
-    llm: LLM,
+    llm: SupportsLLM,
     start_ms: int,
 ) -> ResolveResponse:
     """Core pipeline body. Graph and LLM are always provided; lifecycle is the caller's concern."""
@@ -68,8 +89,41 @@ async def _resolve_pipeline(
     else:
         include_sentence = False
 
+    # Compute the effective max_candidates cap ONCE before the inp.kind dispatch
+    # so both raw_text and spec_resubmit paths share the same value.
+    _cap = (
+        request.options.max_candidates
+        if (request.options and request.options.max_candidates)
+        else QRE_MAX_CANDIDATES
+    )
+    _max_cand = max(2, min(_cap, QRE_MAX_CANDIDATES))
+
+    if inp.kind == "spec_resubmit":
+        assert isinstance(inp, SpecResubmitInput)
+        rule = rule_for_shape_id(shape_id=inp.shape_id)
+        region = await asyncio.to_thread(resolve_spec_resubmit, inp=inp, rule=rule, graph=graph)
+        echo = QueryEcho(
+            entry_path="spec_resubmit",
+            raw_query=None,
+            normalized_query=None,
+            variable_text=[region.variable_text] if region.variable_text else [],
+            extract_skipped=True,
+        )
+        return assemble_region(
+            region,
+            query="",
+            variable_texts=[region.variable_text] if region.variable_text else [],
+            extra_warnings=[],
+            start_ms=start_ms,
+            engine_build=ENGINE_BUILD_ID,
+            include_sentence=include_sentence,
+            max_candidates=_max_cand,
+            llm_usage=None,
+            echo=echo,
+        )
+
     if inp.kind != "raw_text":
-        # spec_resubmit → not yet implemented; parsed → app layer rejects with 400
+        # parsed → app layer already rejects with 400 before reaching here
         return _quick_no_data(
             reason="variable_not_resolved",
             query="",
@@ -97,14 +151,17 @@ async def _resolve_pipeline(
 
     # --- Step: extract ---
     t0 = now_ms()
-    extraction: Extraction = await extract(query, llm=llm)
+    extraction: Extraction
+    extract_usage: dict | None
+    extraction, extract_usage = await extract(query, llm=llm)
     timing_extract = now_ms() - t0
     extract_step = make_pipeline_step("extract", ran=True, ms=timing_extract)
 
     if not extraction.variables:
         echo = make_query_echo(query, [], extract_skipped=False)
         diag = make_diagnostics(
-            ENGINE_BUILD_ID, [], {"extract": timing_extract}, now_ms() - start_ms
+            ENGINE_BUILD_ID, [], {"extract": timing_extract}, now_ms() - start_ms,
+            llm_usage=extract_usage,
         )
         return assemble_no_data(
             "variable_not_resolved", echo, diag, include_sentence=include_sentence
@@ -140,6 +197,7 @@ async def _resolve_pipeline(
             base_steps=[extract_step],
             base_timing={"extract": timing_extract},
         )
+        total_usage = _sum_usage(extract_usage, region.llm_usage)
         return assemble_region(
             region,
             query=query,
@@ -148,13 +206,29 @@ async def _resolve_pipeline(
             start_ms=start_ms,
             engine_build=ENGINE_BUILD_ID,
             include_sentence=include_sentence,
-            max_candidates=QRE_MAX_CANDIDATES,
+            max_candidates=_max_cand,
+            llm_usage=total_usage,
         )
 
-    # N≥2: resolve each variable concurrently; region exceptions map to no_data parts.
-    results = await asyncio.gather(
-        *[
-            resolve_variable(
+    # Deduplicate entity resolution before fanning out. Each unique entity
+    # name is resolved exactly once and reused across all variable legs.
+    unique_entities = list(dict.fromkeys(entities))
+    pre_resolved_dcids = await asyncio.gather(
+        *[asyncio.to_thread(graph.resolve_entity, name) for name in unique_entities]
+    )
+    pre_resolved: dict[str, str] = {
+        name: dcid
+        for name, dcid in zip(unique_entities, pre_resolved_dcids, strict=True)
+        if dcid is not None
+    }
+
+    # Semaphore caps per-request variable concurrency to prevent flooding
+    # the graph/LLM with simultaneous calls from a large-N query.
+    sem = asyncio.Semaphore(QRE_MAX_VARIABLE_CONCURRENCY)
+
+    async def _guarded(v: str) -> RegionResult:
+        async with sem:
+            return await resolve_variable(
                 v,
                 entities=entities,
                 date_request=date_request,
@@ -165,9 +239,12 @@ async def _resolve_pipeline(
                 llm=llm,
                 base_steps=[extract_step],
                 base_timing={"extract": timing_extract},
+                pre_resolved=pre_resolved,
             )
-            for v in unique
-        ],
+
+    # N≥2: resolve each variable concurrently; region exceptions map to no_data parts.
+    results = await asyncio.gather(
+        *[_guarded(v) for v in unique],
         return_exceptions=True,
     )
 
@@ -191,7 +268,16 @@ async def _resolve_pipeline(
                 earliest_index=i,
             ))
 
-    return combine_regions(
+    # Sum extract usage with per-variable bind usages.
+    total_usage: dict | None = extract_usage
+    for r in regions:
+        total_usage = _sum_usage(total_usage, r.llm_usage)
+
+    # combine_regions is otherwise pure, but the injected set_ref_for closure reads
+    # the graph synchronously. Run the whole combiner in a worker thread so graph reads
+    # inside collapse_same_shape do not block the event loop.
+    return await asyncio.to_thread(
+        combine_regions,
         regions,
         query=query,
         variable_texts=unique,
@@ -199,7 +285,9 @@ async def _resolve_pipeline(
         start_ms=start_ms,
         engine_build=ENGINE_BUILD_ID,
         include_sentence=include_sentence,
-        max_candidates=QRE_MAX_CANDIDATES,
+        max_candidates=_max_cand,
+        llm_usage=total_usage,
+        set_ref_for=lambda dcids: detect_set_ref(value_dcids=dcids, graph=graph),
     )
 
 
@@ -207,7 +295,7 @@ async def resolve_async(
     request: ResolveRequest,
     *,
     graph: EngineGraphClient | None = None,
-    llm: LLM | None = None,
+    llm: SupportsLLM | None = None,
 ) -> ResolveResponse:
     """Async pipeline: extract → recall → bind → materialise → assemble.
 

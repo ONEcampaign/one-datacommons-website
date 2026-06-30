@@ -16,6 +16,7 @@ Pure module: no LLM, no graph calls.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Literal
 
@@ -65,15 +66,17 @@ def _detect_direction(
     query: str,
     surface: str | None,
     dcid: str,
+    canonical_name: str | None = None,
 ) -> Literal["from", "to"] | None:
     """Return "from", "to", or None (ambiguous) for one entity.
 
-    Tries the verbatim surface text first, then the DCID's last path segment,
-    as anchor phrases. For the first anchor found in the query, checks the
-    preceding window for a directional preposition.
+    Tries the verbatim surface text first, then the canonical graph label
+    (from node_labels_batch), then the DCID's last path segment, as anchor
+    phrases. For the first anchor found in the query, checks the preceding
+    window for a directional preposition.
     """
     last_segment = dcid.rsplit("/", 1)[-1]
-    raw_anchors: list[str | None] = [surface, last_segment]
+    raw_anchors: list[str | None] = [surface, canonical_name, last_segment]
 
     anchors: list[list[str]] = []
     seen: set[tuple[str, ...]] = set()
@@ -114,11 +117,12 @@ def _detect_direction(
 
 def directional_roles(
     query: str,
-    resolved_entities: list[tuple[str, str | None]],
+    resolved_entities: Sequence[tuple[str, str | None]],
     *,
     place_as_constraint: bool,
     recipient_role_dcid: str,
     donor_role_dcid: str,
+    canonical_names: Mapping[str, str | None] | None = None,
 ) -> tuple[dict[str, EntityRoleDraft], bool, bool]:
     """Assign directional roles to a list of resolved entities.
 
@@ -136,6 +140,9 @@ def directional_roles(
             place_as_constraint=True.
         donor_role_dcid: The dcid for the donor directional role node (e.g.
             "observationAbout"). Used only when place_as_constraint=True.
+        canonical_names: Optional map from dcid to the graph's canonical label
+            (from node_labels_batch). Used as a third anchor in direction
+            detection when the surface text and DCID slug both fail to match.
 
     Returns:
         3-tuple of (roles, seam_off, directional_detected):
@@ -148,11 +155,14 @@ def directional_roles(
     """
     result: dict[str, EntityRoleDraft] = {}
     detected_any_direction = False
+    _canonical = canonical_names or {}
 
     if place_as_constraint:
         # Pass 1: detect each entity's direction from the query prepositions.
+        # canonical_names provides a third anchor (graph label) beyond the surface
+        # text and DCID slug, enabling detection when surface and DCID slug both miss.
         directions: dict[str, Literal["from", "to"] | None] = {
-            dcid: _detect_direction(query, surface, dcid)
+            dcid: _detect_direction(query, surface, dcid, canonical_name=_canonical.get(dcid))
             for dcid, surface in resolved_entities
         }
 
@@ -162,8 +172,6 @@ def directional_roles(
         # query but unclaimed, and exactly one entity is still undetected, assign it
         # the unclaimed direction by elimination. Gated to a lone undetected entity,
         # so it can never mis-split an ambiguous pair.
-        # ponytail: single-undetected heuristic; a query with two normalized-away
-        # entities still falls open to subjects (no dev-finance golden hits that).
         undetected = [dcid for dcid, d in directions.items() if d is None]
         if len(undetected) == 1:
             query_tokens = set(_tokenize(query))
@@ -200,9 +208,10 @@ def directional_roles(
             result[dcid] = EntityRoleDraft(dcid=dcid, surface=surface, role=role)
     else:
         for dcid, surface in resolved_entities:
-            direction = _detect_direction(query, surface, dcid)
+            direction = _detect_direction(query, surface, dcid, canonical_name=_canonical.get(dcid))
             if direction is not None:
                 detected_any_direction = True
+            # seam off: all entities assigned subject role regardless of detected direction
             result[dcid] = EntityRoleDraft(
                 dcid=dcid, surface=surface, role=SubjectRole()
             )

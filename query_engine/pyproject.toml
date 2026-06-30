@@ -38,7 +38,9 @@ filterwarnings = ["ignore::starlette.exceptions.StarletteDeprecationWarning"]
 [tool.ty.src]
 # tests/eval imports conftest via relative import, a pytest convention that
 # ty's module resolver can't follow; exclude the subtree to suppress the noise.
-exclude = ["tests/eval"]
+# eval_corpus.py is a standalone tooling script (yaml/jsonschema deps live
+# outside the declared env); ruff already excludes it, so mirror that here.
+exclude = ["tests/eval", "eval_corpus.py"]
 
 [tool.ty.environment]
 # Pin ty to the query_engine uv venv (python 3.12 + engine extras).

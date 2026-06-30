@@ -1,4 +1,4 @@
-"""Tests for families.registry.rule_for.
+"""Tests for families.registry.rule_for and rule_for_shape_id.
 
 Invariant: CRS_DAC dcids always match the dev-finance rule first and must never
 reach the standard catch-all, even when standard SVs are mixed in the same list.
@@ -6,7 +6,7 @@ reach the standard catch-all, even when standard SVs are mixed in the same list.
 from __future__ import annotations
 
 from qre.engine.families.dev_finance import DEV_FINANCE_RULE
-from qre.engine.families.registry import STANDARD_RULE, rule_for
+from qre.engine.families.registry import STANDARD_RULE, rule_for, rule_for_shape_id
 
 
 class TestRuleForDevFinance:
@@ -85,3 +85,38 @@ class TestRuleForEmpty:
     def test_empty_list_returns_none(self):
         rule = rule_for(candidate_svs=[])
         assert rule is None
+
+
+class TestRuleForShapeId:
+    """rule_for_shape_id does exact-match lookup by stable shape_id string."""
+
+    def test_dev_finance_shape_id_returns_dev_finance_rule(self):
+        rule = rule_for_shape_id(shape_id="dev_finance_crs_dac")
+        assert rule is DEV_FINANCE_RULE
+
+    def test_unknown_shape_id_returns_none(self):
+        rule = rule_for_shape_id(shape_id="anything_else")
+        assert rule is None
+
+    def test_empty_shape_id_returns_none(self):
+        # STANDARD_RULE.shape_id == "" so the empty string must never match
+        rule = rule_for_shape_id(shape_id="")
+        assert rule is None
+
+    def test_standard_dynamic_five_tuple_returns_none(self):
+        # Standard shape_ids are dynamic five-tuple strings; they have no entry in
+        # REGISTRY under shape_id (STANDARD_RULE.shape_id is ""), so None is returned
+        # and the caller routes to the standard-promote path.
+        rule = rule_for_shape_id(shape_id="DevelopmentFinance|Flow|measuredValue|||")
+        assert rule is None
+
+    def test_partial_prefix_does_not_match(self):
+        # Exact match only — a prefix of the dev-finance shape_id must not match
+        rule = rule_for_shape_id(shape_id="dev_finance")
+        assert rule is None
+
+    def test_re_export_via_families_init(self):
+        # Verify the symbol is accessible through the package __init__ re-export
+        from qre.engine.families import rule_for_shape_id as rfs  # noqa: PLC0415
+
+        assert rfs(shape_id="dev_finance_crs_dac") is DEV_FINANCE_RULE

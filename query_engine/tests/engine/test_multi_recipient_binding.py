@@ -13,7 +13,7 @@ import asyncio
 
 from qre.engine.bind import SlotBindingDraft, _BindOutput
 from qre.engine.families.dev_finance import PROP_PURPOSE, PROP_RECIPIENT, PROP_SCHEME
-from qre.engine.regions import resolve_variable
+from qre.engine.regions import RegionResult, resolve_variable
 from tests.fixtures import FakeGraph
 
 # ---------------------------------------------------------------------------
@@ -122,11 +122,11 @@ class _FakeBindLLM:
                     kind="value",
                     value_dcids=["DAC/Health"],
                 ),
-            ])
+            ]), None
         raise AssertionError(f"unexpected schema {name!r} in _FakeBindLLM")
 
 
-def _run(entities: list[str], *, nodes: dict = _NODES) -> object:
+def _run(entities: list[str], *, nodes: dict = _NODES) -> RegionResult:
     """Run resolve_variable with the two-recipient dev-finance scenario."""
     graph = FakeGraph(nodes=nodes, detect=_DETECT, resolve=_RESOLVE, obs=_OBS)
     return asyncio.run(
@@ -164,7 +164,10 @@ def test_two_recipient_where_binding_is_set():
     assert where.binding.kind == "set", (
         f"expected kind='set' on where slot; got {where.binding.kind!r}"
     )
-    where_dcids = {v.ref.dcid for v in where.binding.values}
+    where_dcids: set[str] = set()
+    for v in where.binding.values:
+        assert v.ref is not None
+        where_dcids.add(v.ref.dcid)
     assert "country/KEN" in where_dcids
     assert "country/UGA" in where_dcids
 
@@ -204,7 +207,9 @@ def test_partial_grounding_is_binding_value_not_unbound():
     assert where.binding.kind == "value", (
         f"expected kind='value' on partial grounding; got {where.binding.kind!r}"
     )
-    assert where.binding.value.ref.dcid == "country/KEN"
+    where_value_ref = where.binding.value.ref
+    assert where_value_ref is not None
+    assert where_value_ref.dcid == "country/KEN"
 
 
 def test_fallback_path_donor_facets_not_n_fold_inflated():
